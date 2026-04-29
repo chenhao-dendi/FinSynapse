@@ -57,10 +57,13 @@ jobs:
         # In CI ollama always fails (no localhost); if DEEPSEEK_API_KEY is set
         # in repo secrets, deepseek wins. With no key configured at all, the
         # deterministic template fires — output is still a valid .md.
+        # Model choice: deepseek-v4-pro (current top-tier) is 75% off through
+        # 2026-05-31 — same price tier as v4-flash for now, swap back to
+        # deepseek-v4-flash after the discount window if cost matters.
         # `|| true` so a transient brief failure doesn't block publish.
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        run: uv run finsynapse report brief --provider auto || true
+        run: uv run finsynapse report brief --provider deepseek --model deepseek-v4-pro || true
 
       - name: Render bilingual static dashboard
         run: uv run finsynapse dashboard render --out-dir dist
