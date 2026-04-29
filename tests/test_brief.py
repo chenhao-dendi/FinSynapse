@@ -18,6 +18,7 @@ from finsynapse.report.brief import (
     _template_narrative,
     assemble_facts,
     extract_narrative,
+    list_briefs,
     load_latest_narrative,
     render_markdown,
     write_brief,
@@ -160,6 +161,35 @@ def test_extract_narrative_returns_only_observation_section():
 
 def test_extract_narrative_returns_empty_when_section_missing():
     assert extract_narrative("# just a title\n\nbody only\n") == ""
+
+
+def test_list_briefs_parses_meta_and_sorts_descending(tmp_data_dir):
+    brief_dir = tmp_data_dir / "gold" / "brief"
+    brief_dir.mkdir(parents=True)
+    (brief_dir / "2026-04-27.md").write_text(
+        "# x\n\n> 数据截至 **2026-04-27** · 叙事生成: `template` · 数字直接来自 silver 层\n\n## 二、今日观察\n\nold\n",
+        encoding="utf-8",
+    )
+    (brief_dir / "2026-04-29.md").write_text(
+        "# x\n\n> 数据截至 **2026-04-29** · 叙事生成: `deepseek` / `deepseek-v4-pro` · ...\n\n## 二、今日观察\n\nnew\n",
+        encoding="utf-8",
+    )
+    (brief_dir / "2026-04-28.md").write_text(
+        "# legacy brief without meta line at all\n\n## 二、今日观察\n\nlegacy\n",
+        encoding="utf-8",
+    )
+
+    briefs = list_briefs()
+    # newest first
+    assert [b.asof for b in briefs] == ["2026-04-29", "2026-04-28", "2026-04-27"]
+    # provider/model parsing
+    assert briefs[0].provider == "deepseek"
+    assert briefs[0].model == "deepseek-v4-pro"
+    assert briefs[2].provider == "template"
+    assert briefs[2].model is None
+    # legacy file with no meta line still surfaces
+    assert briefs[1].provider == "unknown"
+    assert briefs[1].model is None
 
 
 def test_load_latest_narrative_picks_lexically_last_md(tmp_data_dir):

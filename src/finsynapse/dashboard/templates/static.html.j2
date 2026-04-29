@@ -46,6 +46,7 @@
     flex-shrink: 0;
   }
   .lang-toggle:hover { background: #F3F4F6; border-color: #D1D5DB; }
+  .header-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
   main { max-width: 1280px; margin: 0 auto; padding: 24px 16px 80px; }
   section { margin-bottom: 32px; }
   section h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; color: var(--text); }
@@ -116,7 +117,10 @@
     <h1>{{ tx.header_title }}</h1>
     <div class="meta">{{ tx.data_as_of }} <strong>{{ asof }}</strong> · {{ tx.data_meta_suffix }} <code>config/weights.yaml</code></div>
   </div>
-  <a href="{{ alt_lang_href }}" class="lang-toggle" title="{{ tx.lang_toggle_hint }}">{{ tx.lang_toggle_label }}</a>
+  <div class="header-actions">
+    <a href="{{ archive_href }}" class="lang-toggle" title="{{ tx.nav_brief_archive }}">{{ tx.nav_brief_archive }}</a>
+    <a href="{{ alt_lang_href }}" class="lang-toggle" title="{{ tx.lang_toggle_hint }}">{{ tx.lang_toggle_label }}</a>
+  </div>
 </header>
 <main>
 

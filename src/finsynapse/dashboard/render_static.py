@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -13,7 +14,7 @@ from plotly.utils import PlotlyJSONEncoder
 from finsynapse.dashboard import charts
 from finsynapse.dashboard.data import MARKETS, DashboardData, load
 from finsynapse.dashboard.i18n import DEFAULT_LANG, SUPPORTED, TRANSLATIONS, t, translate_div
-from finsynapse.report.brief import load_latest_narrative
+from finsynapse.report.brief import BriefMeta, list_briefs, load_latest_narrative
 
 
 def _fig_to_json(fig) -> str:
@@ -25,7 +26,7 @@ def _i18n_namespace(lang: str) -> SimpleNamespace:
     return SimpleNamespace(**{k: t(k, lang) for k in TRANSLATIONS})
 
 
-def _render_one(env: Environment, data: DashboardData, lang: str, alt_href: str) -> str:
+def _render_one(env: Environment, data: DashboardData, lang: str, alt_href: str, archive_href: str) -> str:
     latest = data.latest_per_market()
     history_market = next(iter(latest), MARKETS[0])
 
@@ -89,6 +90,7 @@ def _render_one(env: Environment, data: DashboardData, lang: str, alt_href: str)
         lang=lang,
         tx=_i18n_namespace(lang),
         alt_lang_href=alt_href,
+        archive_href=archive_href,
         asof=data.asof().date().isoformat(),
         markets=MARKETS,
         gauges=gauges,
@@ -107,13 +109,81 @@ def _render_one(env: Environment, data: DashboardData, lang: str, alt_href: str)
     )
 
 
-# Filename convention: zh -> index.html (default landing), en -> en.html
+# Filename convention:
+#   zh dashboard  -> index.html (default landing), archive -> briefs.html
+#   en dashboard  -> en.html,                       archive -> briefs.en.html
 LANG_FILENAME = {"zh": "index.html", "en": "en.html"}
+ARCHIVE_FILENAME = {"zh": "briefs.html", "en": "briefs.en.html"}
+
+
+def _render_brief_pages(env: Environment, out_dir: Path, briefs: list[BriefMeta]) -> list[Path]:
+    """For each brief on disk:
+      1. copy raw .md to dist/brief/<date>.md (direct download / share URL)
+      2. render dist/brief/<date>.html using the same site chrome
+
+    Single-language only — brief content is Chinese, so chrome stays Chinese.
+    English-speaking visitors arriving here from the EN archive still see
+    the same content; the back-link is to the (zh) archive page.
+    """
+    if not briefs:
+        return []
+    brief_out = out_dir / "brief"
+    brief_out.mkdir(parents=True, exist_ok=True)
+
+    template = env.get_template("brief_single.html.j2")
+    tx = _i18n_namespace(DEFAULT_LANG)
+    written: list[Path] = []
+
+    for b in briefs:
+        # 1. raw md copy
+        md_dest = brief_out / f"{b.asof}.md"
+        shutil.copyfile(b.path, md_dest)
+        written.append(md_dest)
+
+        # 2. rendered html
+        body_md = b.path.read_text(encoding="utf-8")
+        body_html = Markup(_md.markdown(body_md, extensions=["extra"]))
+        html = template.render(tx=tx, asof=b.asof, body_html=body_html)
+        html_dest = brief_out / f"{b.asof}.html"
+        html_dest.write_text(html, encoding="utf-8")
+        written.append(html_dest)
+
+    return written
+
+
+def _render_archive_index(env: Environment, out_dir: Path, briefs: list[BriefMeta]) -> list[Path]:
+    """Render the bilingual /briefs.html (and /briefs.en.html) index page
+    listing every brief on disk, newest first."""
+    template = env.get_template("brief_archive.html.j2")
+    written: list[Path] = []
+
+    for lang in SUPPORTED:
+        alt_lang = next(other for other in SUPPORTED if other != lang)
+        alt_href = ARCHIVE_FILENAME[alt_lang]
+        # Back-to-dashboard target depends on which lang we're rendering.
+        dashboard_href = LANG_FILENAME[lang]
+
+        html = template.render(
+            lang=lang,
+            tx=_i18n_namespace(lang),
+            briefs=briefs,
+            alt_lang_href=alt_href,
+            dashboard_href=dashboard_href,
+        )
+        target = out_dir / ARCHIVE_FILENAME[lang]
+        target.write_text(html, encoding="utf-8")
+        written.append(target)
+
+    return written
 
 
 def render(out_dir: Path | str = "dist", data: DashboardData | None = None) -> list[Path]:
-    """Render one HTML file per supported language. Returns list of written paths.
-    The default language file is always `index.html` so GitHub Pages serves it first."""
+    """Render every page that lands on GitHub Pages:
+      - dashboard (zh + en)
+      - per-brief HTML pages + raw .md copies
+      - bilingual brief archive index
+
+    Returns the full list of written paths."""
     data = data or load()
     if data.temperature.empty:
         raise RuntimeError("No silver data. Run `finsynapse transform run --layer all` first.")
@@ -125,6 +195,8 @@ def render(out_dir: Path | str = "dist", data: DashboardData | None = None) -> l
         loader=FileSystemLoader(Path(__file__).parent / "templates"),
         autoescape=select_autoescape(["html"]),
     )
+
+    briefs = list_briefs()
 
     written: list[Path] = []
     for lang in SUPPORTED:
@@ -141,8 +213,11 @@ def render(out_dir: Path | str = "dist", data: DashboardData | None = None) -> l
             # Toggle link back to default goes to index.html (root), not zh.html
             alt_href = "index.html" if alt_lang == DEFAULT_LANG else LANG_FILENAME[alt_lang]
 
-        html = _render_one(env, data, lang, alt_href)
+        archive_href = ARCHIVE_FILENAME[lang]
+        html = _render_one(env, data, lang, alt_href, archive_href)
         target.write_text(html, encoding="utf-8")
         written.append(target)
 
+    written.extend(_render_brief_pages(env, out_dir, briefs))
+    written.extend(_render_archive_index(env, out_dir, briefs))
     return written

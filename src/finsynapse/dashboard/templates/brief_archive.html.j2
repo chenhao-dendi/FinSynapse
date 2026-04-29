@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<title>{{ tx.archive_title }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --border: #E5E7EB;
+    --text: #111827;
+    --text-muted: #6B7280;
+    --accent: #2E86AB;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+                 "Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  header .header-text { flex: 1; min-width: 0; }
+  header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+  header .meta { color: var(--text-muted); font-size: 13px; margin-top: 6px; line-height: 1.5; }
+  header .actions { display: flex; gap: 8px; flex-shrink: 0; }
+  header .actions a {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 13px;
+  }
+  header .actions a:hover { background: #F3F4F6; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 0;
+    overflow-x: auto;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  th { font-weight: 500; color: var(--text-muted); background: #F9FAFB; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.asof a { color: var(--text); font-weight: 500; text-decoration: none; }
+  td.asof a:hover { color: var(--accent); text-decoration: underline; }
+  td code { background: #F3F4F6; padding: 1px 6px; border-radius: 3px; font-size: 12px; color: var(--text-muted); }
+  td.actions { text-align: right; }
+  td.actions a {
+    color: var(--accent);
+    text-decoration: none;
+    margin-left: 12px;
+    font-size: 13px;
+  }
+  td.actions a:hover { text-decoration: underline; }
+  .empty { color: var(--text-muted); font-size: 13px; text-align: center; padding: 60px 20px; }
+  .total-count { color: var(--text-muted); font-size: 12px; margin: 0 0 12px; }
+  footer { color: var(--text-muted); font-size: 12px; text-align: center; padding: 24px; }
+  .badge-template { background: #FEF3C7; color: #92400E; padding: 1px 8px; border-radius: 3px; font-size: 11px; }
+  .badge-deepseek { background: #DBEAFE; color: #1E40AF; padding: 1px 8px; border-radius: 3px; font-size: 11px; }
+  .badge-anthropic { background: #FEE2E2; color: #991B1B; padding: 1px 8px; border-radius: 3px; font-size: 11px; }
+  .badge-ollama { background: #D1FAE5; color: #065F46; padding: 1px 8px; border-radius: 3px; font-size: 11px; }
+  .badge-other { background: #E5E7EB; color: #374151; padding: 1px 8px; border-radius: 3px; font-size: 11px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-text">
+    <h1>{{ tx.archive_title }}</h1>
+    <div class="meta">{{ tx.archive_subtitle }}</div>
+  </div>
+  <div class="actions">
+    <a href="{{ dashboard_href }}">{{ tx.archive_back_to_dashboard }}</a>
+    <a href="{{ alt_lang_href }}" title="{{ tx.lang_toggle_hint }}">{{ tx.lang_toggle_label }}</a>
+  </div>
+</header>
+<main>
+  {% if briefs %}
+    <p class="total-count">{{ tx.archive_total_count.format(n=briefs|length) }}</p>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>{{ tx.archive_th_asof }}</th>
+            <th>{{ tx.archive_th_provider }}</th>
+            <th>{{ tx.archive_th_model }}</th>
+            <th class="actions">{{ tx.archive_th_actions }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in briefs %}
+          <tr>
+            <td class="asof"><a href="brief/{{ b.asof }}.html">{{ b.asof }}</a></td>
+            <td>
+              {% set badge_class = 'badge-' ~ b.provider if b.provider in ['deepseek','anthropic','ollama','template'] else 'badge-other' %}
+              <span class="{{ badge_class }}">{{ b.provider }}</span>
+            </td>
+            <td>{% if b.model %}<code>{{ b.model }}</code>{% else %}—{% endif %}</td>
+            <td class="actions">
+              <a href="brief/{{ b.asof }}.html">{{ tx.archive_view_html }}</a>
+              <a href="brief/{{ b.asof }}.md" download>{{ tx.archive_view_md }}</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card"><div class="empty">{{ tx.archive_empty }}</div></div>
+  {% endif %}
+</main>
+<footer>{{ tx.footer }}</footer>
+</body>
+</html>

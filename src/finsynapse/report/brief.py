@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -472,6 +473,46 @@ def load_latest_narrative() -> tuple[str, str | None]:
         return "", None
     text = p.read_text(encoding="utf-8")
     return extract_narrative(text), p.stem  # filename stem = YYYY-MM-DD
+
+
+# Pattern matches the meta line written by render_markdown(), e.g.:
+#   > 数据截至 **2026-04-29** · 叙事生成: `deepseek` / `deepseek-v4-pro` · ...
+# Both `provider` and `/ model` are captured; model is optional (template
+# fallback writes only the provider).
+_META_PATTERN = re.compile(r"叙事生成:\s*`(?P<provider>[^`]+)`(?:\s*/\s*`(?P<model>[^`]+)`)?")
+
+
+@dataclass(frozen=True)
+class BriefMeta:
+    """Lightweight summary of a stored brief — used by the archive page."""
+
+    asof: str  # YYYY-MM-DD (filename stem)
+    path: Path  # absolute path to .md
+    provider: str  # "deepseek" | "anthropic" | "ollama" | "template" | "unknown"
+    model: str | None  # model id, or None for template/older briefs
+
+
+def _parse_meta(md_text: str) -> tuple[str, str | None]:
+    """Pull (provider, model) out of the meta blockquote. Returns
+    ('unknown', None) when the file pre-dates the meta line format."""
+    for line in md_text.splitlines()[:10]:  # meta sits in the top few lines
+        m = _META_PATTERN.search(line)
+        if m:
+            return m.group("provider"), m.group("model")
+    return "unknown", None
+
+
+def list_briefs() -> list[BriefMeta]:
+    """Return every brief on disk, newest first. Used by render_static to
+    build the /briefs.html archive index and per-date HTML pages."""
+    brief_dir = _cfg.settings.gold_dir / "brief"
+    if not brief_dir.exists():
+        return []
+    out: list[BriefMeta] = []
+    for p in sorted(brief_dir.glob("*.md"), reverse=True):
+        provider, model = _parse_meta(p.read_text(encoding="utf-8"))
+        out.append(BriefMeta(asof=p.stem, path=p, provider=provider, model=model))
+    return out
 
 
 def write_brief(md: str, asof: str | date) -> Path:
