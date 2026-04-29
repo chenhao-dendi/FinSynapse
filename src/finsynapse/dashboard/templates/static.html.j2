@@ -1,241 +1,419 @@
 <!DOCTYPE html>
-<html lang="{{ lang }}">
+<html lang="{{ lang }}" class="light">
 <head>
 <meta charset="utf-8">
 <title>{{ tx.page_title }} ({{ asof }})</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "ink": "#1c1b1b",
+          "ink-soft": "#46464a",
+          "ink-muted": "#77767b",
+          "navy": "#1E3A8A",
+          "coral": "#F87171",
+          "gold": "#FBBF24",
+          "indigo-soft": "#6366F1",
+          "emerald-soft": "#10B981",
+          "hot-zone": "rgba(248,113,113,0.10)",
+          "mid-zone": "rgba(251,191,36,0.10)",
+          "cold-zone": "rgba(30,58,138,0.10)",
+        },
+        fontFamily: {
+          sans: ["Manrope", "-apple-system", "BlinkMacSystemFont", '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', '"Noto Sans CJK SC"', "sans-serif"],
+        },
+      }
+    }
+  }
+</script>
 <style>
   :root {
-    --bg: #FAFAFA;
-    --surface: #FFFFFF;
-    --border: #E5E7EB;
-    --text: #111827;
-    --text-muted: #6B7280;
-    --accent: #2E86AB;
+    --bg: #FAF9FE;
+    --ink: #1c1b1b;
+    --ink-soft: #46464a;
+    --ink-muted: #77767b;
   }
-  * { box-sizing: border-box; }
   body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    background-color: var(--bg);
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    color: var(--ink);
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 24px 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 16px;
+  .glass {
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.55);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.04);
   }
-  .header-text { flex: 1; min-width: 0; }
-  header h1 { margin: 0; font-size: 22px; font-weight: 600; }
-  header .meta { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
-  .lang-toggle {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 14px;
-    color: var(--text);
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.15s ease;
-    flex-shrink: 0;
+  .glass-strong {
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.6);
   }
-  .lang-toggle:hover { background: #F3F4F6; border-color: #D1D5DB; }
-  .header-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
-  main { max-width: 1280px; margin: 0 auto; padding: 24px 16px 80px; }
-  section { margin-bottom: 32px; }
-  section h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; color: var(--text); }
-  .grid { display: grid; gap: 16px; }
-  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
-  .grid.cols-1 { grid-template-columns: 1fr; }
-  @media (max-width: 900px) {
-    .grid.cols-3 { grid-template-columns: 1fr; }
-    header { flex-direction: column; }
-  }
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
-  }
-  .card.empty {
-    color: var(--text-muted);
-    font-size: 13px;
-    text-align: center;
-    padding: 40px 20px;
-  }
-  .data-quality {
-    color: #B45309;
-    background: #FEF3C7;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    margin-top: 8px;
-    display: inline-block;
-  }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-  th { font-weight: 500; color: var(--text-muted); background: #F9FAFB; position: sticky; top: 0; }
-  td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  footer { color: var(--text-muted); font-size: 12px; text-align: center; padding: 24px; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
-  .badge-cold { background: rgba(46,134,171,0.15); color: #1E40AF; }
-  .badge-mid  { background: rgba(156,163,175,0.20); color: #374151; }
-  .badge-hot  { background: rgba(230,57,70,0.15); color: #991B1B; }
-  .brief-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
-    border-radius: 8px;
-    padding: 16px 20px;
-  }
-  .brief-card .brief-meta {
-    color: var(--text-muted);
-    font-size: 12px;
-    margin: 0 0 10px;
-  }
-  .brief-card p { margin: 0 0 10px; line-height: 1.65; font-size: 14px; }
-  .brief-card p:last-child { margin-bottom: 0; }
-  .brief-card strong { color: var(--text); }
-  .brief-card code {
-    background: #F3F4F6;
-    padding: 1px 5px;
-    border-radius: 3px;
-    font-size: 12px;
+  /* Accent helpers — keep both bg and text variants in one place. */
+  .accent-navy   { color:#1E3A8A; }
+  .accent-gold   { color:#B45309; }
+  .accent-coral  { color:#B91C1C; }
+  .bg-accent-navy   { background:#1E3A8A; }
+  .bg-accent-gold   { background:#FBBF24; }
+  .bg-accent-coral  { background:#F87171; }
+  .ring-accent-navy   { box-shadow: 0 0 0 1px rgba(30,58,138,0.25); }
+  .ring-accent-gold   { box-shadow: 0 0 0 1px rgba(251,191,36,0.45); }
+  .ring-accent-coral  { box-shadow: 0 0 0 1px rgba(248,113,113,0.40); }
+  .gradient-navy  { background: linear-gradient(90deg, #1E3A8A, #60A5FA); }
+  .gradient-gold  { background: linear-gradient(90deg, #B45309, #FBBF24); }
+  .gradient-coral { background: linear-gradient(90deg, #B91C1C, #F87171); }
+  /* Sub-temp bar */
+  .sub-bar { background: rgba(0,0,0,0.06); height: 6px; border-radius: 999px; overflow: hidden; }
+  .sub-bar > span { display: block; height: 100%; border-radius: 999px; }
+  /* Attribution diverging mini-bars */
+  .attrib-row { display: grid; grid-template-columns: 64px 1fr 60px; align-items: center; gap: 8px; font-size: 12px; }
+  .attrib-bar { position: relative; height: 8px; background: rgba(0,0,0,0.04); border-radius: 999px; }
+  .attrib-bar .pos, .attrib-bar .neg { position: absolute; top: 0; bottom: 0; border-radius: 999px; }
+  .attrib-bar .axis { position: absolute; top: -2px; bottom: -2px; left: 50%; width: 1px; background: rgba(0,0,0,0.2); }
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  /* Stars for risk strength */
+  .stars { display: inline-flex; gap: 2px; }
+  .stars span { display: inline-block; width: 5px; height: 16px; border-radius: 2px; background: rgba(0,0,0,0.08); }
+  .stars span.on { background: currentColor; }
+  /* Print-friendlier: drop heavy backdrop-filter when reduced. */
+  @media (prefers-reduced-transparency: reduce) {
+    .glass, .glass-strong { backdrop-filter: none; -webkit-backdrop-filter: none; background: #fff; }
   }
 </style>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 </head>
-<body>
-<header>
-  <div class="header-text">
-    <h1>{{ tx.header_title }}</h1>
-    <div class="meta">{{ tx.data_as_of }} <strong>{{ asof }}</strong> · {{ tx.data_meta_suffix }} <code>config/weights.yaml</code></div>
-  </div>
-  <div class="header-actions">
-    <a href="{{ archive_href }}" class="lang-toggle" title="{{ tx.nav_brief_archive }}">{{ tx.nav_brief_archive }}</a>
-    <a href="{{ alt_lang_href }}" class="lang-toggle" title="{{ tx.lang_toggle_hint }}">{{ tx.lang_toggle_label }}</a>
-  </div>
-</header>
-<main>
+<body class="min-h-screen pb-20 text-ink">
 
-{% if narrative_html %}
-<section>
-  <h2>{{ tx.section_brief }}</h2>
-  <div class="brief-card">
-    <p class="brief-meta">
-      {{ tx.data_as_of }} <strong>{{ narrative_asof }}</strong> · {{ tx.brief_meta }}
-    </p>
-    {{ narrative_html }}
-  </div>
-</section>
-{% endif %}
-
-<section>
-  <h2>{{ tx.section_market_temps }}</h2>
-  <div class="grid cols-3">
-    {% for market in markets %}
-    <div class="card">
-      {% if market in gauges %}
-        <div id="gauge_{{ market }}"></div>
-        <div id="radar_{{ market }}"></div>
-        <div id="attrib_{{ market }}"></div>
-        {% if data_quality.get(market, 'ok') != 'ok' %}
-          <div class="data-quality">{{ tx.data_quality_label }}: {{ data_quality[market] }}</div>
-        {% endif %}
-      {% else %}
-        <div class="empty"><strong>{{ market | upper }}</strong><br>{{ tx.no_data_card }}</div>
-      {% endif %}
+<!-- Top nav -->
+<nav class="sticky top-0 z-40 glass-strong border-b border-white/40">
+  <div class="max-w-[1280px] mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="text-xl">🌡️</span>
+      <span class="text-lg font-extrabold tracking-tight">FinSynapse</span>
+      <span class="hidden sm:inline-block text-xs uppercase tracking-widest text-ink-muted ml-2">{{ tx.page_title.split('—')[1] if '—' in tx.page_title else tx.page_title }}</span>
     </div>
-    {% endfor %}
+    <div class="flex items-center gap-2">
+      <a href="{{ archive_href }}" class="px-3 py-1.5 rounded-full text-sm font-medium text-ink-soft hover:bg-white/60 transition-colors">📚 {{ tx.nav_brief_archive.replace('📚 ', '') }}</a>
+      <a href="{{ alt_lang_href }}" title="{{ tx.lang_toggle_hint }}" class="px-3 py-1.5 rounded-full text-sm font-semibold bg-white/60 hover:bg-white border border-white/60 transition-colors">{{ tx.lang_toggle_label }}</a>
+    </div>
   </div>
-</section>
+</nav>
 
-<section>
-  <h2>{{ tx.section_cross_market }}</h2>
-  <div class="card"><div id="cross_market_radar"></div></div>
-</section>
+<main class="max-w-[1280px] mx-auto px-6 mt-10 space-y-10">
 
-<section>
-  <h2>{{ tx.section_long_history }} ({{ history_market | upper }})</h2>
-  <div class="card"><div id="time_series"></div></div>
-</section>
-
-<section>
-  <h2>{{ tx.section_divergence }}</h2>
-  <div class="card"><div id="divergence"></div></div>
-  {% if divergence_table %}
-  <div class="card" style="margin-top:12px; overflow-x:auto;">
-    <table>
-      <thead><tr><th>{{ tx.th_date }}</th><th>{{ tx.th_pair }}</th><th class="num">{{ tx.th_a_change }}</th><th class="num">{{ tx.th_b_change }}</th><th class="num">{{ tx.th_strength }}</th><th>{{ tx.th_signal }}</th></tr></thead>
-      <tbody>
-        {% for row in divergence_table %}
-        <tr>
-          <td>{{ row.date }}</td>
-          <td><code>{{ row.pair_name }}</code></td>
-          <td class="num">{{ "%+.2f%%" | format(row.a_change * 100) }}</td>
-          <td class="num">{{ "%+.2f%%" | format(row.b_change * 100) }}</td>
-          <td class="num">{{ "%.4f" | format(row.strength) }}</td>
-          <td>{{ row.description }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
-</section>
-
-<section>
-  <h2>{{ tx.section_data_health }}</h2>
-  <div class="card">
-    {% if not health_summary %}
-      <div class="empty">{{ tx.no_health_issues }}</div>
-    {% else %}
-      <p style="margin:0 0 12px; font-size:13px; color: var(--text-muted);">
-        <strong>{{ health_summary.total }}</strong> {{ tx.issues_total }}
-        ({{ health_summary.fail }} fail / {{ health_summary.warn }} warn)
+  <!-- Page hero -->
+  <header class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div>
+      <h1 class="text-4xl md:text-5xl font-bold tracking-tight">{{ tx.page_title }}</h1>
+      <p class="mt-2 text-ink-soft text-base">
+        {{ tx.data_as_of }} <span class="font-semibold text-ink">{{ asof }}</span>
+        · {{ tx.data_meta_suffix }} <code class="font-mono text-xs px-1.5 py-0.5 rounded bg-white/60 border border-white/60">config/weights.yaml</code>
       </p>
-      <div style="overflow-x:auto;">
-      <table>
-        <thead><tr><th>{{ tx.th_date }}</th><th>{{ tx.th_indicator }}</th><th>{{ tx.th_rule }}</th><th>{{ tx.th_severity }}</th><th>{{ tx.th_detail }}</th></tr></thead>
-        <tbody>
-          {% for row in health_table %}
-          <tr>
-            <td>{{ row.date }}</td>
-            <td>{{ row.indicator }}</td>
-            <td><code>{{ row.rule }}</code></td>
-            <td><span class="badge badge-{{ 'hot' if row.severity == 'fail' else 'mid' }}">{{ row.severity }}</span></td>
-            <td><small>{{ row.detail }}</small></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    </div>
+    <details class="relative">
+      <summary class="inline-flex items-center gap-1.5 px-3 py-2 rounded-full glass text-sm font-medium hover:bg-white/70 transition">
+        <span class="material-symbols-outlined text-base">help</span>
+        {{ tx.glossary_what_is_temp }}
+      </summary>
+      <div class="absolute right-0 mt-2 w-[320px] glass-strong rounded-xl p-4 text-sm text-ink-soft leading-relaxed z-30">
+        {{ tx.glossary_body | safe }}
       </div>
+    </details>
+  </header>
+
+  {# ============================================================
+     Section: Today's takeaways  (suggestion C)
+     Three deterministic bullets answering "what should I notice today?"
+     ============================================================ #}
+  {% if key_takeaways %}
+  <section>
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-xl font-bold flex items-center gap-2">
+          <span class="material-symbols-outlined accent-coral">bolt</span>
+          {{ tx.section_takeaways }}
+        </h2>
+        <p class="text-sm text-ink-muted mt-1">{{ tx.takeaways_subtitle }}</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {% for t in key_takeaways %}
+      <div class="glass rounded-2xl p-5 flex gap-3 ring-accent-{{ t.accent }}">
+        <div class="shrink-0 w-10 h-10 rounded-full bg-accent-{{ t.accent }}/15 flex items-center justify-center accent-{{ t.accent }}">
+          <span class="material-symbols-outlined">{{ t.icon }}</span>
+        </div>
+        <div class="min-w-0">
+          <div class="font-semibold text-base leading-snug">{{ t.headline }}</div>
+          <div class="text-sm text-ink-soft mt-1 leading-relaxed">{{ t.detail | safe }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# Today's full narrative (collapsed by default to honour suggestion C) #}
+  {% if narrative_html %}
+  <section>
+    <details class="glass rounded-2xl" open>
+      <summary class="px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2 font-semibold">
+          <span class="material-symbols-outlined accent-navy">menu_book</span>
+          {{ tx.section_brief }}
+          <span class="ml-2 text-xs text-ink-muted font-normal">— {{ tx.brief_meta }}</span>
+        </div>
+        <span class="text-xs text-ink-muted uppercase tracking-wider">{{ narrative_asof }}</span>
+      </summary>
+      <div class="px-6 pb-6 pt-0 prose prose-sm max-w-none text-ink-soft leading-relaxed [&_strong]:text-ink [&_code]:bg-white/60 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded">
+        {{ narrative_html }}
+      </div>
+    </details>
+  </section>
+  {% endif %}
+
+  {# ============================================================
+     Section: Market temperatures (CSS gauges, no Plotly)
+     Each card uses an accent colour from MARKET_META.
+     ============================================================ #}
+  <section>
+    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+      <span class="material-symbols-outlined">thermostat</span>
+      {{ tx.section_market_temps }}
+    </h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {% for c in market_cards %}
+        {% if c.missing %}
+        <div class="glass rounded-2xl p-6 flex flex-col items-center justify-center min-h-[280px] text-ink-muted">
+          <span class="material-symbols-outlined text-3xl mb-2">cloud_off</span>
+          <div class="font-semibold text-ink">{{ c.meta.label }}</div>
+          <div class="text-sm mt-1">{{ tx.no_data_card }}</div>
+        </div>
+        {% else %}
+        <div class="glass rounded-2xl p-6 relative overflow-hidden flex flex-col gap-5">
+          <!-- top accent stripe -->
+          <div class="absolute top-0 left-0 right-0 h-1 gradient-{{ c.accent }}"></div>
+
+          <!-- Header row: market + zone badge + week change -->
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="text-2xl font-bold flex items-center gap-2">{{ c.meta.label }}</div>
+              <div class="text-xs text-ink-muted mt-0.5">{% if lang == 'zh' %}{{ c.meta.name_zh }}{% else %}{{ c.meta.name_en }}{% endif %}</div>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-xs font-semibold border border-white/60 bg-white/60 accent-{{ c.accent }}">{{ c.zone_label }}</span>
+          </div>
+
+          <!-- Gauge (Plotly indicator — drawn after page load) -->
+          <div id="gauge_{{ c.market }}" class="-mx-2"></div>
+
+          <!-- Sub-temps with plain-language alias (suggestion B) -->
+          <div class="space-y-2.5">
+            {% for sub in c.sub_temps %}
+            <div>
+              <div class="flex justify-between items-baseline text-sm">
+                <span class="font-medium">{{ sub.label }}</span>
+                <span class="font-semibold tabular-nums">{% if sub.value is not none %}{{ '%.0f' | format(sub.value) }}°{% else %}—{% endif %}</span>
+              </div>
+              <div class="sub-bar mt-1.5"><span class="bg-accent-{{ c.accent }}" style="width: {{ (sub.value or 0) | round(0, 'common') | int }}%; opacity: .85;"></span></div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Weekly attribution mini-rows -->
+          <div class="pt-4 border-t border-white/50 space-y-1.5">
+            <div class="text-xs uppercase tracking-wider text-ink-muted mb-1">{{ tx.weekly_attribution }}</div>
+            {% for sub in c.sub_temps %}
+              {% set v = sub.contribution or 0 %}
+              {% set width = (v | abs * 8) %}
+              {% if width > 50 %}{% set width = 50 %}{% endif %}
+              <div class="attrib-row">
+                <span class="text-ink-soft">{{ sub.label }}</span>
+                <div class="attrib-bar">
+                  <span class="axis"></span>
+                  {% if v > 0 %}
+                    <span class="pos bg-accent-coral" style="left: 50%; width: {{ width }}%;"></span>
+                  {% elif v < 0 %}
+                    <span class="neg bg-accent-navy" style="right: 50%; width: {{ width }}%;"></span>
+                  {% endif %}
+                </div>
+                <span class="text-right font-medium tabular-nums {% if v > 0 %}accent-coral{% elif v < 0 %}accent-navy{% else %}text-ink-muted{% endif %}">
+                  {% if v != 0 %}{% if v > 0 %}+{% endif %}{{ '%.1f' | format(v) }}°{% else %}—{% endif %}
+                </span>
+              </div>
+            {% endfor %}
+          </div>
+
+          {% if c.data_quality != 'ok' %}
+          <div class="mt-2 text-xs px-2.5 py-1.5 rounded-md bg-amber-100/80 text-amber-900 inline-flex items-center gap-1 self-start">
+            <span class="material-symbols-outlined text-sm">warning</span>
+            {{ tx.data_quality_label }}: {{ c.data_quality }}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ============================================================
+     Section: 2-up — cross-market radar + long-term trend
+     Plotly figures (transparent paper bg) sit in glass cards.
+     ============================================================ #}
+  <section class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <div class="glass rounded-2xl p-6">
+      <h3 class="font-bold flex items-center gap-2">
+        <span class="material-symbols-outlined accent-navy">radar</span>
+        {{ tx.section_cross_market }}
+      </h3>
+      <div id="cross_market_radar" class="mt-2"></div>
+    </div>
+    <div class="glass rounded-2xl p-6 relative overflow-hidden">
+      <h3 class="font-bold flex items-center gap-2">
+        <span class="material-symbols-outlined accent-coral">trending_up</span>
+        {{ tx.section_long_history }} ({{ history_market | upper }})
+      </h3>
+      <div id="time_series" class="mt-2"></div>
+    </div>
+  </section>
+
+  {# ============================================================
+     Section: Divergence cards  (suggestion A)
+     Replaces the table — each row becomes a card with:
+       headline (translated terse description) +
+       plain explanation +
+       risk-level stars (from strength bucket) +
+       pair code AND plain pair name (suggestion D).
+     ============================================================ #}
+  <section>
+    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+      <span class="material-symbols-outlined">call_split</span>
+      {{ tx.section_divergence }}
+    </h2>
+    {% if divergence_cards %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for d in divergence_cards %}
+        <div class="glass rounded-2xl p-5 flex gap-4 ring-accent-{{ d.accent }}">
+          <div class="shrink-0 flex flex-col items-center gap-2 pt-1">
+            <span class="text-xs uppercase tracking-wider text-ink-muted">{{ tx.div_card_strength }}</span>
+            <div class="stars accent-{{ d.accent }}">
+              {% for _ in range(d.stars) %}<span class="on"></span>{% endfor %}
+              {% for _ in range(d.stars_empty) %}<span></span>{% endfor %}
+            </div>
+            <span class="text-xs font-semibold accent-{{ d.accent }}">{{ d.risk_label }}</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <div class="font-semibold text-base leading-snug">{{ d.pair_plain }}</div>
+                <div class="text-xs text-ink-muted mt-0.5 font-mono">
+                  <code class="px-1.5 py-0.5 rounded bg-white/60 border border-white/60">{{ d.pair_code }}</code>
+                  · {{ d.date }}
+                </div>
+              </div>
+            </div>
+            <div class="mt-3 text-sm text-ink leading-snug font-medium">{{ d.headline }}</div>
+            {% if d.plain_explanation %}
+            <div class="mt-1.5 text-sm text-ink-soft leading-relaxed">{{ d.plain_explanation }}</div>
+            {% endif %}
+            <div class="mt-3 flex gap-3 text-xs text-ink-muted">
+              <span class="px-2 py-1 rounded bg-white/50 border border-white/60">A {% if d.a_change_pct >= 0 %}+{% endif %}{{ '%.2f' | format(d.a_change_pct) }}%</span>
+              <span class="px-2 py-1 rounded bg-white/50 border border-white/60">B {% if d.b_change_pct >= 0 %}+{% endif %}{{ '%.2f' | format(d.b_change_pct) }}%</span>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <details class="mt-5">
+        <summary class="text-sm text-ink-muted hover:text-ink-soft inline-flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">expand_more</span>
+          {{ tx.chart_recent_div }}
+        </summary>
+        <div class="glass rounded-2xl p-4 mt-3"><div id="divergence"></div></div>
+      </details>
+    {% else %}
+      <div class="glass rounded-2xl p-10 text-center text-ink-muted">{{ tx.div_no_recent }}</div>
     {% endif %}
-  </div>
-</section>
+  </section>
+
+  {# Data health collapsed by default — useful for ops, noise for users. #}
+  {% if health_summary %}
+  <section>
+    <details class="glass rounded-2xl">
+      <summary class="px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2 font-semibold">
+          <span class="material-symbols-outlined accent-gold">monitoring</span>
+          {{ tx.section_data_health }}
+        </div>
+        <span class="text-xs text-ink-muted">
+          <strong>{{ health_summary.total }}</strong> {{ tx.issues_total }}
+          ({{ health_summary.fail }} fail / {{ health_summary.warn }} warn)
+        </span>
+      </summary>
+      <div class="px-6 pb-6 overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-xs uppercase tracking-wider text-ink-muted">
+            <tr>
+              <th class="text-left py-2 pr-4">{{ tx.th_date }}</th>
+              <th class="text-left py-2 pr-4">{{ tx.th_indicator }}</th>
+              <th class="text-left py-2 pr-4">{{ tx.th_rule }}</th>
+              <th class="text-left py-2 pr-4">{{ tx.th_severity }}</th>
+              <th class="text-left py-2">{{ tx.th_detail }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in health_table %}
+            <tr class="border-t border-white/40">
+              <td class="py-2 pr-4 text-ink-soft">{{ row.date }}</td>
+              <td class="py-2 pr-4">{{ row.indicator }}</td>
+              <td class="py-2 pr-4"><code class="text-xs px-1.5 py-0.5 rounded bg-white/60 border border-white/60">{{ row.rule }}</code></td>
+              <td class="py-2 pr-4">
+                {% if row.severity == 'fail' %}
+                  <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800">{{ row.severity }}</span>
+                {% else %}
+                  <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">{{ row.severity }}</span>
+                {% endif %}
+              </td>
+              <td class="py-2 text-xs text-ink-muted">{{ row.detail }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </section>
+  {% endif %}
 
 </main>
-<footer>{{ tx.footer }}</footer>
+
+<footer class="max-w-[1280px] mx-auto px-6 mt-16 pt-8 border-t border-black/5 text-xs uppercase tracking-wider text-ink-muted flex justify-between">
+  <span>{{ tx.footer }}</span>
+  <span>{{ asof }}</span>
+</footer>
 
 <script>
+  const PLOT_CFG = { responsive: true, displayModeBar: false };
   {% for market, fig_json in gauges.items() %}
-  Plotly.newPlot('gauge_{{ market }}', {{ fig_json | safe }}.data, {{ fig_json | safe }}.layout, {responsive: true, displayModeBar: false});
+  Plotly.newPlot('gauge_{{ market }}', {{ fig_json | safe }}.data, {{ fig_json | safe }}.layout, PLOT_CFG);
   {% endfor %}
-  {% for market, fig_json in radars.items() %}
-  Plotly.newPlot('radar_{{ market }}', {{ fig_json | safe }}.data, {{ fig_json | safe }}.layout, {responsive: true, displayModeBar: false});
-  {% endfor %}
-  {% for market, fig_json in attribs.items() %}
-  Plotly.newPlot('attrib_{{ market }}', {{ fig_json | safe }}.data, {{ fig_json | safe }}.layout, {responsive: true, displayModeBar: false});
-  {% endfor %}
-  Plotly.newPlot('cross_market_radar', {{ cross_market_json | safe }}.data, {{ cross_market_json | safe }}.layout, {responsive: true, displayModeBar: false});
-  Plotly.newPlot('time_series', {{ time_series_json | safe }}.data, {{ time_series_json | safe }}.layout, {responsive: true, displayModeBar: false});
-  Plotly.newPlot('divergence', {{ divergence_json | safe }}.data, {{ divergence_json | safe }}.layout, {responsive: true, displayModeBar: false});
+  Plotly.newPlot('cross_market_radar', {{ cross_market_json | safe }}.data, {{ cross_market_json | safe }}.layout, PLOT_CFG);
+  Plotly.newPlot('time_series', {{ time_series_json | safe }}.data, {{ time_series_json | safe }}.layout, PLOT_CFG);
+  // Detail-on-demand divergence scatter (collapsed)
+  const divEl = document.getElementById('divergence');
+  if (divEl) {
+    Plotly.newPlot(divEl, {{ divergence_json | safe }}.data, {{ divergence_json | safe }}.layout, PLOT_CFG);
+  }
 </script>
 </body>
 </html>

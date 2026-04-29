@@ -1,129 +1,97 @@
 <!DOCTYPE html>
-<html lang="{{ lang }}">
+<html lang="{{ lang }}" class="light">
 <head>
 <meta charset="utf-8">
 <title>{{ tx.archive_title }}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #FAFAFA;
-    --surface: #FFFFFF;
-    --border: #E5E7EB;
-    --text: #111827;
-    --text-muted: #6B7280;
-    --accent: #2E86AB;
-  }
-  * { box-sizing: border-box; }
+  :root { --bg: #FAF9FE; --ink: #1c1b1b; --ink-soft: #46464a; --ink-muted: #77767b; }
   body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
-                 "Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    background-color: var(--bg);
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    color: var(--ink);
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 24px 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 16px;
-  }
-  header .header-text { flex: 1; min-width: 0; }
-  header h1 { margin: 0; font-size: 20px; font-weight: 600; }
-  header .meta { color: var(--text-muted); font-size: 13px; margin-top: 6px; line-height: 1.5; }
-  header .actions { display: flex; gap: 8px; flex-shrink: 0; }
-  header .actions a {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 14px;
-    color: var(--text);
-    text-decoration: none;
-    font-size: 13px;
-  }
-  header .actions a:hover { background: #F3F4F6; }
-  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px 0;
-    overflow-x: auto;
-  }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 12px 20px; border-bottom: 1px solid var(--border); }
-  tr:last-child td { border-bottom: none; }
-  th { font-weight: 500; color: var(--text-muted); background: #F9FAFB; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
-  td.asof a { color: var(--text); font-weight: 500; text-decoration: none; }
-  td.asof a:hover { color: var(--accent); text-decoration: underline; }
-  td code { background: #F3F4F6; padding: 1px 6px; border-radius: 3px; font-size: 12px; color: var(--text-muted); }
-  td.actions { text-align: right; }
-  td.actions a {
-    color: var(--accent);
-    text-decoration: none;
-    margin-left: 12px;
-    font-size: 13px;
-  }
-  td.actions a:hover { text-decoration: underline; }
-  .empty { color: var(--text-muted); font-size: 13px; text-align: center; padding: 60px 20px; }
-  .total-count { color: var(--text-muted); font-size: 12px; margin: 0 0 12px; }
-  footer { color: var(--text-muted); font-size: 12px; text-align: center; padding: 24px; }
-  .badge-template { background: #FEF3C7; color: #92400E; padding: 1px 8px; border-radius: 3px; font-size: 11px; }
-  .badge-deepseek { background: #DBEAFE; color: #1E40AF; padding: 1px 8px; border-radius: 3px; font-size: 11px; }
-  .badge-anthropic { background: #FEE2E2; color: #991B1B; padding: 1px 8px; border-radius: 3px; font-size: 11px; }
-  .badge-ollama { background: #D1FAE5; color: #065F46; padding: 1px 8px; border-radius: 3px; font-size: 11px; }
-  .badge-other { background: #E5E7EB; color: #374151; padding: 1px 8px; border-radius: 3px; font-size: 11px; }
+  .glass { background: rgba(255,255,255,0.55); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid rgba(255,255,255,0.55); box-shadow: 0 18px 40px rgba(0,0,0,0.04); }
+  .glass-strong { background: rgba(255,255,255,0.7); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); border: 1px solid rgba(255,255,255,0.6); }
+  .badge { padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+  .badge-template { background:#FEF3C7; color:#92400E; }
+  .badge-deepseek { background:#DBEAFE; color:#1E40AF; }
+  .badge-anthropic { background:#FEE2E2; color:#991B1B; }
+  .badge-ollama { background:#D1FAE5; color:#065F46; }
+  .badge-other { background:#E5E7EB; color:#374151; }
 </style>
 </head>
-<body>
-<header>
-  <div class="header-text">
-    <h1>{{ tx.archive_title }}</h1>
-    <div class="meta">{{ tx.archive_subtitle }}</div>
+<body class="min-h-screen pb-20" style="color: var(--ink);">
+
+<nav class="sticky top-0 z-40 glass-strong border-b border-white/40">
+  <div class="max-w-[1080px] mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="text-xl">🌡️</span>
+      <span class="text-lg font-extrabold tracking-tight">FinSynapse</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{{ dashboard_href }}" class="px-3 py-1.5 rounded-full text-sm font-medium hover:bg-white/60 transition" style="color: var(--ink-soft);">{{ tx.archive_back_to_dashboard }}</a>
+      <a href="{{ alt_lang_href }}" title="{{ tx.lang_toggle_hint }}" class="px-3 py-1.5 rounded-full text-sm font-semibold bg-white/60 hover:bg-white border border-white/60 transition">{{ tx.lang_toggle_label }}</a>
+    </div>
   </div>
-  <div class="actions">
-    <a href="{{ dashboard_href }}">{{ tx.archive_back_to_dashboard }}</a>
-    <a href="{{ alt_lang_href }}" title="{{ tx.lang_toggle_hint }}">{{ tx.lang_toggle_label }}</a>
-  </div>
-</header>
-<main>
+</nav>
+
+<main class="max-w-[1080px] mx-auto px-6 mt-12">
+  <header class="mb-8">
+    <h1 class="text-3xl md:text-4xl font-bold tracking-tight">{{ tx.archive_title }}</h1>
+    <p class="mt-2 text-base" style="color: var(--ink-soft);">{{ tx.archive_subtitle }}</p>
+  </header>
+
   {% if briefs %}
-    <p class="total-count">{{ tx.archive_total_count.format(n=briefs|length) }}</p>
-    <div class="card">
-      <table>
-        <thead>
-          <tr>
-            <th>{{ tx.archive_th_asof }}</th>
-            <th>{{ tx.archive_th_provider }}</th>
-            <th>{{ tx.archive_th_model }}</th>
-            <th class="actions">{{ tx.archive_th_actions }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for b in briefs %}
-          <tr>
-            <td class="asof"><a href="brief/{{ b.asof }}.html">{{ b.asof }}</a></td>
-            <td>
-              {% set badge_class = 'badge-' ~ b.provider if b.provider in ['deepseek','anthropic','ollama','template'] else 'badge-other' %}
-              <span class="{{ badge_class }}">{{ b.provider }}</span>
-            </td>
-            <td>{% if b.model %}<code>{{ b.model }}</code>{% else %}—{% endif %}</td>
-            <td class="actions">
-              <a href="brief/{{ b.asof }}.html">{{ tx.archive_view_html }}</a>
-              <a href="brief/{{ b.asof }}.md" download>{{ tx.archive_view_md }}</a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <p class="text-xs uppercase tracking-widest mb-3" style="color: var(--ink-muted);">{{ tx.archive_total_count.format(n=briefs|length) }}</p>
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-xs uppercase tracking-widest" style="color: var(--ink-muted);">
+            <tr class="border-b border-white/40">
+              <th class="text-left px-5 py-4 font-medium">{{ tx.archive_th_asof }}</th>
+              <th class="text-left px-5 py-4 font-medium">{{ tx.archive_th_provider }}</th>
+              <th class="text-left px-5 py-4 font-medium">{{ tx.archive_th_model }}</th>
+              <th class="text-right px-5 py-4 font-medium">{{ tx.archive_th_actions }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in briefs %}
+            <tr class="border-b border-white/30 hover:bg-white/30 transition">
+              <td class="px-5 py-4 font-semibold">
+                <a href="brief/{{ b.asof }}.html" class="hover:underline">{{ b.asof }}</a>
+              </td>
+              <td class="px-5 py-4">
+                {% set badge_class = 'badge-' ~ b.provider if b.provider in ['deepseek','anthropic','ollama','template'] else 'badge-other' %}
+                <span class="badge {{ badge_class }}">{{ b.provider }}</span>
+              </td>
+              <td class="px-5 py-4 text-xs" style="color: var(--ink-soft);">
+                {% if b.model %}<code class="px-1.5 py-0.5 rounded bg-white/60 border border-white/60 font-mono">{{ b.model }}</code>{% else %}—{% endif %}
+              </td>
+              <td class="px-5 py-4 text-right text-sm">
+                <a href="brief/{{ b.asof }}.html" class="font-medium" style="color:#1E3A8A;">{{ tx.archive_view_html }}</a>
+                <a href="brief/{{ b.asof }}.md" download class="ml-3 font-medium" style="color: var(--ink-muted);">{{ tx.archive_view_md }}</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   {% else %}
-    <div class="card"><div class="empty">{{ tx.archive_empty }}</div></div>
+    <div class="glass rounded-2xl p-12 text-center" style="color: var(--ink-muted);">{{ tx.archive_empty }}</div>
   {% endif %}
 </main>
-<footer>{{ tx.footer }}</footer>
+
+<footer class="max-w-[1080px] mx-auto px-6 mt-16 pt-8 border-t border-black/5 text-xs uppercase tracking-wider flex justify-between" style="color: var(--ink-muted);">
+  <span>{{ tx.footer }}</span>
+</footer>
 </body>
 </html>

@@ -1,104 +1,65 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh" class="light">
 <head>
 <meta charset="utf-8">
 <title>FinSynapse · {{ asof }}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries,typography"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #FAFAFA;
-    --surface: #FFFFFF;
-    --border: #E5E7EB;
-    --text: #111827;
-    --text-muted: #6B7280;
-    --accent: #2E86AB;
-  }
-  * { box-sizing: border-box; }
+  :root { --bg:#FAF9FE; --ink:#1c1b1b; --ink-soft:#46464a; --ink-muted:#77767b; --accent:#1E3A8A; }
   body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
-                 "Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    background-color: var(--bg);
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    color: var(--ink);
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
     -webkit-font-smoothing: antialiased;
-    line-height: 1.7;
   }
-  header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 16px 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-  }
-  header .crumbs a {
-    color: var(--text-muted);
-    text-decoration: none;
-    font-size: 13px;
-    margin-right: 12px;
-  }
-  header .crumbs a:hover { color: var(--accent); }
-  header .actions a {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 12px;
-    color: var(--text);
-    text-decoration: none;
-    font-size: 13px;
-  }
-  header .actions a:hover { background: #F3F4F6; }
-  main {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 32px 24px 80px;
-  }
-  article {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 32px 40px;
-  }
-  article h1 { font-size: 22px; margin: 0 0 12px; font-weight: 600; }
-  article h2 { font-size: 16px; margin: 28px 0 12px; padding-top: 16px; border-top: 1px solid var(--border); font-weight: 600; }
-  article h2:first-of-type { padding-top: 0; border-top: none; }
-  article h3 { font-size: 14px; margin: 20px 0 10px; color: var(--text-muted); font-weight: 600; }
-  article blockquote {
-    margin: 0 0 20px;
-    padding: 10px 16px;
-    background: #F3F4F6;
-    border-left: 3px solid var(--accent);
-    color: var(--text-muted);
-    font-size: 13px;
-    border-radius: 0 4px 4px 0;
-  }
-  article p { margin: 0 0 14px; font-size: 14px; }
-  article code { background: #F3F4F6; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
-  article table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0 20px; }
-  article th, article td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-  article th { font-weight: 500; color: var(--text-muted); background: #F9FAFB; }
+  .glass { background: rgba(255,255,255,0.65); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid rgba(255,255,255,0.55); box-shadow: 0 18px 40px rgba(0,0,0,0.04); }
+  .glass-strong { background: rgba(255,255,255,0.72); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); border: 1px solid rgba(255,255,255,0.6); }
+  /* Markdown body styling — tuned for a long-form macro brief. */
+  article { line-height: 1.75; }
+  article h1 { font-size: 28px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.02em; }
+  article h2 { font-size: 18px; font-weight: 700; margin: 32px 0 14px; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.06); }
+  article h2:first-of-type { padding-top: 0; border-top: none; margin-top: 20px; }
+  article h3 { font-size: 14px; font-weight: 600; margin: 22px 0 10px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
+  article blockquote { margin: 0 0 22px; padding: 12px 18px; background: rgba(255,255,255,0.6); border-left: 3px solid var(--accent); color: var(--ink-soft); font-size: 13px; border-radius: 0 8px 8px 0; }
+  article p { margin: 0 0 14px; font-size: 15px; }
+  article strong { color: var(--ink); }
+  article code { background: rgba(255,255,255,0.6); padding: 1px 6px; border-radius: 4px; font-size: 12px; border: 1px solid rgba(0,0,0,0.04); }
+  article table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 14px 0 22px; }
+  article th, article td { text-align: left; padding: 9px 12px; border-bottom: 1px solid rgba(0,0,0,0.06); }
+  article th { font-weight: 600; color: var(--ink-soft); background: rgba(255,255,255,0.4); font-size: 12px; }
   article td:nth-child(n+3) { font-variant-numeric: tabular-nums; }
   article ul { padding-left: 22px; margin: 8px 0 14px; }
-  article hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
-  footer { color: var(--text-muted); font-size: 12px; text-align: center; padding: 24px; }
+  article hr { border: none; border-top: 1px solid rgba(0,0,0,0.08); margin: 28px 0; }
 </style>
 </head>
-<body>
-<header>
-  <div class="crumbs">
-    <a href="../index.html">🌡️ FinSynapse</a>
-    <a href="../briefs.html">{{ tx.single_back_to_archive }}</a>
+<body class="min-h-screen pb-20">
+
+<nav class="sticky top-0 z-40 glass-strong border-b border-white/40">
+  <div class="max-w-[860px] mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <a href="../index.html" class="flex items-center gap-2 hover:opacity-80">
+        <span class="text-xl">🌡️</span>
+        <span class="text-lg font-extrabold tracking-tight">FinSynapse</span>
+      </a>
+      <a href="../briefs.html" class="ml-3 text-sm font-medium" style="color: var(--ink-soft);">{{ tx.single_back_to_archive }}</a>
+    </div>
+    <a href="{{ asof }}.md" download class="px-3 py-1.5 rounded-full text-sm font-semibold bg-white/70 hover:bg-white border border-white/60 transition">⬇ {{ tx.single_download_md }}</a>
   </div>
-  <div class="actions">
-    <a href="{{ asof }}.md" download>{{ tx.single_download_md }}</a>
-  </div>
-</header>
-<main>
-  <article>
+</nav>
+
+<main class="max-w-[860px] mx-auto px-6 mt-12">
+  <article class="glass rounded-2xl px-8 md:px-12 py-10">
     {{ body_html | safe }}
   </article>
 </main>
-<footer>{{ tx.footer }}</footer>
+
+<footer class="max-w-[860px] mx-auto px-6 mt-12 pt-8 border-t border-black/5 text-xs uppercase tracking-wider text-center" style="color: var(--ink-muted);">
+  {{ tx.footer }}
+</footer>
 </body>
 </html>

@@ -6,23 +6,32 @@ from plotly.subplots import make_subplots
 
 from finsynapse.dashboard.i18n import DEFAULT_LANG, t, translate_div
 
-# Shared color scheme. Cold→Hot maps to blue→grey→red. Keep these consistent
-# across every chart so the user builds a fixed mental model: blue = cheap/cold.
-COLOR_COLD = "#2E86AB"
-COLOR_MID = "#9CA3AF"
-COLOR_HOT = "#E63946"
-COLOR_BG = "#FAFAFA"
+# Shared palette aligned with the redesigned UI (Stitch reference).
+#   navy  — cold / valuation / CN accent
+#   gold  — neutral / sentiment / HK accent
+#   coral — hot / liquidity-or-risk / US accent
+# All three are visually distinct on glass-morphism cards (background
+# is near-white tinted rgba). Keep these constants the only source so
+# Plotly figures and Tailwind tokens never drift.
+COLOR_COLD = "#1E3A8A"  # navy
+COLOR_MID = "#FBBF24"  # gold
+COLOR_HOT = "#F87171"  # coral
+COLOR_VALUATION = "#6366F1"  # indigo (sub-temp distinct from market accent)
+COLOR_SENTIMENT = "#FBBF24"
+COLOR_LIQUIDITY = "#10B981"
+COLOR_BG = "rgba(0,0,0,0)"  # transparent — sits on glass cards
+COLOR_PLOT_BG = "rgba(255,255,255,0.0)"
 
 ZONE_BANDS = [
-    (0, 30, "rgba(46,134,171,0.15)"),
-    (30, 70, "rgba(156,163,175,0.10)"),
-    (70, 100, "rgba(230,57,70,0.15)"),
+    (0, 30, "rgba(30,58,138,0.10)"),
+    (30, 70, "rgba(251,191,36,0.08)"),
+    (70, 100, "rgba(248,113,113,0.10)"),
 ]
 
-# Use a CJK-capable font stack first so Chinese labels don't fall back to
-# system default that may render as boxes inside Plotly charts.
+# Manrope first to match the new design system; CJK fallback ensures
+# Chinese labels render correctly when Manrope doesn't ship those glyphs.
 FONT_FAMILY = (
-    '-apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", '
+    'Manrope, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", '
     '"Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI", Roboto, sans-serif'
 )
 
@@ -38,7 +47,9 @@ def temp_color(value: float) -> str:
 
 
 def gauge(market: str, value: float, change_1w: float | None = None, lang: str = DEFAULT_LANG) -> go.Figure:
-    """Single-market thermometer gauge. Renders 0-100° with zone bands."""
+    """Single-market thermometer gauge. Used by the Streamlit app; the static
+    HTML site renders a CSS gauge instead so there is no Plotly bundle weight
+    inside each market card."""
     color = temp_color(value)
     delta_dict = {"reference": value - (change_1w or 0), "valueformat": ".1f"} if change_1w is not None else None
     fig = go.Figure(
@@ -51,13 +62,12 @@ def gauge(market: str, value: float, change_1w: float | None = None, lang: str =
             gauge={
                 "axis": {"range": [0, 100], "tickwidth": 1, "tickcolor": "#374151"},
                 "bar": {"color": color, "thickness": 0.65},
-                "bgcolor": "white",
-                "borderwidth": 1,
-                "bordercolor": "#E5E7EB",
+                "bgcolor": "rgba(255,255,255,0.5)",
+                "borderwidth": 0,
                 "steps": [
-                    {"range": [0, 30], "color": "rgba(46,134,171,0.20)"},
-                    {"range": [30, 70], "color": "rgba(156,163,175,0.12)"},
-                    {"range": [70, 100], "color": "rgba(230,57,70,0.20)"},
+                    {"range": [0, 30], "color": "rgba(30,58,138,0.15)"},
+                    {"range": [30, 70], "color": "rgba(251,191,36,0.12)"},
+                    {"range": [70, 100], "color": "rgba(248,113,113,0.18)"},
                 ],
                 "threshold": {
                     "line": {"color": "#111827", "width": 3},
@@ -88,7 +98,7 @@ def radar(market: str, sub_temps: dict[str, float], lang: str = DEFAULT_LANG) ->
             r=[30] * 4,
             theta=cats + [cats[0]],
             mode="lines",
-            line=dict(color="rgba(46,134,171,0.4)", dash="dot"),
+            line=dict(color="rgba(30,58,138,0.35)", dash="dot"),
             showlegend=False,
             hoverinfo="skip",
         )
@@ -98,7 +108,7 @@ def radar(market: str, sub_temps: dict[str, float], lang: str = DEFAULT_LANG) ->
             r=[70] * 4,
             theta=cats + [cats[0]],
             mode="lines",
-            line=dict(color="rgba(230,57,70,0.4)", dash="dot"),
+            line=dict(color="rgba(248,113,113,0.35)", dash="dot"),
             showlegend=False,
             hoverinfo="skip",
         )
@@ -135,11 +145,11 @@ def cross_market_radar(latest_per_market: dict[str, dict[str, float]], lang: str
     """
     cats = [t("valuation", lang), t("sentiment", lang), t("liquidity", lang)]
     theta = cats + [cats[0]]
-    market_colors = {"cn": "#E63946", "hk": "#10B981", "us": "#7C3AED"}
+    market_colors = {"cn": COLOR_COLD, "hk": COLOR_MID, "us": COLOR_HOT}
 
     fig = go.Figure()
     # Cool/hot zone reference rings (30 / 70).
-    for r_val, color in ((30, "rgba(46,134,171,0.4)"), (70, "rgba(230,57,70,0.4)")):
+    for r_val, color in ((30, "rgba(30,58,138,0.35)"), (70, "rgba(248,113,113,0.35)")):
         fig.add_trace(
             go.Scatterpolar(
                 r=[r_val] * 4,
@@ -171,14 +181,23 @@ def cross_market_radar(latest_per_market: dict[str, dict[str, float]], lang: str
         )
 
     fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[0, 100], tickfont=dict(size=10))),
-        height=320,
-        margin=dict(t=40, b=20, l=20, r=20),
+        polar=dict(
+            bgcolor="rgba(255,255,255,0.0)",
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100],
+                tickfont=dict(size=10, color="#6B7280"),
+                gridcolor="rgba(0,0,0,0.06)",
+                linecolor="rgba(0,0,0,0.08)",
+            ),
+            angularaxis=dict(tickfont=dict(size=11, color="#374151"), linecolor="rgba(0,0,0,0.08)"),
+        ),
+        height=360,
+        margin=dict(t=20, b=20, l=20, r=20),
         paper_bgcolor=COLOR_BG,
         showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5),
-        title=dict(text=f"<b>{t('chart_cross_market_radar', lang)}</b>", font=dict(size=13), x=0.5),
-        font=dict(family=FONT_FAMILY),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.12, xanchor="center", x=0.5, font=dict(size=12)),
+        font=dict(family=FONT_FAMILY, color="#1c1b1b"),
     )
     return fig
 
@@ -189,16 +208,15 @@ def time_series(temp_df: pd.DataFrame, market: str, lang: str = DEFAULT_LANG) ->
     df["date"] = pd.to_datetime(df["date"])
     df = df.sort_values("date")
 
+    # Subplot titles intentionally omitted — the section heading already says
+    # "长期温度走势 (CN)", and the legend identifies the lines, so the inline
+    # "CN — 综合温度 / 分量温度" labels would be redundant chart-junk.
     fig = make_subplots(
         rows=2,
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.06,
         row_heights=[0.65, 0.35],
-        subplot_titles=(
-            t("chart_overall_temp", lang).format(market=market.upper()),
-            t("chart_sub_temps", lang),
-        ),
     )
 
     for lo, hi, color in ZONE_BANDS:
@@ -209,14 +227,14 @@ def time_series(temp_df: pd.DataFrame, market: str, lang: str = DEFAULT_LANG) ->
             x=df["date"],
             y=df["overall"],
             name=t("overall", lang),
-            line=dict(color="#111827", width=1.6),
+            line=dict(color="#1c1b1b", width=2),
             hovertemplate=f"%{{x|%Y-%m-%d}}<br>{t('overall', lang)}: %{{y:.1f}}°<extra></extra>",
         ),
         row=1,
         col=1,
     )
 
-    for sub_key, col in [("valuation", "#7C3AED"), ("sentiment", "#F59E0B"), ("liquidity", "#10B981")]:
+    for sub_key, col in [("valuation", COLOR_VALUATION), ("sentiment", COLOR_SENTIMENT), ("liquidity", COLOR_LIQUIDITY)]:
         if sub_key in df.columns:
             label = t(sub_key, lang)
             fig.add_trace(
@@ -232,16 +250,31 @@ def time_series(temp_df: pd.DataFrame, market: str, lang: str = DEFAULT_LANG) ->
                 col=1,
             )
 
-    fig.update_yaxes(range=[0, 100], title_text="°", row=1, col=1)
-    fig.update_yaxes(range=[0, 100], title_text="°", row=2, col=1)
+    fig.update_yaxes(
+        range=[0, 100],
+        title_text="°",
+        row=1,
+        col=1,
+        gridcolor="rgba(0,0,0,0.06)",
+        zerolinecolor="rgba(0,0,0,0.08)",
+    )
+    fig.update_yaxes(
+        range=[0, 100],
+        title_text="°",
+        row=2,
+        col=1,
+        gridcolor="rgba(0,0,0,0.06)",
+        zerolinecolor="rgba(0,0,0,0.08)",
+    )
+    fig.update_xaxes(gridcolor="rgba(0,0,0,0.04)", linecolor="rgba(0,0,0,0.08)")
     fig.update_layout(
-        height=480,
-        margin=dict(t=50, b=30, l=50, r=20),
+        height=460,
+        margin=dict(t=44, b=30, l=46, r=20),
         paper_bgcolor=COLOR_BG,
-        plot_bgcolor="white",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        plot_bgcolor=COLOR_PLOT_BG,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=11)),
         hovermode="x unified",
-        font=dict(family=FONT_FAMILY),
+        font=dict(family=FONT_FAMILY, color="#1c1b1b", size=12),
     )
     return fig
 
@@ -258,12 +291,12 @@ def attribution_bars(latest_row: pd.Series, lang: str = DEFAULT_LANG) -> go.Figu
             x=list(contribs.values()),
             y=list(contribs.keys()),
             orientation="h",
-            marker=dict(color=["#7C3AED", "#F59E0B", "#10B981"]),
+            marker=dict(color=[COLOR_VALUATION, COLOR_SENTIMENT, COLOR_LIQUIDITY]),
             text=[f"{v:+.1f}°" for v in contribs.values()],
             textposition="outside",
         )
     )
-    fig.add_vline(x=0, line=dict(color="#374151", width=1))
+    fig.add_vline(x=0, line=dict(color="rgba(0,0,0,0.25)", width=1))
     fig.update_layout(
         title=dict(
             text=f"<b>{t('chart_1w_contribution', lang)}</b> — {t('chart_overall_change', lang)} {overall_change:+.1f}°",
@@ -272,10 +305,10 @@ def attribution_bars(latest_row: pd.Series, lang: str = DEFAULT_LANG) -> go.Figu
         height=200,
         margin=dict(t=40, b=20, l=80, r=40),
         paper_bgcolor=COLOR_BG,
-        plot_bgcolor="white",
-        xaxis=dict(title="°", zeroline=True),
+        plot_bgcolor=COLOR_PLOT_BG,
+        xaxis=dict(title="°", zeroline=True, gridcolor="rgba(0,0,0,0.06)"),
         showlegend=False,
-        font=dict(family=FONT_FAMILY),
+        font=dict(family=FONT_FAMILY, color="#1c1b1b"),
     )
     return fig
 
@@ -295,11 +328,11 @@ def divergence_recent(div_df: pd.DataFrame, n: int = 15, lang: str = DEFAULT_LAN
 
     fig = go.Figure()
     palette = {
-        "sp500_vix": "#E63946",
+        "sp500_vix": COLOR_HOT,
         "us10y_dxy": "#F59E0B",
-        "gold_real_rate": "#FBBF24",
-        "sp500_us10y": "#7C3AED",
-        "hsi_dxy": "#10B981",
+        "gold_real_rate": COLOR_MID,
+        "sp500_us10y": COLOR_VALUATION,
+        "hsi_dxy": COLOR_LIQUIDITY,
         "csi300_volume": "#06B6D4",
         "hsi_southbound": "#EC4899",
     }
@@ -317,14 +350,14 @@ def divergence_recent(div_df: pd.DataFrame, n: int = 15, lang: str = DEFAULT_LAN
         )
 
     fig.update_layout(
-        title=dict(text=f"<b>{t('chart_recent_div', lang)}</b>", font=dict(size=14)),
-        height=260,
-        margin=dict(t=40, b=30, l=50, r=20),
+        title=dict(text=f"<b>{t('chart_recent_div', lang)}</b>", font=dict(size=13, color="#1c1b1b")),
+        height=280,
+        margin=dict(t=44, b=30, l=50, r=20),
         paper_bgcolor=COLOR_BG,
-        plot_bgcolor="white",
-        xaxis=dict(title=None),
-        yaxis=dict(title=t("th_strength", lang)),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        font=dict(family=FONT_FAMILY),
+        plot_bgcolor=COLOR_PLOT_BG,
+        xaxis=dict(title=None, gridcolor="rgba(0,0,0,0.04)", linecolor="rgba(0,0,0,0.08)"),
+        yaxis=dict(title=t("th_strength", lang), gridcolor="rgba(0,0,0,0.06)", linecolor="rgba(0,0,0,0.08)"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=11)),
+        font=dict(family=FONT_FAMILY, color="#1c1b1b"),
     )
     return fig
