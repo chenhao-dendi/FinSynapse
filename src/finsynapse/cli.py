@@ -15,9 +15,11 @@ app = typer.Typer(add_completion=False, no_args_is_help=True, help="FinSynapse C
 ingest_app = typer.Typer(no_args_is_help=True, help="Ingest raw data into bronze layer")
 transform_app = typer.Typer(no_args_is_help=True, help="Transform bronze -> silver layer")
 dashboard_app = typer.Typer(no_args_is_help=True, help="Local Streamlit app + static HTML for GH Pages")
+notify_app = typer.Typer(no_args_is_help=True, help="State-change push notifications (Bark / Telegram)")
 app.add_typer(ingest_app, name="ingest")
 app.add_typer(transform_app, name="transform")
 app.add_typer(dashboard_app, name="dashboard")
+app.add_typer(notify_app, name="notify")
 
 
 SOURCES = {
@@ -152,6 +154,42 @@ def dashboard_render(
     paths = render(Path(out_dir))
     for p in paths:
         typer.secho(f"[dashboard] rendered -> {p} ({p.stat().st_size:,} bytes)", fg=typer.colors.GREEN)
+
+
+@notify_app.command("check")
+def notify_check() -> None:
+    """Detect zone crossings + sub-temp extremes vs yesterday; push if any.
+
+    Designed to run as the last step of the daily CI workflow. Silent when
+    no changes (no false-alarm fatigue). Always exits 0 so a missing notify
+    channel never fails the workflow.
+    """
+    from finsynapse.notify.dispatch import dispatch
+    from finsynapse.notify.state import detect_changes
+
+    events = detect_changes()
+    typer.echo(f"[notify] {len(events)} event(s) detected")
+    for e in events:
+        typer.echo(f"  - {e.summary}")
+
+    result = dispatch(events)
+    typer.echo(
+        f"[notify] bark: {result.bark_status or '—'} ({result.bark_skipped_reason or 'sent'}) | "
+        f"telegram: {result.telegram_status or '—'} ({result.telegram_skipped_reason or 'sent'})"
+    )
+
+
+@notify_app.command("test")
+def notify_test() -> None:
+    """Send a test message on every configured channel — for first-time setup."""
+    from finsynapse.notify.dispatch import send_bark, send_telegram
+
+    title = "🌡️ FinSynapse test"
+    body = "通道连通性测试 / connectivity check."
+    bark_status, bark_err = send_bark(title, body)
+    tg_status, tg_err = send_telegram(f"*{title}*\n{body}")
+    typer.echo(f"bark:     {bark_status or '—'}  {bark_err or 'ok'}")
+    typer.echo(f"telegram: {tg_status or '—'}  {tg_err or 'ok'}")
 
 
 if __name__ == "__main__":
