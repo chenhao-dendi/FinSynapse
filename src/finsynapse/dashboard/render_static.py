@@ -25,7 +25,6 @@ from finsynapse.dashboard.i18n import (
 )
 from finsynapse.report.brief import BriefMeta, list_briefs, load_latest_narrative
 
-
 # Map of market code -> display metadata used by the redesigned card UI.
 # Colours mirror the chart palette (charts.py) so a card and its embedded
 # Plotly figures share one visual identity.
@@ -34,6 +33,7 @@ MARKET_META = {
     "hk": {"label": "🇭🇰 HK", "name_zh": "香港", "name_en": "Hong Kong", "accent": "gold"},
     "us": {"label": "🇺🇸 US", "name_zh": "美国", "name_en": "United States", "accent": "coral"},
 }
+
 
 # Strength → (risk bucket key, star count, accent token). Buckets calibrated
 # against the empirical spread of strengths we see in silver — most days
@@ -195,7 +195,11 @@ def _build_key_takeaways(data: DashboardData, latest: dict, div_cards: list[dict
             {
                 "icon": "thermostat",
                 "accent": accent,
-                "headline": (f"{meta['label']} {market_name} 最值得关注" if lang == "zh" else f"{meta['label']} {market_name} is the standout"),
+                "headline": (
+                    f"{meta['label']} {market_name} 最值得关注"
+                    if lang == "zh"
+                    else f"{meta['label']} {market_name} is the standout"
+                ),
                 "detail": detail,
             }
         )

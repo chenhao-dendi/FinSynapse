@@ -234,7 +234,11 @@ def time_series(temp_df: pd.DataFrame, market: str, lang: str = DEFAULT_LANG) ->
         col=1,
     )
 
-    for sub_key, col in [("valuation", COLOR_VALUATION), ("sentiment", COLOR_SENTIMENT), ("liquidity", COLOR_LIQUIDITY)]:
+    for sub_key, col in [
+        ("valuation", COLOR_VALUATION),
+        ("sentiment", COLOR_SENTIMENT),
+        ("liquidity", COLOR_LIQUIDITY),
+    ]:
         if sub_key in df.columns:
             label = t(sub_key, lang)
             fig.add_trace(
