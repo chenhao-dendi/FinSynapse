@@ -20,7 +20,7 @@ class WeightsConfig:
     percentile_window: str
 
     @classmethod
-    def load(cls, path: Path | None = None) -> "WeightsConfig":
+    def load(cls, path: Path | None = None) -> WeightsConfig:
         p = path or CONFIG_PATH
         with p.open() as f:
             raw = yaml.safe_load(f)
@@ -107,10 +107,7 @@ def compute_temperature(percentile_long: pd.DataFrame, cfg: WeightsConfig | None
         return pd.DataFrame()
 
     pct_col = cfg.percentile_window  # e.g. 'pct_10y'
-    pct_wide = (
-        percentile_long.pivot_table(index="date", columns="indicator", values=pct_col)
-        .sort_index()
-    )
+    pct_wide = percentile_long.pivot_table(index="date", columns="indicator", values=pct_col).sort_index()
     pct_wide.index = pd.to_datetime(pct_wide.index)
 
     rows = []
@@ -149,6 +146,7 @@ def compute_temperature(percentile_long: pd.DataFrame, cfg: WeightsConfig | None
                 "liquidity": sub_temps["liquidity"].values,
             }
         )
+
         # Per-row data_quality reflects ACTUAL nan presence (not just config),
         # so a row where M2 lags or north flow stopped publishing is flagged
         # accurately. This drives the dashboard's "data_quality: foo_unavailable"

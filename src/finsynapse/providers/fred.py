@@ -18,9 +18,7 @@ class FredSeries:
 
 # Series chosen for Phase 1: US 10Y real rate is the headline liquidity input.
 # Add CPI / unemployment in Phase 1b when CN providers are also wired in.
-SERIES: tuple[FredSeries, ...] = (
-    FredSeries(series_id="DFII10", indicator="us10y_real_yield"),
-)
+SERIES: tuple[FredSeries, ...] = (FredSeries(series_id="DFII10", indicator="us10y_real_yield"),)
 
 API_BASE = "https://api.stlouisfed.org/fred/series/observations"
 
@@ -42,9 +40,7 @@ class FredProvider(Provider):
             frames.append(df)
         out = pd.concat(frames, ignore_index=True)
         if out.empty:
-            raise RuntimeError(
-                f"FRED returned 0 rows for {fetch_range.start}..{fetch_range.end}"
-            )
+            raise RuntimeError(f"FRED returned 0 rows for {fetch_range.start}..{fetch_range.end}")
         return out.sort_values(["indicator", "date"]).reset_index(drop=True)
 
     def _fetch_one(self, series: FredSeries, fetch_range: FetchRange) -> pd.DataFrame:

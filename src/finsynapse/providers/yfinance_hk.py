@@ -10,6 +10,7 @@ Indicator: hk_ewh_yield_ttm = trailing-12-month dividend yield (%).
     High yield = cheap (think: dividend stocks bid down) = COLD valuation.
     weights.yaml uses direction "-" for this.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -54,18 +55,18 @@ class YFinanceHkValuationProvider(Provider):
         yield_pct = (ttm_div / df["Close"]) * 100.0
         yield_pct = yield_pct.dropna()
 
-        out = pd.DataFrame({
-            "date": yield_pct.index,
-            "indicator": "hk_ewh_yield_ttm",
-            "value": yield_pct.values,
-            "source_symbol": "EWH/TTM-dividend-yield",
-        })
+        out = pd.DataFrame(
+            {
+                "date": yield_pct.index,
+                "indicator": "hk_ewh_yield_ttm",
+                "value": yield_pct.values,
+                "source_symbol": "EWH/TTM-dividend-yield",
+            }
+        )
         out["date"] = pd.to_datetime(out["date"]).dt.date
         out = out[(out["date"] >= fetch_range.start) & (out["date"] <= fetch_range.end)]
         if out.empty:
-            raise RuntimeError(
-                f"yfinance_hk returned 0 rows in range {fetch_range.start}..{fetch_range.end}"
-            )
+            raise RuntimeError(f"yfinance_hk returned 0 rows in range {fetch_range.start}..{fetch_range.end}")
         return out.sort_values("date").reset_index(drop=True)
 
 

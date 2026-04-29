@@ -1,0 +1,52 @@
+name: 🚨 CI / Daily 失败
+description: daily.yml 或 ci.yml 工作流失败时使用（自动 issue 也会引用此模板）
+title: "[CI] "
+labels: ["ci-failure", "auto"]
+body:
+  - type: input
+    id: run_url
+    attributes:
+      label: Run URL
+      placeholder: "https://github.com/hgDendi/FinSynapse/actions/runs/..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: workflow
+    attributes:
+      label: Workflow
+      options:
+        - daily (ingest + publish)
+        - ci (lint + test)
+        - codeql
+        - 其他
+    validations:
+      required: true
+
+  - type: dropdown
+    id: suspect
+    attributes:
+      label: 最可疑的原因
+      multiple: true
+      options:
+        - AkShare upstream 改名 / 限流
+        - EastMoney 抓取失败 / HTML 改版
+        - multpl HTML 改版
+        - yfinance 限流（curl-cffi 退避）
+        - FRED key 失效
+        - US Treasury CSV 端点改版
+        - Plotly / pandas 升级 break
+        - lockfile 漂移
+        - GitHub Pages publish 权限
+        - 其他
+
+  - type: textarea
+    id: relevant_log
+    attributes:
+      label: 关键日志片段
+      render: shell
+
+  - type: textarea
+    id: action_taken
+    attributes:
+      label: 已尝试的修复

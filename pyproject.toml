@@ -11,6 +11,7 @@ dependencies = [
     "beautifulsoup4>=4.14.3",
     "jinja2>=3.1.6",
     "lxml>=6.1.0",
+    "markdown>=3.10.2",
     "openpyxl>=3.1.5",
     "pandas>=3.0.2",
     "plotly>=6.7.0",
@@ -34,9 +35,45 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.0.3",
     "pytest-vcr>=1.0.2",
+    "ruff>=0.15.12",
     "vcrpy>=8.1.1",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra -q"
+
+[tool.ruff]
+# 120 chars matches the natural width of this codebase (longest existing
+# lines are ~165 in CLI/i18n tables — those are intentional alignment).
+# Anything wider gets the noqa hatch on a case-by-case basis.
+line-length = 120
+target-version = "py311"
+src = ["src"]
+extend-exclude = ["data", "dist", "scripts"]
+
+[tool.ruff.lint]
+# Conservative selection — focus on real bugs and import hygiene first.
+# We can layer `B` (bugbear), `SIM` (simplify), `RUF` later once the team
+# is used to ruff in CI without flooding diffs on every refactor.
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes (unused imports, undefined names)
+  "I",   # isort
+  "W",   # pycodestyle warnings
+  "UP",  # pyupgrade (modern syntax for our py311 floor)
+]
+ignore = [
+  "E501",  # line-length is enforced by the formatter, not the linter
+]
+
+[tool.ruff.lint.per-file-ignores]
+# i18n tables and CLI Typer signatures are intentionally wide for visual
+# alignment; allow E741/E402 noise we don't intend to fix everywhere.
+"src/finsynapse/dashboard/i18n.py" = ["E741"]
+"tests/*" = ["F401", "F811"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"

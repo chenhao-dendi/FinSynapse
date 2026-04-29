@@ -1,0 +1,72 @@
+name: CI
+
+# Triggers on every push and PR. The daily.yml workflow is for scheduled
+# data refresh + publish; this workflow is what gates code changes.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Default to least privilege; the lint/test job needs no token writes.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same branch/PR — devs push often, no point
+# burning minutes on stale commits.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install deps (incl. dev)
+        run: uv sync --frozen --all-extras
+
+      - name: ruff check
+        run: uv run ruff check src tests
+
+      - name: ruff format --check
+        # Fails CI when committed code drifts from the formatter — keeps
+        # diffs clean without anyone having to remember to run it locally.
+        run: uv run ruff format --check src tests
+
+  test:
+    name: Tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # We pin the floor in pyproject (>=3.11). Test the floor + the
+        # current stable release so a 3.13-only regression is caught early.
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install deps (incl. dev)
+        run: uv sync --frozen --all-extras --python ${{ matrix.python-version }}
+
+      - name: Run pytest
+        # All tests are offline (VCR cassettes for HTTP, fixtures for parquet).
+        # If a test ever hits the network in CI, it will time-out — that's by design.
+        run: uv run pytest -q

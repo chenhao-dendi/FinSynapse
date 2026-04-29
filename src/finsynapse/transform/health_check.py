@@ -26,13 +26,13 @@ PLAUSIBLE_BOUNDS: dict[str, tuple[float, float]] = {
     # --- Phase 1b additions ---
     "csi300_pe_ttm": (3.0, 100.0),
     "csi300_pb": (0.5, 10.0),
-    "cn_m2_yoy": (-5.0, 50.0),                # historical 6-30%; allow some headroom
-    "cn_social_financing_12m": (5e4, 1e7),    # 12m rolling sum, 亿元 scale
-    "cn_north_5d": (-2000.0, 2000.0),         # 5-day net flow, 亿元
+    "cn_m2_yoy": (-5.0, 50.0),  # historical 6-30%; allow some headroom
+    "cn_social_financing_12m": (5e4, 1e7),  # 12m rolling sum, 亿元 scale
+    "cn_north_5d": (-2000.0, 2000.0),  # 5-day net flow, 亿元
     "cn_south_5d": (-2000.0, 3000.0),
     # --- Phase 1c additions ---
-    "cn_a_turnover_5d": (1e8, 1e12),          # 5d-mean of (SSE+SZSE) volume in shares
-    "hk_ewh_yield_ttm": (0.1, 12.0),          # TTM dividend yield % — 0.7-6.9 historically
+    "cn_a_turnover_5d": (1e8, 1e12),  # 5d-mean of (SSE+SZSE) volume in shares
+    "hk_ewh_yield_ttm": (0.1, 12.0),  # TTM dividend yield % — 0.7-6.9 historically
 }
 
 # How many trailing-window stdevs constitutes a "jump". 5σ is intentionally
@@ -80,9 +80,7 @@ def check(macro_long: pd.DataFrame) -> tuple[pd.DataFrame, list[HealthIssue]]:
         if indicator not in {"us10y_real_yield", "cn_north_5d", "cn_south_5d"}:
             zero_mask = g["value"] == 0
             for _, row in g[zero_mask].iterrows():
-                issues.append(
-                    HealthIssue(row["_dt"], indicator, "zero", "value is exactly 0", "fail")
-                )
+                issues.append(HealthIssue(row["_dt"], indicator, "zero", "value is exactly 0", "fail"))
                 fail_keys.add((row["_dt"], indicator))
 
         # Rule 3: Out-of-bounds

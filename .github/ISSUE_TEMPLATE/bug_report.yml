@@ -1,0 +1,60 @@
+name: 🐞 Bug 报告
+description: 数据/温度/背离/dashboard/CLI 出错或表现异常
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 现象
+      description: 一句话说明发生了什么、与预期的差异
+      placeholder: "例如：transform run --layer all 在 cn_a_turnover_5d 上 KeyError"
+    validations:
+      required: true
+
+  - type: input
+    id: command
+    attributes:
+      label: 复现命令
+      description: 完整的 CLI 命令或代码入口
+      placeholder: "uv run finsynapse transform run --layer divergence"
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: 错误堆栈 / 日志
+      render: shell
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+
+  - type: input
+    id: env
+    attributes:
+      label: 环境
+      placeholder: "macOS 26.4 / Python 3.12 / uv 0.11.6 / commit abc1234"
+
+  - type: dropdown
+    id: data_layer
+    attributes:
+      label: 涉及哪一层
+      multiple: true
+      options:
+        - bronze (provider/ingest)
+        - silver (transform)
+        - gold (brief/report)
+        - dashboard (charts/template/static html)
+        - notify (bark/telegram)
+        - CLI / 配置
+        - 其他
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 自检
+      options:
+        - label: 已经 git pull 到最新 main
+        - label: 已经 uv sync --frozen
+        - label: 已经看了 health_log.parquet 的 warn/fail 列

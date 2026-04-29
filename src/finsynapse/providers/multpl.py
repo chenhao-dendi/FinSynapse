@@ -37,14 +37,11 @@ class MultplProvider(Provider):
         frames: list[pd.DataFrame] = []
         for table in TABLES:
             df = self._fetch_one(table)
-            df = df[(df["date"] >= pd.Timestamp(fetch_range.start)) &
-                    (df["date"] <= pd.Timestamp(fetch_range.end))]
+            df = df[(df["date"] >= pd.Timestamp(fetch_range.start)) & (df["date"] <= pd.Timestamp(fetch_range.end))]
             frames.append(df)
         out = pd.concat(frames, ignore_index=True)
         if out.empty:
-            raise RuntimeError(
-                f"multpl returned 0 rows in range {fetch_range.start}..{fetch_range.end}"
-            )
+            raise RuntimeError(f"multpl returned 0 rows in range {fetch_range.start}..{fetch_range.end}")
         out["date"] = out["date"].dt.date
         return out.sort_values(["indicator", "date"]).reset_index(drop=True)
 

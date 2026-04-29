@@ -31,33 +31,66 @@ class SignalPair:
 PAIRS: tuple[SignalPair, ...] = (
     SignalPair(
         name="sp500_vix",
-        a="sp500", b="vix", expected="opposite",
+        a="sp500",
+        b="vix",
+        expected="opposite",
         description_normal="SP500 ↑ + VIX ↓: risk-on as expected",
         description_divergent="SP500 ↑ + VIX ↑: rising on rising fear — beware",
     ),
     SignalPair(
         name="us10y_dxy",
-        a="us10y_yield", b="dxy", expected="same",
+        a="us10y_yield",
+        b="dxy",
+        expected="same",
         description_normal="10Y ↑ + DXY ↑: tightening in sync",
         description_divergent="10Y ↑ + DXY ↓: yields up, dollar down — credit/inflation regime shift?",
     ),
     SignalPair(
         name="gold_real_rate",
-        a="gold_futures", b="us10y_real_yield", expected="opposite",
+        a="gold_futures",
+        b="us10y_real_yield",
+        expected="opposite",
         description_normal="Gold ↑ + real yield ↓: classic safe-haven",
         description_divergent="Gold ↑ + real yield ↑: de-dollarization / sovereign hedge bid?",
     ),
     SignalPair(
         name="sp500_us10y",
-        a="sp500", b="us10y_yield", expected="same",
+        a="sp500",
+        b="us10y_yield",
+        expected="same",
         description_normal="SP500 and 10Y move together: growth narrative dominant",
         description_divergent="SP500 ↑ + 10Y ↓: liquidity-driven rally without growth confirmation",
     ),
     SignalPair(
         name="hsi_dxy",
-        a="hsi", b="dxy", expected="opposite",
+        a="hsi",
+        b="dxy",
+        expected="opposite",
         description_normal="HSI ↑ + DXY ↓: weak USD supports HK / EM",
         description_divergent="HSI ↑ + DXY ↑: HK rallies despite USD strength — domestic catalyst?",
+    ),
+    # CN price vs participation: a-share rally that *isn't* confirmed by
+    # 5-day rolling turnover is distribution, not accumulation. Same logic
+    # in reverse for selloffs on falling volume (no panic = floor).
+    SignalPair(
+        name="csi300_volume",
+        a="csi300",
+        b="cn_a_turnover_5d",
+        expected="same",
+        description_normal="CSI300 and A-share turnover move together: trend confirmed by participation",
+        description_divergent="CSI300 ↑ + turnover ↓: rally without participation — distribution risk",
+    ),
+    # HSI vs southbound (Stock Connect): mainland money is the largest
+    # marginal buyer of HK. Price moving against southbound flow signals
+    # that the local/foreign bid (or lack thereof) is driving — note the
+    # opposite-direction read.
+    SignalPair(
+        name="hsi_southbound",
+        a="hsi",
+        b="cn_south_5d",
+        expected="same",
+        description_normal="HSI and southbound 5d in sync: mainland flow drives HK as expected",
+        description_divergent="HSI ↑ + southbound ↓: HK rises without mainland support — foreign-led rally?",
     ),
 )
 
@@ -73,10 +106,7 @@ def compute_divergence(macro_long: pd.DataFrame) -> pd.DataFrame:
     if macro_long.empty:
         return pd.DataFrame(columns=_DIVERGENCE_COLUMNS)
 
-    wide = (
-        macro_long.pivot_table(index="date", columns="indicator", values="value")
-        .sort_index()
-    )
+    wide = macro_long.pivot_table(index="date", columns="indicator", values="value").sort_index()
     wide.index = pd.to_datetime(wide.index)
     pct_change = wide.pct_change()
 

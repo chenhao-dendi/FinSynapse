@@ -8,6 +8,7 @@ Sources (validated by scripts/probe_akshare.py 2026-04-29):
     - stock_zh_index_daily(sh000001)     — SSE composite incl. volume (8,631 rows from 1991)
     - stock_zh_index_daily(sz399001)     — SZSE component incl. volume (8,539 rows)
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -60,34 +61,44 @@ class AkShareCnProvider(Provider):
 
         # --- CSI300 valuation (daily) ---
         pe = _csi300_pe()
-        pe_long = pd.DataFrame({
-            "date": pd.to_datetime(pe["日期"]).dt.date,
-            # `滚动市盈率` is TTM PE — preferred over `静态市盈率` (last-FY).
-            "value": pd.to_numeric(pe["滚动市盈率"], errors="coerce"),
-            "indicator": "csi300_pe_ttm",
-            "source_symbol": "stock_index_pe_lg/沪深300/滚动市盈率",
-        }).dropna(subset=["value"])
+        pe_long = pd.DataFrame(
+            {
+                "date": pd.to_datetime(pe["日期"]).dt.date,
+                # `滚动市盈率` is TTM PE — preferred over `静态市盈率` (last-FY).
+                "value": pd.to_numeric(pe["滚动市盈率"], errors="coerce"),
+                "indicator": "csi300_pe_ttm",
+                "source_symbol": "stock_index_pe_lg/沪深300/滚动市盈率",
+            }
+        ).dropna(subset=["value"])
         records.append(_slice_dates(pe_long, fetch_range.start, fetch_range.end))
 
         pb = _csi300_pb()
-        pb_long = pd.DataFrame({
-            "date": pd.to_datetime(pb["日期"]).dt.date,
-            "value": pd.to_numeric(pb["市净率"], errors="coerce"),
-            "indicator": "csi300_pb",
-            "source_symbol": "stock_index_pb_lg/沪深300/市净率",
-        }).dropna(subset=["value"])
+        pb_long = pd.DataFrame(
+            {
+                "date": pd.to_datetime(pb["日期"]).dt.date,
+                "value": pd.to_numeric(pb["市净率"], errors="coerce"),
+                "indicator": "csi300_pb",
+                "source_symbol": "stock_index_pb_lg/沪深300/市净率",
+            }
+        ).dropna(subset=["value"])
         records.append(_slice_dates(pb_long, fetch_range.start, fetch_range.end))
 
         # --- M2 yoy growth (monthly; reported with ~2-week lag) ---
         m2 = _m2()
-        m2["_date"] = pd.to_datetime(m2["月份"].str.extract(r"(\d{4})年(\d{1,2})月")[0] + "-"
-                                      + m2["月份"].str.extract(r"(\d{4})年(\d{1,2})月")[1].str.zfill(2) + "-01")
-        m2_long = pd.DataFrame({
-            "date": m2["_date"].dt.date,
-            "value": pd.to_numeric(m2["货币和准货币(M2)-同比增长"], errors="coerce"),
-            "indicator": "cn_m2_yoy",
-            "source_symbol": "macro_china_money_supply/M2-同比",
-        }).dropna(subset=["value"])
+        m2["_date"] = pd.to_datetime(
+            m2["月份"].str.extract(r"(\d{4})年(\d{1,2})月")[0]
+            + "-"
+            + m2["月份"].str.extract(r"(\d{4})年(\d{1,2})月")[1].str.zfill(2)
+            + "-01"
+        )
+        m2_long = pd.DataFrame(
+            {
+                "date": m2["_date"].dt.date,
+                "value": pd.to_numeric(m2["货币和准货币(M2)-同比增长"], errors="coerce"),
+                "indicator": "cn_m2_yoy",
+                "source_symbol": "macro_china_money_supply/M2-同比",
+            }
+        ).dropna(subset=["value"])
         records.append(_slice_dates(m2_long, fetch_range.start, fetch_range.end))
 
         # --- A-share total turnover (daily) — SSE + SZSE volume, 5d mean ---
@@ -97,20 +108,27 @@ class AkShareCnProvider(Provider):
         szse = _index_volume("sz399001").copy()
         sse["date"] = pd.to_datetime(sse["date"]).dt.date
         szse["date"] = pd.to_datetime(szse["date"]).dt.date
-        merged = pd.merge(
-            sse[["date", "volume"]].rename(columns={"volume": "sse_vol"}),
-            szse[["date", "volume"]].rename(columns={"volume": "szse_vol"}),
-            on="date", how="outer",
-        ).sort_values("date").reset_index(drop=True)
+        merged = (
+            pd.merge(
+                sse[["date", "volume"]].rename(columns={"volume": "sse_vol"}),
+                szse[["date", "volume"]].rename(columns={"volume": "szse_vol"}),
+                on="date",
+                how="outer",
+            )
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
         merged["total_vol"] = merged["sse_vol"].fillna(0) + merged["szse_vol"].fillna(0)
         # 5-day rolling mean smooths out single-day noise (e.g. half-day sessions).
         merged["smoothed"] = merged["total_vol"].rolling(5).mean()
-        turnover_long = pd.DataFrame({
-            "date": merged["date"],
-            "value": merged["smoothed"],
-            "indicator": "cn_a_turnover_5d",
-            "source_symbol": "stock_zh_index_daily/sh000001+sz399001/volume-5d-mean",
-        }).dropna(subset=["value"])
+        turnover_long = pd.DataFrame(
+            {
+                "date": merged["date"],
+                "value": merged["smoothed"],
+                "indicator": "cn_a_turnover_5d",
+                "source_symbol": "stock_zh_index_daily/sh000001+sz399001/volume-5d-mean",
+            }
+        ).dropna(subset=["value"])
         records.append(_slice_dates(turnover_long, fetch_range.start, fetch_range.end))
 
         # --- Social Financing 12m rolling sum (monthly) ---
@@ -120,19 +138,19 @@ class AkShareCnProvider(Provider):
         srf["_date"] = pd.to_datetime(srf["月份"].str[:4] + "-" + srf["月份"].str[4:6] + "-01")
         srf = srf.sort_values("_date").reset_index(drop=True)
         srf["_rolling_12m"] = pd.to_numeric(srf["社会融资规模增量"], errors="coerce").rolling(12).sum()
-        srf_long = pd.DataFrame({
-            "date": srf["_date"].dt.date,
-            "value": srf["_rolling_12m"],
-            "indicator": "cn_social_financing_12m",
-            "source_symbol": "macro_china_shrzgm/12m-rolling-sum",
-        }).dropna(subset=["value"])
+        srf_long = pd.DataFrame(
+            {
+                "date": srf["_date"].dt.date,
+                "value": srf["_rolling_12m"],
+                "indicator": "cn_social_financing_12m",
+                "source_symbol": "macro_china_shrzgm/12m-rolling-sum",
+            }
+        ).dropna(subset=["value"])
         records.append(_slice_dates(srf_long, fetch_range.start, fetch_range.end))
 
         out = pd.concat(records, ignore_index=True)
         if out.empty:
-            raise RuntimeError(
-                f"akshare_cn returned 0 rows in range {fetch_range.start}..{fetch_range.end}"
-            )
+            raise RuntimeError(f"akshare_cn returned 0 rows in range {fetch_range.start}..{fetch_range.end}")
         return out.sort_values(["indicator", "date"]).reset_index(drop=True)
 
 

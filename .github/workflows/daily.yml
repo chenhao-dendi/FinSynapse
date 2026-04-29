@@ -9,9 +9,11 @@ on:
     - cron: '0 22 * * *'
   workflow_dispatch:
 
+# Default to read-only at workflow level — least privilege. Any future
+# job added to this workflow inherits read-only unless it explicitly opts
+# into more. The single existing job below opts into the writes it needs.
 permissions:
-  contents: write   # push to gh-pages
-  issues: write     # open issue on failure
+  contents: read
 
 concurrency:
   group: daily
@@ -21,6 +23,13 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      # Required by:
+      #   - "Commit generated brief back to main" — push to main
+      #   - "Deploy dashboard to GitHub Pages" (peaceiris) — push to gh-pages
+      contents: write
+      # Required by "Open issue on failure" — auto-file CI failure issue
+      issues: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,8 +52,33 @@ jobs:
       - name: Transform bronze -> silver (incl. temperature, divergence, health)
         run: uv run finsynapse transform run --layer all
 
+      - name: Generate daily macro brief (LLM narrative or deterministic template)
+        # Per plan §0 we DO NOT pass LLM API keys into CI. With no provider
+        # reachable, brief.py cycles ollama/deepseek/anthropic, all fail, and
+        # falls back to the deterministic template. The output is still a
+        # valid .md committed back to main and embedded by the dashboard.
+        # `|| true` so a transient template-path bug doesn't break publish.
+        run: uv run finsynapse report brief --provider auto || true
+
       - name: Render bilingual static dashboard
         run: uv run finsynapse dashboard render --out-dir dist
+
+      - name: Commit generated brief back to main
+        # The brief is content the team reviews historically; check it into
+        # the repo (small markdown, no binary), not just an artifact. Skips
+        # cleanly when nothing changed (e.g. transform aborted earlier).
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "$(git status --porcelain data/gold/brief/)" ]; then
+            echo "[brief] no new/changed brief files — skipping commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/gold/brief/
+          git commit -m "chore(brief): daily macro brief $(date -u +%Y-%m-%d)"
+          git push origin HEAD:${{ github.ref_name }}
 
       - name: Push state-change notifications (skipped if no secrets)
         env:

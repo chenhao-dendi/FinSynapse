@@ -83,10 +83,26 @@ def radar(market: str, sub_temps: dict[str, float], lang: str = DEFAULT_LANG) ->
     color = temp_color(sum(v for v in vals if v) / max(1, sum(1 for v in vals if v)))
 
     fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(r=[30] * 4, theta=cats + [cats[0]], mode="lines",
-                                   line=dict(color="rgba(46,134,171,0.4)", dash="dot"), showlegend=False, hoverinfo="skip"))
-    fig.add_trace(go.Scatterpolar(r=[70] * 4, theta=cats + [cats[0]], mode="lines",
-                                   line=dict(color="rgba(230,57,70,0.4)", dash="dot"), showlegend=False, hoverinfo="skip"))
+    fig.add_trace(
+        go.Scatterpolar(
+            r=[30] * 4,
+            theta=cats + [cats[0]],
+            mode="lines",
+            line=dict(color="rgba(46,134,171,0.4)", dash="dot"),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+    fig.add_trace(
+        go.Scatterpolar(
+            r=[70] * 4,
+            theta=cats + [cats[0]],
+            mode="lines",
+            line=dict(color="rgba(230,57,70,0.4)", dash="dot"),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
     fig.add_trace(
         go.Scatterpolar(
             r=vals + [vals[0]],
@@ -109,6 +125,64 @@ def radar(market: str, sub_temps: dict[str, float], lang: str = DEFAULT_LANG) ->
     return fig
 
 
+def cross_market_radar(latest_per_market: dict[str, dict[str, float]], lang: str = DEFAULT_LANG) -> go.Figure:
+    """Overlay every market on the same valuation/sentiment/liquidity axes.
+
+    Single per-market radar (above) shows shape; this view shows *relative*
+    standing — at a glance which market is hottest in valuation vs sentiment
+    vs liquidity. Same axis scale and zone bands as the per-market radar so
+    the visual vocabulary is consistent.
+    """
+    cats = [t("valuation", lang), t("sentiment", lang), t("liquidity", lang)]
+    theta = cats + [cats[0]]
+    market_colors = {"cn": "#E63946", "hk": "#10B981", "us": "#7C3AED"}
+
+    fig = go.Figure()
+    # Cool/hot zone reference rings (30 / 70).
+    for r_val, color in ((30, "rgba(46,134,171,0.4)"), (70, "rgba(230,57,70,0.4)")):
+        fig.add_trace(
+            go.Scatterpolar(
+                r=[r_val] * 4,
+                theta=theta,
+                mode="lines",
+                line=dict(color=color, dash="dot"),
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+
+    for market, sub_temps in latest_per_market.items():
+        vals = [sub_temps.get(k) for k in ("valuation", "sentiment", "liquidity")]
+        # NaN axes can't be drawn — sub in a tiny value but reflect it in hover.
+        plot_vals = [v if (v is not None and not pd.isna(v)) else 0 for v in vals]
+        hover_vals = ["—" if (v is None or pd.isna(v)) else f"{v:.1f}°" for v in vals]
+        color = market_colors.get(market, "#6B7280")
+        fig.add_trace(
+            go.Scatterpolar(
+                r=plot_vals + [plot_vals[0]],
+                theta=theta,
+                fill="toself",
+                opacity=0.30,
+                line=dict(color=color, width=2),
+                name=market.upper(),
+                customdata=[[hv] for hv in hover_vals + [hover_vals[0]]],
+                hovertemplate="%{theta}: %{customdata[0]}<extra>" + market.upper() + "</extra>",
+            )
+        )
+
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[0, 100], tickfont=dict(size=10))),
+        height=320,
+        margin=dict(t=40, b=20, l=20, r=20),
+        paper_bgcolor=COLOR_BG,
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5),
+        title=dict(text=f"<b>{t('chart_cross_market_radar', lang)}</b>", font=dict(size=13), x=0.5),
+        font=dict(family=FONT_FAMILY),
+    )
+    return fig
+
+
 def time_series(temp_df: pd.DataFrame, market: str, lang: str = DEFAULT_LANG) -> go.Figure:
     """Long-history overall + sub-temperature time series for one market."""
     df = temp_df[temp_df["market"] == market].copy()
@@ -116,7 +190,10 @@ def time_series(temp_df: pd.DataFrame, market: str, lang: str = DEFAULT_LANG) ->
     df = df.sort_values("date")
 
     fig = make_subplots(
-        rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.06,
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.06,
         row_heights=[0.65, 0.35],
         subplot_titles=(
             t("chart_overall_temp", lang).format(market=market.upper()),
@@ -128,21 +205,31 @@ def time_series(temp_df: pd.DataFrame, market: str, lang: str = DEFAULT_LANG) ->
         fig.add_hrect(y0=lo, y1=hi, fillcolor=color, line_width=0, row=1, col=1)
 
     fig.add_trace(
-        go.Scatter(x=df["date"], y=df["overall"], name=t("overall", lang),
-                   line=dict(color="#111827", width=1.6),
-                   hovertemplate=f"%{{x|%Y-%m-%d}}<br>{t('overall', lang)}: %{{y:.1f}}°<extra></extra>"),
-        row=1, col=1,
+        go.Scatter(
+            x=df["date"],
+            y=df["overall"],
+            name=t("overall", lang),
+            line=dict(color="#111827", width=1.6),
+            hovertemplate=f"%{{x|%Y-%m-%d}}<br>{t('overall', lang)}: %{{y:.1f}}°<extra></extra>",
+        ),
+        row=1,
+        col=1,
     )
 
     for sub_key, col in [("valuation", "#7C3AED"), ("sentiment", "#F59E0B"), ("liquidity", "#10B981")]:
         if sub_key in df.columns:
             label = t(sub_key, lang)
             fig.add_trace(
-                go.Scatter(x=df["date"], y=df[sub_key], name=label,
-                           line=dict(color=col, width=1, dash="solid"),
-                           opacity=0.85,
-                           hovertemplate=f"%{{x|%Y-%m-%d}}<br>{label}: %{{y:.1f}}°<extra></extra>"),
-                row=2, col=1,
+                go.Scatter(
+                    x=df["date"],
+                    y=df[sub_key],
+                    name=label,
+                    line=dict(color=col, width=1, dash="solid"),
+                    opacity=0.85,
+                    hovertemplate=f"%{{x|%Y-%m-%d}}<br>{label}: %{{y:.1f}}°<extra></extra>",
+                ),
+                row=2,
+                col=1,
             )
 
     fig.update_yaxes(range=[0, 100], title_text="°", row=1, col=1)
@@ -178,8 +265,10 @@ def attribution_bars(latest_row: pd.Series, lang: str = DEFAULT_LANG) -> go.Figu
     )
     fig.add_vline(x=0, line=dict(color="#374151", width=1))
     fig.update_layout(
-        title=dict(text=f"<b>{t('chart_1w_contribution', lang)}</b> — {t('chart_overall_change', lang)} {overall_change:+.1f}°",
-                   font=dict(size=13)),
+        title=dict(
+            text=f"<b>{t('chart_1w_contribution', lang)}</b> — {t('chart_overall_change', lang)} {overall_change:+.1f}°",
+            font=dict(size=13),
+        ),
         height=200,
         margin=dict(t=40, b=20, l=80, r=40),
         paper_bgcolor=COLOR_BG,
@@ -206,18 +295,23 @@ def divergence_recent(div_df: pd.DataFrame, n: int = 15, lang: str = DEFAULT_LAN
 
     fig = go.Figure()
     palette = {
-        "sp500_vix": "#E63946", "us10y_dxy": "#F59E0B", "gold_real_rate": "#FBBF24",
-        "sp500_us10y": "#7C3AED", "hsi_dxy": "#10B981",
+        "sp500_vix": "#E63946",
+        "us10y_dxy": "#F59E0B",
+        "gold_real_rate": "#FBBF24",
+        "sp500_us10y": "#7C3AED",
+        "hsi_dxy": "#10B981",
+        "csi300_volume": "#06B6D4",
+        "hsi_southbound": "#EC4899",
     }
     for pair, group in df.groupby("pair_name"):
         fig.add_trace(
             go.Scatter(
-                x=group["date"], y=group["strength"], mode="markers", name=pair,
+                x=group["date"],
+                y=group["strength"],
+                mode="markers",
+                name=pair,
                 marker=dict(size=8, color=palette.get(pair, "#6B7280"), line=dict(width=0.5, color="#374151")),
-                hovertemplate=(
-                    "%{x|%Y-%m-%d}<br>" + pair + "<br>strength=%{y:.4f}<br>"
-                    "%{customdata}<extra></extra>"
-                ),
+                hovertemplate=("%{x|%Y-%m-%d}<br>" + pair + "<br>strength=%{y:.4f}<br>%{customdata}<extra></extra>"),
                 customdata=group["description_localized"],
             )
         )

@@ -26,12 +26,20 @@ def _temp_df(rows: list[dict]) -> pd.DataFrame:
 def test_pick_meaningful_pair_skips_partial_phantom_rows():
     """Common production scenario: monthly indicator ffilled past last daily
     data, so the most-recent row has only valuation. Must not pair against it."""
-    df = _temp_df([
-        {"date": "2026-04-25", "overall": 60, "valuation": 80, "sentiment": 50, "liquidity": 50},
-        {"date": "2026-04-26", "overall": 65, "valuation": 80, "sentiment": 60, "liquidity": 55},
-        # Phantom: only valuation present (sentiment+liquidity NaN due to ffill)
-        {"date": "2026-04-29", "overall": 80, "valuation": 80, "sentiment": float("nan"), "liquidity": float("nan")},
-    ])
+    df = _temp_df(
+        [
+            {"date": "2026-04-25", "overall": 60, "valuation": 80, "sentiment": 50, "liquidity": 50},
+            {"date": "2026-04-26", "overall": 65, "valuation": 80, "sentiment": 60, "liquidity": 55},
+            # Phantom: only valuation present (sentiment+liquidity NaN due to ffill)
+            {
+                "date": "2026-04-29",
+                "overall": 80,
+                "valuation": 80,
+                "sentiment": float("nan"),
+                "liquidity": float("nan"),
+            },
+        ]
+    )
     pair = _pick_meaningful_pair(df)
     assert pair is not None
     yesterday, today = pair
@@ -52,8 +60,9 @@ def test_format_summary_no_events():
 
 
 def test_format_summary_truncates_long_body():
-    events = [Event(market="US", date="2026-04-29", kind="zone_crossing",
-                    summary="x" * 100, details={}) for _ in range(20)]
+    events = [
+        Event(market="US", date="2026-04-29", kind="zone_crossing", summary="x" * 100, details={}) for _ in range(20)
+    ]
     _, body = _format_summary(events)
     assert len(body) <= 800
     assert "truncated" in body
@@ -62,6 +71,7 @@ def test_format_summary_truncates_long_body():
 def test_send_bark_skipped_without_key(monkeypatch):
     monkeypatch.delenv("BARK_DEVICE_KEY", raising=False)
     from finsynapse import config as cfg
+
     cfg.settings = cfg.Settings()
     status, reason = send_bark("t", "b")
     assert status is None
@@ -72,6 +82,7 @@ def test_send_telegram_skipped_without_key(monkeypatch):
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
     from finsynapse import config as cfg
+
     cfg.settings = cfg.Settings()
     status, reason = send_telegram("t")
     assert status is None
@@ -84,12 +95,14 @@ def test_dispatch_calls_both_when_events_present(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake_token")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "fake_chat")
     from finsynapse import config as cfg
+
     cfg.settings = cfg.Settings()
 
     with patch("finsynapse.notify.dispatch.requests.post") as mock_post:
         mock_post.return_value = MagicMock(status_code=200)
-        events = [Event(market="HK", date="2026-04-28", kind="zone_crossing",
-                        summary="HK mid→hot 🔥 (65→73)", details={})]
+        events = [
+            Event(market="HK", date="2026-04-28", kind="zone_crossing", summary="HK mid→hot 🔥 (65→73)", details={})
+        ]
         result = dispatch(events)
 
     assert mock_post.call_count == 2
@@ -100,6 +113,7 @@ def test_dispatch_calls_both_when_events_present(monkeypatch):
 def test_dispatch_skips_when_no_events(monkeypatch):
     monkeypatch.setenv("BARK_DEVICE_KEY", "fake_key")
     from finsynapse import config as cfg
+
     cfg.settings = cfg.Settings()
 
     with patch("finsynapse.notify.dispatch.requests.post") as mock_post:

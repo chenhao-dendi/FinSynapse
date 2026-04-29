@@ -4,6 +4,7 @@ Per plan §16: only emit STATE CHANGES (zone crossings, sub-temp extremes),
 never absolute thresholds. "VIX > 30" pings every correction; "CN crossed
 into cold zone" pings once every 5 years and is unmissable.
 """
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
@@ -31,7 +32,7 @@ SUB_NAMES = ("valuation", "sentiment", "liquidity")
 class Event:
     market: str
     date: str
-    kind: str               # "zone_crossing" | "sub_extreme"
+    kind: str  # "zone_crossing" | "sub_extreme"
     summary: str
     details: dict
 
@@ -78,18 +79,20 @@ def detect_changes() -> list[Event]:
         z_yesterday = zone(yesterday["overall"])
         if z_today != z_yesterday and z_today != "unknown" and z_yesterday != "unknown":
             arrow = "🔥" if z_today == "hot" else ("🧊" if z_today == "cold" else "🌤")
-            events.append(Event(
-                market=market.upper(),
-                date=str(today["date"]),
-                kind="zone_crossing",
-                summary=f"{market.upper()} {z_yesterday}→{z_today} {arrow} ({yesterday['overall']:.1f}°→{today['overall']:.1f}°)",
-                details={
-                    "from_zone": z_yesterday,
-                    "to_zone": z_today,
-                    "from_overall": float(yesterday["overall"]),
-                    "to_overall": float(today["overall"]),
-                },
-            ))
+            events.append(
+                Event(
+                    market=market.upper(),
+                    date=str(today["date"]),
+                    kind="zone_crossing",
+                    summary=f"{market.upper()} {z_yesterday}→{z_today} {arrow} ({yesterday['overall']:.1f}°→{today['overall']:.1f}°)",
+                    details={
+                        "from_zone": z_yesterday,
+                        "to_zone": z_today,
+                        "from_overall": float(yesterday["overall"]),
+                        "to_overall": float(today["overall"]),
+                    },
+                )
+            )
 
         # Sub-temp extremes — emit once when crossing into the extreme band,
         # not every day it stays there. Compare today vs yesterday on each axis.
@@ -102,13 +105,15 @@ def detect_changes() -> list[Event]:
             y_extreme = y_val < 10 or y_val > 90
             if t_extreme and not y_extreme:
                 direction = "极冷" if t_val < 10 else "极热"
-                events.append(Event(
-                    market=market.upper(),
-                    date=str(today["date"]),
-                    kind="sub_extreme",
-                    summary=f"{market.upper()} {s} 进入{direction}区 ({t_val:.0f}°)",
-                    details={"sub": s, "value": float(t_val), "prev_value": float(y_val)},
-                ))
+                events.append(
+                    Event(
+                        market=market.upper(),
+                        date=str(today["date"]),
+                        kind="sub_extreme",
+                        summary=f"{market.upper()} {s} 进入{direction}区 ({t_val:.0f}°)",
+                        details={"sub": s, "value": float(t_val), "prev_value": float(y_val)},
+                    )
+                )
 
     return events
 

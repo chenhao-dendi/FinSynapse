@@ -4,13 +4,16 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+import markdown as _md
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from markupsafe import Markup
 from plotly.utils import PlotlyJSONEncoder
 
 from finsynapse.dashboard import charts
 from finsynapse.dashboard.data import MARKETS, DashboardData, load
 from finsynapse.dashboard.i18n import DEFAULT_LANG, SUPPORTED, TRANSLATIONS, t, translate_div
+from finsynapse.report.brief import load_latest_narrative
 
 
 def _fig_to_json(fig) -> str:
@@ -29,16 +32,39 @@ def _render_one(env: Environment, data: DashboardData, lang: str, alt_href: str)
     gauges, radars, attribs, data_quality = {}, {}, {}, {}
     for market, row in latest.items():
         gauges[market] = _fig_to_json(charts.gauge(market, row["overall"], row.get("overall_change_1w"), lang))
-        radars[market] = _fig_to_json(charts.radar(market, {
-            "valuation": row.get("valuation"),
-            "sentiment": row.get("sentiment"),
-            "liquidity": row.get("liquidity"),
-        }, lang))
+        radars[market] = _fig_to_json(
+            charts.radar(
+                market,
+                {
+                    "valuation": row.get("valuation"),
+                    "sentiment": row.get("sentiment"),
+                    "liquidity": row.get("liquidity"),
+                },
+                lang,
+            )
+        )
         attribs[market] = _fig_to_json(charts.attribution_bars(row, lang))
         data_quality[market] = row.get("data_quality", "ok")
 
     time_series_json = _fig_to_json(charts.time_series(data.temperature, history_market, lang))
     divergence_json = _fig_to_json(charts.divergence_recent(data.divergence, lang=lang))
+
+    cross_market_input = {
+        market: {
+            "valuation": row.get("valuation"),
+            "sentiment": row.get("sentiment"),
+            "liquidity": row.get("liquidity"),
+        }
+        for market, row in latest.items()
+    }
+    cross_market_json = _fig_to_json(charts.cross_market_radar(cross_market_input, lang))
+
+    # Latest LLM-narrated brief, if any. Same brief.md is used for both lang
+    # variants — the LLM-written paragraph is bilingual-friendly Chinese; we
+    # don't auto-translate to keep the source of truth single (matches
+    # README / config policy of avoiding translation drift).
+    narrative_md, narrative_asof = load_latest_narrative()
+    narrative_html = Markup(_md.markdown(narrative_md, extensions=["extra"])) if narrative_md else ""
 
     div_table = []
     if not data.divergence.empty:
@@ -71,7 +97,10 @@ def _render_one(env: Environment, data: DashboardData, lang: str, alt_href: str)
         data_quality=data_quality,
         history_market=history_market,
         time_series_json=time_series_json,
+        cross_market_json=cross_market_json,
         divergence_json=divergence_json,
+        narrative_html=narrative_html,
+        narrative_asof=narrative_asof,
         divergence_table=div_table,
         health_summary=health_summary,
         health_table=health_table,
@@ -100,7 +129,7 @@ def render(out_dir: Path | str = "dist", data: DashboardData | None = None) -> l
     written: list[Path] = []
     for lang in SUPPORTED:
         # Other lang's file is the alternate href for the toggle in this lang's page.
-        alt_lang = next(l for l in SUPPORTED if l != lang)
+        alt_lang = next(other for other in SUPPORTED if other != lang)
         alt_href = LANG_FILENAME[alt_lang]
         # Default lang lives at index.html; non-default at <lang>.html.
         if lang == DEFAULT_LANG:

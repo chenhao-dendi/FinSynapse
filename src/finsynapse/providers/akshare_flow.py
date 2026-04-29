@@ -9,6 +9,7 @@ We collapse daily flows into a 5-day rolling SUM. Single-day flow is too noisy;
 AH premium index (HSAHP) and HSI options PCR are intentionally NOT here —
 neither has a free CI-friendly source (probed 2026-04-29).
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -48,9 +49,7 @@ class AkShareFlowProvider(Provider):
         out = pd.concat(records, ignore_index=True)
         out = out[(out["date"] >= fetch_range.start) & (out["date"] <= fetch_range.end)]
         if out.empty:
-            raise RuntimeError(
-                f"akshare_flow returned 0 rows in range {fetch_range.start}..{fetch_range.end}"
-            )
+            raise RuntimeError(f"akshare_flow returned 0 rows in range {fetch_range.start}..{fetch_range.end}")
         return out.sort_values(["indicator", "date"]).reset_index(drop=True)
 
 

@@ -1,0 +1,50 @@
+name: CodeQL
+
+# Static security/code-quality analysis. Runs on:
+#   - push to main / PRs (catch issues at review time)
+#   - weekly cron (Mondays 03:00 UTC = 11:00 BJT) so the database stays
+#     fresh even on a quiet week and the weekly digest reflects current
+#     code, not last quarter's snapshot.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write   # CodeQL uploads SARIF to the Security tab
+  actions: read            # required by github/codeql-action/init
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # `security-and-quality` is the broader pack — catches code-smell
+          # patterns alongside the security-only defaults. Worth the extra
+          # minutes for a project that touches third-party data sources.
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

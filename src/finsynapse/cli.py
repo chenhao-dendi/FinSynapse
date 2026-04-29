@@ -9,6 +9,7 @@ from finsynapse.providers.akshare_flow import run as run_akshare_flow
 from finsynapse.providers.base import FetchRange
 from finsynapse.providers.fred import run as run_fred
 from finsynapse.providers.multpl import run as run_multpl
+from finsynapse.providers.treasury_real_yield import run as run_treasury_real_yield
 from finsynapse.providers.yfinance_hk import run as run_yfinance_hk
 from finsynapse.providers.yfinance_macro import run as run_yfinance_macro
 
@@ -17,10 +18,12 @@ ingest_app = typer.Typer(no_args_is_help=True, help="Ingest raw data into bronze
 transform_app = typer.Typer(no_args_is_help=True, help="Transform bronze -> silver layer")
 dashboard_app = typer.Typer(no_args_is_help=True, help="Local Streamlit app + static HTML for GH Pages")
 notify_app = typer.Typer(no_args_is_help=True, help="State-change push notifications (Bark / Telegram)")
+report_app = typer.Typer(no_args_is_help=True, help="LLM-narrated daily macro briefs (Phase 3)")
 app.add_typer(ingest_app, name="ingest")
 app.add_typer(transform_app, name="transform")
 app.add_typer(dashboard_app, name="dashboard")
 app.add_typer(notify_app, name="notify")
+app.add_typer(report_app, name="report")
 
 
 SOURCES = {
@@ -28,6 +31,7 @@ SOURCES = {
     "yfinance_hk": run_yfinance_hk,
     "multpl": run_multpl,
     "fred": run_fred,
+    "treasury_real_yield": run_treasury_real_yield,
     "akshare_cn": run_akshare_cn,
     "akshare_flow": run_akshare_flow,
 }
@@ -132,7 +136,11 @@ def transform_run(
         typer.echo(f"[temperature] {len(temp):,} rows -> {path}")
         if not temp.empty:
             latest = temp.sort_values("date").groupby("market").tail(1)
-            typer.echo(latest[["date", "market", "overall", "valuation", "sentiment", "liquidity", "data_quality"]].to_string(index=False))
+            typer.echo(
+                latest[["date", "market", "overall", "valuation", "sentiment", "liquidity", "data_quality"]].to_string(
+                    index=False
+                )
+            )
 
     if layer in ("divergence", "all"):
         div = compute_divergence(macro)
@@ -162,10 +170,13 @@ def dashboard_serve(
 
 @dashboard_app.command("render")
 def dashboard_render(
-    out_dir: str = typer.Option("dist", "--out-dir", "-o", help="Output directory (default zh -> index.html, en -> en.html)"),
+    out_dir: str = typer.Option(
+        "dist", "--out-dir", "-o", help="Output directory (default zh -> index.html, en -> en.html)"
+    ),
 ) -> None:
     """Render bilingual static HTML dashboard for GitHub Pages."""
     from pathlib import Path
+
     from finsynapse.dashboard.render_static import render
 
     paths = render(Path(out_dir))
@@ -207,6 +218,30 @@ def notify_test() -> None:
     tg_status, tg_err = send_telegram(f"*{title}*\n{body}")
     typer.echo(f"bark:     {bark_status or '—'}  {bark_err or 'ok'}")
     typer.echo(f"telegram: {tg_status or '—'}  {tg_err or 'ok'}")
+
+
+@report_app.command("brief")
+def report_brief(
+    provider: str = typer.Option(
+        "auto",
+        "--provider",
+        "-p",
+        help="LLM provider: auto | ollama | deepseek | anthropic. 'auto' tries ollama -> deepseek -> anthropic; falls back to deterministic template if all fail.",
+    ),
+    model: str | None = typer.Option(None, "--model", "-m", help="Override model id (provider-specific)"),
+) -> None:
+    """Generate today's macro brief into data/gold/brief/YYYY-MM-DD.md."""
+    from finsynapse.report.brief import generate
+
+    path, llm = generate(provider=provider, model=model)
+    color = typer.colors.GREEN if llm.provider != "template" else typer.colors.YELLOW
+    typer.secho(
+        f"[brief] wrote {path} ({path.stat().st_size:,} bytes) via {llm.provider}"
+        + (f" / {llm.model}" if llm.model else ""),
+        fg=color,
+    )
+    if llm.error:
+        typer.secho(f"[brief] LLM fallback reason: {llm.error}", fg=typer.colors.YELLOW)
 
 
 if __name__ == "__main__":

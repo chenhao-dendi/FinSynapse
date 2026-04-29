@@ -80,18 +80,27 @@ def main() -> None:
         recent_div["date"] = pd.to_datetime(recent_div["date"])
         recent_div = recent_div.sort_values("date", ascending=False).head(10)
         recent_div["description"] = recent_div["description"].map(lambda d: translate_div(d, lang))
-        recent_div = recent_div.rename(columns={
-            "date": t("th_date", lang),
-            "pair_name": t("th_pair", lang),
-            "a_change": t("th_a_change", lang),
-            "b_change": t("th_b_change", lang),
-            "strength": t("th_strength", lang),
-            "description": t("th_signal", lang),
-        })
+        recent_div = recent_div.rename(
+            columns={
+                "date": t("th_date", lang),
+                "pair_name": t("th_pair", lang),
+                "a_change": t("th_a_change", lang),
+                "b_change": t("th_b_change", lang),
+                "strength": t("th_strength", lang),
+                "description": t("th_signal", lang),
+            }
+        )
         st.dataframe(
-            recent_div[[t("th_date", lang), t("th_pair", lang),
-                        t("th_a_change", lang), t("th_b_change", lang),
-                        t("th_strength", lang), t("th_signal", lang)]],
+            recent_div[
+                [
+                    t("th_date", lang),
+                    t("th_pair", lang),
+                    t("th_a_change", lang),
+                    t("th_b_change", lang),
+                    t("th_strength", lang),
+                    t("th_signal", lang),
+                ]
+            ],
             use_container_width=True,
             hide_index=True,
         )
@@ -106,13 +115,19 @@ def main() -> None:
         n_fail = (h["severity"] == "fail").sum()
         n_warn = (h["severity"] == "warn").sum()
         st.metric(t("issues_metric", lang), f"{len(h)}", delta=f"{n_fail} fail / {n_warn} warn", delta_color="inverse")
-        h_display = h.sort_values("date", ascending=False).head(50).rename(columns={
-            "date": t("th_date", lang),
-            "indicator": t("th_indicator", lang),
-            "rule": t("th_rule", lang),
-            "severity": t("th_severity", lang),
-            "detail": t("th_detail", lang),
-        })
+        h_display = (
+            h.sort_values("date", ascending=False)
+            .head(50)
+            .rename(
+                columns={
+                    "date": t("th_date", lang),
+                    "indicator": t("th_indicator", lang),
+                    "rule": t("th_rule", lang),
+                    "severity": t("th_severity", lang),
+                    "detail": t("th_detail", lang),
+                }
+            )
+        )
         st.dataframe(h_display, use_container_width=True, hide_index=True)
 
     st.caption(f"{t('footer', lang)} · `config/weights.yaml`")

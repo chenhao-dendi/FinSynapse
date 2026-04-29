@@ -1,0 +1,65 @@
+version: 2
+
+updates:
+  # Python deps. uv is supported as the `pip` ecosystem since GitHub
+  # added native uv.lock parsing — Dependabot reads pyproject + uv.lock
+  # and opens PRs that bump `uv.lock` consistently.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    labels: ["deps", "python"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
+    groups:
+      # Group dev tooling (ruff, pytest, vcrpy) into one PR — these rarely
+      # need individual review and grouping cuts noise dramatically.
+      dev-tooling:
+        dependency-type: development
+      # Group obvious co-versioned families so we don't get N separate PRs
+      # for one ecosystem bump.
+      pandas-stack:
+        patterns:
+          - "pandas"
+          - "pyarrow"
+          - "openpyxl"
+      llm-clients:
+        patterns:
+          - "anthropic"
+          - "openai"
+          - "deepseek*"
+    ignore:
+      # akshare and yfinance update very frequently with internal-only
+      # changes; weekly bump PRs would drown the queue. Allow only minor
+      # and patch — major bumps still surface.
+      - dependency-name: "akshare"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "yfinance"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions versions (uses: ... @vN) — keep these current so we
+  # benefit from security fixes in the actions themselves.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    labels: ["deps", "ci"]
+    commit-message:
+      prefix: "chore(ci)"
+      include: scope
+    groups:
+      actions-ecosystem:
+        patterns:
+          - "actions/*"
+          - "astral-sh/*"
+          - "peaceiris/*"
+          - "github/codeql-action"

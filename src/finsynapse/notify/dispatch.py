@@ -1,6 +1,7 @@
 """Push notifications via Bark (iOS) and Telegram. Both via webhook — no
 SDK dependency, just `requests`. Either / both / neither can be configured;
 absent secrets degrade silently with a log line."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -57,8 +58,7 @@ def send_telegram(text: str) -> tuple[int | None, str | None]:
     try:
         r = requests.post(
             TELEGRAM_URL.format(token=token),
-            json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown",
-                  "disable_web_page_preview": True},
+            json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown", "disable_web_page_preview": True},
             timeout=TIMEOUT,
         )
         return r.status_code, None
