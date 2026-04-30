@@ -40,6 +40,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "sentiment": {"zh": "情绪", "en": "Sentiment"},
     "liquidity": {"zh": "流动性", "en": "Liquidity"},
     "overall": {"zh": "综合", "en": "Overall"},
+    "overall_short": {"zh": "短期温度 (1y)", "en": "Short-term (1y)"},
+    "overall_long": {"zh": "长期温度 (10y)", "en": "Long-term (10y)"},
+    "divergence": {"zh": "短长期分歧", "en": "S-T/L-T divergence"},
     # Plain-language aliases (suggestion B): displayed as a small subtitle next
     # to the canonical factor name, not replacing it. Lets first-time visitors
     # parse the radar without finance background.

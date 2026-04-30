@@ -38,6 +38,8 @@ SERIES: tuple[FredSeries, ...] = (
     FredSeries(series_id="DFII10", indicator="us10y_real_yield"),
     FredSeries(series_id="BAMLH0A0HYM2", indicator="us_hy_oas"),
     FredSeries(series_id="NFCI", indicator="us_nfci"),
+    FredSeries(series_id="WALCL", indicator="us_walcl"),
+    FredSeries(series_id="UMCSENT", indicator="us_umich_sentiment"),
 )
 
 API_BASE = "https://api.stlouisfed.org/fred/series/observations"

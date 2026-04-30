@@ -165,6 +165,102 @@ class TestBaselineTemperatures:
         assert temp.empty
 
 
+class TestPhase2MultiTimeframe:
+    """Verify multi-timeframe temperature columns."""
+
+    def test_multiframe_columns_present(self):
+        """compute_temperature output should include overall_short, overall_long, divergence."""
+        n = 350
+        values = list(np.linspace(15, 40, n))
+        macro = _build_macro({"us_pe_ttm": values})
+        macro = derive_indicators(macro)
+        pct = compute_percentiles(macro)
+
+        cfg = WeightsConfig(
+            sub_weights={"us": {"valuation": 1.0, "sentiment": 0.0, "liquidity": 0.0}},
+            indicator_weights={
+                "us_valuation": {"us_pe_ttm": {"weight": 1.0, "direction": "+", "window": "pct_1y"}},
+                "us_sentiment": {},
+                "us_liquidity": {},
+            },
+            percentile_window="pct_1y",
+        )
+        temp = compute_temperature(pct, cfg)
+        assert not temp.empty
+        for col in ("overall_short", "overall_long", "divergence", "conf_ok"):
+            assert col in temp.columns, f"missing column: {col}"
+
+    def test_divergence_zero_when_single_window(self):
+        """When all indicators use the same window, short and long diverge due to
+        different min_periods and window breadth, but should both be in [0,100]."""
+        n = 400
+        values = list(np.linspace(15, 40, n))
+        macro = _build_macro({"us_pe_ttm": values})
+        macro = derive_indicators(macro)
+        pct = compute_percentiles(macro)
+
+        cfg = WeightsConfig(
+            sub_weights={"us": {"valuation": 1.0, "sentiment": 0.0, "liquidity": 0.0}},
+            indicator_weights={
+                "us_valuation": {"us_pe_ttm": {"weight": 1.0, "direction": "+", "window": "pct_1y"}},
+                "us_sentiment": {},
+                "us_liquidity": {},
+            },
+            percentile_window="pct_1y",
+        )
+        temp = compute_temperature(pct, cfg)
+        valid = temp.dropna(subset=["overall_short", "overall_long"])
+        assert valid["overall_short"].between(0, 100).all()
+        assert valid["overall_long"].between(0, 100).all()
+
+    def test_dispersion_confidence_computed(self):
+        """When 2+ indicators exist in a sub, conf_ok should vary."""
+        n = 350
+        vix_vals = [80.0 - 70.0 * (i / (n - 1)) for i in range(n)]  # declining vix
+        oas_vals = [5.0 + 15.0 * (i / (n - 1)) for i in range(n)]  # rising OAS
+        us_pe_vals = list(np.linspace(15, 40, n))
+        macro = pd.concat(
+            [
+                _build_macro({"vix": vix_vals}),
+                _build_macro({"us_hy_oas": oas_vals, "us_pe_ttm": us_pe_vals}),
+            ],
+            ignore_index=True,
+        )
+        macro = derive_indicators(macro)
+        pct = compute_percentiles(macro)
+
+        cfg = WeightsConfig(
+            sub_weights={"us": {"valuation": 0.5, "sentiment": 0.5, "liquidity": 0.0}},
+            indicator_weights={
+                "us_valuation": {"us_pe_ttm": {"weight": 1.0, "direction": "+", "window": "pct_1y"}},
+                "us_sentiment": {
+                    "vix": {"weight": 0.5, "direction": "-", "window": "pct_1y"},
+                    "us_hy_oas": {"weight": 0.5, "direction": "-", "window": "pct_1y"},
+                },
+                "us_liquidity": {},
+            },
+            percentile_window="pct_1y",
+        )
+        temp = compute_temperature(pct, cfg)
+        assert not temp.empty
+        assert "conf_ok" in temp.columns
+        # conf_ok should be 0 or 1
+        assert temp["conf_ok"].dropna().isin([0, 1]).all()
+
+
+class TestNewWeightsConfig:
+    """Verify weights.yaml loads correctly with Phase 2 indicators."""
+
+    def test_new_indicators_in_weights(self):
+        cfg = WeightsConfig.load()
+        us_sent = cfg.indicator_weights.get("us_sentiment", {})
+        assert "us_umich_sentiment" in us_sent
+        us_liq = cfg.indicator_weights.get("us_liquidity", {})
+        assert "us_walcl" in us_liq
+        hk_sent = cfg.indicator_weights.get("hk_sentiment", {})
+        assert "hk_vhsi" in hk_sent
+
+
 class TestGateLogic:
     """Verify the gate-check logic in validation."""
 

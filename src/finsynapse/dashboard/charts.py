@@ -203,20 +203,26 @@ def cross_market_radar(latest_per_market: dict[str, dict[str, float]], lang: str
 
 
 def time_series(temp_df: pd.DataFrame, market: str, lang: str = DEFAULT_LANG) -> go.Figure:
-    """Long-history overall + sub-temperature time series for one market."""
+    """Long-history overall + sub-temperature time series for one market.
+    Phase 2: adds overall_short / overall_long dashed lines and divergence."""
     df = temp_df[temp_df["market"] == market].copy()
     df["date"] = pd.to_datetime(df["date"])
     df = df.sort_values("date")
 
-    # Subplot titles intentionally omitted — the section heading already says
-    # "长期温度走势 (CN)", and the legend identifies the lines, so the inline
-    # "CN — 综合温度 / 分量温度" labels would be redundant chart-junk.
+    has_short = "overall_short" in df.columns and df["overall_short"].notna().any()
+    has_long = "overall_long" in df.columns and df["overall_long"].notna().any()
+    has_div = has_short and has_long
+
+    n_rows = 3 if has_div else 2
+    row_heights = [0.55, 0.25, 0.20] if has_div else [0.65, 0.35]
+    v_spacing = 0.04
+
     fig = make_subplots(
-        rows=2,
+        rows=n_rows,
         cols=1,
         shared_xaxes=True,
-        vertical_spacing=0.06,
-        row_heights=[0.65, 0.35],
+        vertical_spacing=v_spacing,
+        row_heights=row_heights,
     )
 
     for lo, hi, color in ZONE_BANDS:
@@ -233,6 +239,33 @@ def time_series(temp_df: pd.DataFrame, market: str, lang: str = DEFAULT_LANG) ->
         row=1,
         col=1,
     )
+
+    if has_short:
+        fig.add_trace(
+            go.Scatter(
+                x=df["date"],
+                y=df["overall_short"],
+                name=t("overall_short", lang),
+                line=dict(color=COLOR_HOT, width=1, dash="dot"),
+                opacity=0.7,
+                hovertemplate=f"%{{x|%Y-%m-%d}}<br>{t('overall_short', lang)}: %{{y:.1f}}°<extra></extra>",
+            ),
+            row=1,
+            col=1,
+        )
+    if has_long:
+        fig.add_trace(
+            go.Scatter(
+                x=df["date"],
+                y=df["overall_long"],
+                name=t("overall_long", lang),
+                line=dict(color=COLOR_COLD, width=1, dash="dot"),
+                opacity=0.7,
+                hovertemplate=f"%{{x|%Y-%m-%d}}<br>{t('overall_long', lang)}: %{{y:.1f}}°<extra></extra>",
+            ),
+            row=1,
+            col=1,
+        )
 
     for sub_key, col in [
         ("valuation", COLOR_VALUATION),
@@ -254,25 +287,39 @@ def time_series(temp_df: pd.DataFrame, market: str, lang: str = DEFAULT_LANG) ->
                 col=1,
             )
 
+    if has_div:
+        for sign_color, lo, hi in [(COLOR_HOT, 0, float("inf")), (COLOR_COLD, float("-inf"), 0)]:
+            if lo < hi and lo != float("-inf"):
+                fig.add_hrect(y0=lo, y1=hi, fillcolor=sign_color.replace(")", ",0.06)"), line_width=0, row=3, col=1)
+
+        fig.add_trace(
+            go.Scatter(
+                x=df["date"],
+                y=df["divergence"],
+                name=t("divergence", lang),
+                line=dict(color="#1c1b1b", width=1.5),
+                fill="tozeroy",
+                fillcolor="rgba(99,102,241,0.12)",
+                hovertemplate=f"%{{x|%Y-%m-%d}}<br>{t('divergence', lang)}: %{{y:.1f}}°<extra></extra>",
+            ),
+            row=3,
+            col=1,
+        )
+        fig.add_hline(y=0, line=dict(color="rgba(0,0,0,0.15)", width=1), row=3, col=1)
+
     fig.update_yaxes(
-        range=[0, 100],
-        title_text="°",
-        row=1,
-        col=1,
-        gridcolor="rgba(0,0,0,0.06)",
-        zerolinecolor="rgba(0,0,0,0.08)",
+        range=[0, 100], title_text="°", row=1, col=1, gridcolor="rgba(0,0,0,0.06)", zerolinecolor="rgba(0,0,0,0.08)"
     )
     fig.update_yaxes(
-        range=[0, 100],
-        title_text="°",
-        row=2,
-        col=1,
-        gridcolor="rgba(0,0,0,0.06)",
-        zerolinecolor="rgba(0,0,0,0.08)",
+        range=[0, 100], title_text="°", row=2, col=1, gridcolor="rgba(0,0,0,0.06)", zerolinecolor="rgba(0,0,0,0.08)"
     )
+    if has_div:
+        fig.update_yaxes(title_text="Δ°", row=3, col=1, gridcolor="rgba(0,0,0,0.06)", zerolinecolor="rgba(0,0,0,0.08)")
     fig.update_xaxes(gridcolor="rgba(0,0,0,0.04)", linecolor="rgba(0,0,0,0.08)")
+
+    height = 500 if has_div else 460
     fig.update_layout(
-        height=460,
+        height=height,
         margin=dict(t=44, b=30, l=46, r=20),
         paper_bgcolor=COLOR_BG,
         plot_bgcolor=COLOR_PLOT_BG,

@@ -40,6 +40,10 @@ PLAUSIBLE_BOUNDS: dict[str, tuple[float, float]] = {
     "cn_margin_balance": (10.0, 6e4),  # SH+SZ 融资融券余额, 亿元; 2010 launch ~10亿, 2025 peak ~30000+亿
     "cn_dr007": (0.5, 15.0),  # SHIBOR-1W, %; 0.8-12 historical incl. 2013 钱荒
     "hk_hibor_1m": (0.01, 12.0),  # HIBOR-1M, %; 0.05-7 historical
+    # --- Phase 2 additions ---
+    "hk_vhsi": (5.0, 150.0),  # HSI Volatility Index; similar range to VIX
+    "us_walcl": (5e5, 1.5e7),  # Fed balance sheet, millions USD; ~900K pre-2008, ~9M peak
+    "us_umich_sentiment": (40.0, 120.0),  # UMich consumer sentiment index; 50-110 typical
 }
 
 # How many trailing-window stdevs constitutes a "jump". 5σ is intentionally
