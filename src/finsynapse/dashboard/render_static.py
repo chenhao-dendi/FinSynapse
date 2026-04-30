@@ -608,7 +608,6 @@ def render(out_dir: Path | str = "dist", data: DashboardData | None = None) -> l
     for lang in SUPPORTED:
         # Other lang's file is the alternate href for the toggle in this lang's page.
         alt_lang = next(other for other in SUPPORTED if other != lang)
-        alt_href = LANG_FILENAME[alt_lang]
         # Default lang lives at index.html; non-default at <lang>.html.
         if lang == DEFAULT_LANG:
             target = out_dir / "index.html"

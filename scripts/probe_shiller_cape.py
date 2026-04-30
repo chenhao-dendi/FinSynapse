@@ -51,7 +51,6 @@ def try_multpl() -> pd.DataFrame | None:
 
 def try_yale_excel() -> pd.DataFrame | None:
     """Robert Shiller publishes ie_data.xls on his Yale page."""
-    url = "https://shillerdata.com/?utm_source=finsynapse"
     landing = "https://shillerdata.com/"
     print(f"\n[2] Trying Yale Shiller Excel via landing {landing}")
     try:

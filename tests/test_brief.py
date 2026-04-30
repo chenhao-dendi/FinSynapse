@@ -7,13 +7,9 @@ test runs offline and finishes in milliseconds.
 
 from __future__ import annotations
 
-from datetime import date
-
 import pandas as pd
-import pytest
 
 from finsynapse.report.brief import (
-    FactPack,
     LLMResult,
     _template_narrative,
     assemble_facts,

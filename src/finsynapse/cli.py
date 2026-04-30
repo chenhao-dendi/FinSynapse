@@ -133,17 +133,17 @@ def transform_run(
         path = write_silver_percentile(pct)
         typer.echo(f"[percentile] {len(pct):,} rows -> {path}")
 
-    if layer in ("temperature", "all"):
-        temp = compute_temperature(pct)  # noqa: F821 — pct is defined above when layer hits this
-        path = write_silver_temperature(temp)
-        typer.echo(f"[temperature] {len(temp):,} rows -> {path}")
-        if not temp.empty:
-            latest = temp.sort_values("date").groupby("market").tail(1)
-            typer.echo(
-                latest[["date", "market", "overall", "valuation", "sentiment", "liquidity", "data_quality"]].to_string(
-                    index=False
+        if layer in ("temperature", "all"):
+            temp = compute_temperature(pct)
+            path = write_silver_temperature(temp)
+            typer.echo(f"[temperature] {len(temp):,} rows -> {path}")
+            if not temp.empty:
+                latest = temp.sort_values("date").groupby("market").tail(1)
+                typer.echo(
+                    latest[
+                        ["date", "market", "overall", "valuation", "sentiment", "liquidity", "data_quality"]
+                    ].to_string(index=False)
                 )
-            )
 
     if layer in ("divergence", "all"):
         div = compute_divergence(macro)

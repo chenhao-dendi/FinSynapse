@@ -3,7 +3,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
-import pytest
 
 from finsynapse.notify.dispatch import _format_summary, dispatch, send_bark, send_telegram
 from finsynapse.notify.state import Event, _pick_meaningful_pair, zone
