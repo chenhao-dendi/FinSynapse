@@ -179,6 +179,37 @@ def main() -> None:
         use_container_width=True,
     )
 
+    st.divider()
+
+    # --- External anchor (CNN F&G) ---
+    ext = report.external_anchor if hasattr(report, "external_anchor") else None
+    if ext is not None and isinstance(ext, dict):
+        st.subheader(t("val_anchor_section", lang))
+        st.caption(ext.get("source", ""))
+        pivot_comp = ext.get("pivot_comparison", [])
+        if pivot_comp:
+            alignment = ext.get("direction_agreement", {})
+            st.metric(
+                f"{t('val_anchor_title', lang)} — {t('val_anchor_section', lang)}",
+                f"{alignment.get('aligned', 0)}/{alignment.get('total', 0)} aligned",
+            )
+            st.plotly_chart(
+                charts.external_anchor_comparison(pivot_comp, lang),
+                use_container_width=True,
+            )
+        corr = ext.get("correlation")
+        if corr:
+            st.caption(
+                f"Spearman ρ = {corr['spearman_rho']:+.3f} (p={corr['p_value']:.6f}, n={corr['n']})"
+            )
+
+    # Bootstrap CI summary
+    bs = report.bootstrap_ci if hasattr(report, "bootstrap_ci") else None
+    if bs is not None and isinstance(bs, dict):
+        with st.expander(t("val_bootstrap_ci", lang), expanded=False):
+            for mkt, ci in bs.items():
+                st.text(f"{mkt.upper()}: mean band width = {ci['mean_band_width']:.1f}°")
+
 
 if __name__ == "__main__":
     main()

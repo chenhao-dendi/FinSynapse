@@ -254,6 +254,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "val_section_pivots": {"zh": "历史拐点验证", "en": "Historical pivot validation"},
     "val_section_forward": {"zh": "前瞻预测力", "en": "Forward predictive power"},
     "val_section_gate": {"zh": "Gate 结论", "en": "Gate result"},
+    "val_bootstrap_ci": {"zh": "Bootstrap 90% CI", "en": "Bootstrap 90% CI"},
+    "val_anchor_title": {"zh": "FinSynapse vs CNN Fear & Greed", "en": "FinSynapse vs CNN Fear & Greed"},
+    "val_anchor_section": {"zh": "外部锚验证 (CNN F&G)", "en": "External anchor (CNN F&G)"},
 }
 
 # Divergence pair descriptions: stored canonically in English in

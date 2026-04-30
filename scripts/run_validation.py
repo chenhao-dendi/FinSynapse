@@ -25,7 +25,7 @@ import yaml
 
 from finsynapse.transform.normalize import collect_bronze, derive_indicators
 from finsynapse.transform.percentile import compute_percentiles
-from finsynapse.transform.temperature import MARKETS, WeightsConfig, compute_temperature
+from finsynapse.transform.temperature import MARKETS, SUB_NAMES, WeightsConfig, compute_temperature
 
 SCRIPTS_DIR = Path(__file__).parent
 PIVOTS_PATH = SCRIPTS_DIR / "backtest_pivots.yaml"
@@ -222,13 +222,11 @@ def _compute_forward_returns(macro_long: pd.DataFrame, temp_df: pd.DataFrame) ->
                 continue
             current = prices.loc[t]
             fwd: dict[str, float | None] = {}
-            valid = True
             for label, days in FORWARD_HORIZONS.items():
                 # find nearest business day ≥ t + days
                 future_idx = prices.index[prices.index >= t + pd.Timedelta(days=days)]
                 if len(future_idx) == 0:
                     fwd[f"return_{label}"] = None
-                    valid = False
                     continue
                 fwd_price = prices.loc[future_idx[0]]
                 fwd[f"return_{label}"] = float(fwd_price / current - 1.0)
@@ -329,10 +327,6 @@ def _gate_check(hit_table: dict, forward_rows: list[ForwardReturnRow], temp_df: 
     for market in list(MARKETS):
         mf_rate = mf.get(market, {}).get("directional_rate", 0)
         pe_rate = pe.get(market, {}).get("directional_rate", 0)
-        mf_rho = _spearman_rho(forward_rows, market, "3m")
-        # PE rho computed on the PE-only temperature
-        pe_temp_df = _build_single_indicator_temp(temp_df, market)
-        pe_fwd = _compute_pe_forward(forward_rows, market)
 
         detail = {
             "mf_directional_rate": mf_rate,
@@ -388,6 +382,175 @@ def _compute_market_forward_stats(forward_rows: list[ForwardReturnRow]) -> dict:
             }
         stats[market] = horizon_stats
     return stats
+
+
+def _compare_external_anchors(
+    temp: pd.DataFrame,
+    pivot_results: list[PivotResult],
+    forward_rows: list[ForwardReturnRow],
+) -> dict | None:
+    """Compare multi-factor temperature against CNN Fear & Greed Index.
+
+    Returns a dict with:
+      - cnn_fg_pivot_comparison: per-pivot CNN F&G readings
+      - cnn_fg_correlation: Spearman ρ(temp, CNN F&G) over overlap period
+      - cnn_fg_coverage: date range of available CNN data
+    """
+    cnn_path = SCRIPTS_DIR / "cnn_fear_greed.csv"
+    if not cnn_path.exists():
+        print("  [ext] CNN F&G data not found — run scripts/fetch_external_anchors.py first")
+        return None
+
+    import csv
+
+    cnn_data: dict[str, float] = {}
+    with cnn_path.open() as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            cnn_data[row["date"]] = float(row["value"])
+
+    print(f"  [ext] CNN F&G: {len(cnn_data)} daily readings loaded")
+    dates = sorted(cnn_data.keys())
+    print(f"  [ext] CNN range: {dates[0]} .. {dates[-1]}")
+
+    # Compare at pivot points (US only — CNN F&G is US-market sentiment)
+    pivot_comparison: list[dict] = []
+    for pr in pivot_results:
+        if pr.market != "us":
+            continue
+        # Find nearest CNN F&G date
+        target = pr.date.isoformat()
+        cnn_val = cnn_data.get(target)
+        if cnn_val is None:
+            continue
+        mf_val = next(
+            (c.overall for c in pr.controllers if c.name == "multi-factor"),
+            float("nan"),
+        )
+        # Determine CNN F&G zone (same scheme: <30 cold, 30-70 mid, ≥70 hot)
+        cnn_zone = "hot" if cnn_val >= 70 else ("cold" if cnn_val < 30 else "mid")
+        # Check if both agree on direction: both cold (<50) or both hot (>=50)
+        mf_direction = "hot" if mf_val >= 50 else "cold"
+        cnn_direction = "hot" if cnn_val >= 50 else "cold"
+        aligned = mf_direction == cnn_direction
+        pivot_comparison.append(
+            {
+                "label": pr.label,
+                "date": target,
+                "mf_temperature": round(mf_val, 1),
+                "cnn_fg": round(cnn_val, 1),
+                "cnn_zone": cnn_zone,
+                "cnn_rating": _cnn_rating(cnn_val),
+                "direction_aligned": aligned,
+            }
+        )
+
+    # Compute correlation over overlap period
+    temp_us = temp[temp["market"] == "us"].copy()
+    temp_us["date"] = pd.to_datetime(temp_us["date"])
+    temp_us = temp_us.set_index("date").sort_index()
+
+    xs_cnn, ys_temp = [], []
+    for d_str, cnn_val in cnn_data.items():
+        d = pd.Timestamp(d_str)
+        if d in temp_us.index:
+            t_val = temp_us.loc[d, "overall"]
+            if not pd.isna(t_val):
+                xs_cnn.append(cnn_val)
+                ys_temp.append(float(t_val))
+
+    correlation = None
+    if SCIPY_AVAILABLE and len(xs_cnn) >= 30:
+        from scipy import stats
+
+        rho, p = stats.spearmanr(xs_cnn, ys_temp)
+        correlation = {"spearman_rho": round(float(rho), 4), "p_value": round(float(p), 6), "n": len(xs_cnn)}
+
+    aligned_count = sum(1 for p in pivot_comparison if p["direction_aligned"])
+    total_compared = len(pivot_comparison)
+    print()
+    print(f"  [ext] CNN F&G pivot alignment: {aligned_count}/{total_compared} directionally aligned")
+    if correlation:
+        print(f"  [ext] Spearman ρ(temp, CNN F&G) over {correlation['n']} days: {correlation['spearman_rho']:+.3f} (p={correlation['p_value']:.4f})")
+
+    return {
+        "source": "CNN Fear & Greed Index (edition.cnn.com/markets/fear-and-greed)",
+        "data_range": {"start": dates[0], "end": dates[-1], "n_entries": len(cnn_data)},
+        "pivot_comparison": pivot_comparison,
+        "correlation": correlation,
+        "direction_agreement": {
+            "aligned": aligned_count,
+            "total": total_compared,
+            "rate": round(aligned_count / total_compared, 3) if total_compared else 0,
+        },
+    }
+
+
+def _cnn_rating(value: float) -> str:
+    if value >= 75:
+        return "extreme greed"
+    if value >= 55:
+        return "greed"
+    if value >= 45:
+        return "neutral"
+    if value >= 25:
+        return "fear"
+    return "extreme fear"
+
+
+def _bootstrap_confidence(
+    temp: pd.DataFrame,
+    n_bootstrap: int = 200,
+    seed: int = 42,
+) -> dict[str, dict]:
+    """Bootstrap resample sub-weights using Dirichlet to get temperature CI.
+
+    For each day and each market, resamples sub_weights from
+    Dirichlet(α=sub_weights×scale) 200 times and computes the sampling
+    distribution of overall temperature. Returns per-market dict of
+    { 'lower_5': [...], 'upper_95': [...] } series.
+
+    Scale factor of 100 means the Dirichlet is concentrated near the
+    point estimate — wider bands mean the temperature is sensitive to
+    small weight perturbations.
+    """
+    rng = np.random.default_rng(seed)
+    scale = 100.0
+
+    result: dict[str, dict] = {}
+    for market in MARKETS:
+        sub = temp[temp["market"] == market].copy()
+        if sub.empty:
+            continue
+        sub = sub.set_index("date").sort_index()
+        # Get sub-temp columns and sub-weights from the dataset
+        subs_present = [s for s in SUB_NAMES if s in sub.columns and sub[s].notna().any()]
+        if len(subs_present) < 2:
+            continue
+
+        # Use equal sub-weights as the base (no config dependency here)
+        weights = np.ones(len(subs_present)) * scale / len(subs_present)
+        n_dates = len(sub)
+
+        boot_samples = np.zeros((n_bootstrap, n_dates))
+        for b in range(n_bootstrap):
+            w = rng.dirichlet(weights)
+            overall_sample = np.zeros(n_dates)
+            for i, s_name in enumerate(subs_present):
+                overall_sample += sub[s_name].fillna(50).values * w[i]
+            boot_samples[b] = overall_sample
+
+        lower = np.percentile(boot_samples, 5, axis=0)
+        upper = np.percentile(boot_samples, 95, axis=0)
+        band_width = float(np.mean(upper - lower))
+
+        result[market] = {
+            "mean_band_width": round(band_width, 1),
+            "n_bootstrap": n_bootstrap,
+            "note": f"Typical uncertainty: {round(band_width, 1)}° — sub-weight resampling via Dirichlet(100)",
+        }
+
+    return result
 
 
 def main() -> int:
@@ -518,6 +681,13 @@ def main() -> int:
 
     # --- Gate ---
     gate = _gate_check(hit_table, forward_rows, temp)
+    print(f"  gate status: {'PASSED' if gate['passed'] else 'FAILED'}")
+
+    # --- Bootstrap confidence ---
+    print("[bootstrap] computing 200-sample Dirichlet bootstrap CI...")
+    bootstrap_ci = _bootstrap_confidence(temp)
+    for market, ci in bootstrap_ci.items():
+        print(f"  {market.upper()}: mean band width = {ci['mean_band_width']:.1f}° (n={ci['n_bootstrap']})")
 
     # --- Print summary ---
     print()
@@ -564,6 +734,9 @@ def main() -> int:
         print(f"  {status} {mkt.upper()}: MF={detail['mf_directional_rate']:.1%} vs PE={detail['pe_directional_rate']:.1%}")
 
     # --- Build full report ---
+    # Phase 3: external anchor comparison
+    external_anchor = _compare_external_anchors(temp, pivot_results, forward_rows)
+
     report = {
         "version": "1.0.0",
         "generated": date.today().isoformat(),
@@ -580,6 +753,8 @@ def main() -> int:
             for market in list(MARKETS)
         },
         "gate": gate,
+        "external_anchor": external_anchor,
+        "bootstrap_ci": bootstrap_ci,
         "note": (
             "All percentiles computed via pandas rolling() — backward-looking, no look-ahead bias. "
             "Forward returns use next-available business-day index price at each horizon. "

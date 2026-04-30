@@ -202,9 +202,15 @@ def cross_market_radar(latest_per_market: dict[str, dict[str, float]], lang: str
     return fig
 
 
-def time_series(temp_df: pd.DataFrame, market: str, lang: str = DEFAULT_LANG) -> go.Figure:
+def time_series(
+    temp_df: pd.DataFrame,
+    market: str,
+    lang: str = DEFAULT_LANG,
+    bootstrap_df: pd.DataFrame | None = None,
+) -> go.Figure:
     """Long-history overall + sub-temperature time series for one market.
-    Phase 2: adds overall_short / overall_long dashed lines and divergence."""
+    Phase 2: adds overall_short / overall_long dashed lines and divergence.
+    Phase 3: adds optional bootstrap CI band."""
     df = temp_df[temp_df["market"] == market].copy()
     df["date"] = pd.to_datetime(df["date"])
     df = df.sort_values("date")
@@ -239,6 +245,28 @@ def time_series(temp_df: pd.DataFrame, market: str, lang: str = DEFAULT_LANG) ->
         row=1,
         col=1,
     )
+
+    if bootstrap_df is not None and not bootstrap_df.empty:
+        bdf = bootstrap_df[bootstrap_df["market"] == market].copy()
+        if not bdf.empty:
+            bdf["date"] = pd.to_datetime(bdf["date"])
+            bdf = bdf.sort_values("date")
+            x_band = list(bdf["date"]) + list(bdf["date"])[::-1]
+            y_band = list(bdf["lower"]) + list(bdf["upper"])[::-1]
+            fig.add_trace(
+                go.Scatter(
+                    x=x_band,
+                    y=y_band,
+                    fill="toself",
+                    fillcolor="rgba(99,102,241,0.12)",
+                    line=dict(width=0),
+                    name=t("val_bootstrap_ci", lang),
+                    showlegend=True,
+                    hovertemplate=f"{t('val_bootstrap_ci', lang)}<extra></extra>",
+                ),
+                row=1,
+                col=1,
+            )
 
     if has_short:
         fig.add_trace(
@@ -437,39 +465,98 @@ def validation_forward_scatter(
             hovertemplate=f"temp=%{{x:.1f}}°<br>{horizon} return=%{{y:.2%}}<extra></extra>",
         )
     )
-
-    # Add horizontal zero line
     fig.add_hline(y=0, line=dict(color="rgba(0,0,0,0.15)", width=1))
-
-    # Add LOESS-ish trend via lowess approximation (rolling mean of y by x)
     if len(xs) >= 30:
-        df = pd.DataFrame({"x": xs, "y": ys}).sort_values("x")
-        df["y_smooth"] = df["y"].rolling(50, min_periods=20, center=True).mean()
+        df_smooth = pd.DataFrame({"x": xs, "y": ys}).sort_values("x")
+        df_smooth["y_smooth"] = df_smooth["y"].rolling(50, min_periods=20, center=True).mean()
         fig.add_trace(
             go.Scatter(
-                x=df["x"],
-                y=df["y_smooth"],
+                x=df_smooth["x"],
+                y=df_smooth["y_smooth"],
                 mode="lines",
                 line=dict(color="#1c1b1b", width=2),
                 name="trend",
                 hovertemplate="temp=%{x:.1f}°<br>smoothed=%{y:.2%}<extra></extra>",
             )
         )
-
     fig.update_layout(
         title=dict(
-            text=f"<b>{market.upper()} — {t('val_temp_vs_return', lang)} ({horizon})</b>",
+            text=f"<b>{market.upper()} \u2014 {t('val_temp_vs_return', lang)} ({horizon})</b>",
             font=dict(size=13, color="#1c1b1b"),
         ),
         height=360,
         margin=dict(t=50, b=40, l=50, r=20),
         paper_bgcolor=COLOR_BG,
         plot_bgcolor=COLOR_PLOT_BG,
-        xaxis=dict(title=t("overall", lang) + " (°)", range=[-5, 105], gridcolor="rgba(0,0,0,0.04)", zeroline=False),
-        yaxis=dict(
-            title=f"{horizon} return", tickformat=".0%", gridcolor="rgba(0,0,0,0.06)", zerolinecolor="rgba(0,0,0,0.08)"
+        xaxis=dict(
+            title=t("overall", lang) + " (\u00b0)", range=[-5, 105], gridcolor="rgba(0,0,0,0.04)", zeroline=False
         ),
+        yaxis=dict(tickformat=".0%", title=horizon, gridcolor="rgba(0,0,0,0.06)", zerolinecolor="rgba(0,0,0,0.08)"),
         showlegend=False,
+        font=dict(family=FONT_FAMILY, color="#1c1b1b"),
+    )
+    return fig
+
+
+def external_anchor_comparison(
+    anchor_data: list[dict],
+    lang: str = DEFAULT_LANG,
+) -> go.Figure:
+    """Scatter: multi-factor temperature vs external anchor (e.g. CNN F&G).
+
+    anchor_data: list of {label, date, mf_temperature, cnn_fg, direction_aligned}
+    """
+    if not anchor_data:
+        fig = go.Figure()
+        fig.add_annotation(text=t("no_data_card", lang), x=0.5, y=0.5, showarrow=False, font=dict(size=14))
+        fig.update_layout(height=300, paper_bgcolor=COLOR_BG, font=dict(family=FONT_FAMILY))
+        return fig
+
+    xs = [d["mf_temperature"] for d in anchor_data]
+    ys = [d["cnn_fg"] for d in anchor_data]
+    labels = [d["label"][:30] for d in anchor_data]
+    aligned = [d.get("direction_aligned", True) for d in anchor_data]
+
+    colors = ["#10B981" if a else "#F87171" for a in aligned]
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=xs,
+            y=ys,
+            mode="markers+text",
+            marker=dict(size=10, color=colors, line=dict(width=1, color="#374151")),
+            text=labels,
+            textposition="top center",
+            textfont=dict(size=9),
+            hovertemplate=f"{t('overall', lang)}: %{{x:.1f}}°<br>CNN F&G: %{{y:.1f}}°<br>%{{text}}<extra></extra>",
+        )
+    )
+
+    # Diagonal (perfect agreement line)
+    fig.add_trace(
+        go.Scatter(
+            x=[0, 100],
+            y=[0, 100],
+            mode="lines",
+            line=dict(color="rgba(0,0,0,0.15)", dash="dash", width=1),
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+
+    # Zone rectangles
+    for x_lo, x_hi, color in [(0, 50, "rgba(30,58,138,0.06)"), (50, 100, "rgba(248,113,113,0.06)")]:
+        fig.add_shape(type="rect", x0=x_lo, x1=x_hi, y0=0, y1=100, fillcolor=color, line_width=0, layer="below")
+
+    fig.update_layout(
+        title=dict(text=f"<b>{t('val_anchor_title', lang)}</b>", font=dict(size=13, color="#1c1b1b")),
+        xaxis=dict(title=f"FinSynapse {t('overall', lang)} (°)", range=[-5, 105], gridcolor="rgba(0,0,0,0.04)"),
+        yaxis=dict(title="CNN Fear & Greed Index", range=[-5, 105], gridcolor="rgba(0,0,0,0.06)"),
+        height=400,
+        margin=dict(t=50, b=50, l=60, r=20),
+        paper_bgcolor=COLOR_BG,
+        plot_bgcolor=COLOR_PLOT_BG,
         font=dict(family=FONT_FAMILY, color="#1c1b1b"),
     )
     return fig
