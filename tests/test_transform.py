@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from finsynapse.transform.divergence import PAIRS, compute_divergence
+from finsynapse.transform.divergence import compute_divergence
 from finsynapse.transform.health_check import check
 from finsynapse.transform.normalize import collect_bronze, derive_indicators
 from finsynapse.transform.percentile import compute_percentiles

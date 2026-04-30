@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from finsynapse.config import settings
+from finsynapse import config as _cfg
 
 
 @dataclass(frozen=True)
@@ -38,7 +38,7 @@ class Provider(ABC):
         """Return a long-format DataFrame with at minimum: date, indicator, value."""
 
     def bronze_path(self, fetch_date: date) -> Path:
-        d = settings.bronze_dir / self.layer / self.name
+        d = _cfg.settings.bronze_dir / self.layer / self.name
         d.mkdir(parents=True, exist_ok=True)
         return d / f"{fetch_date.isoformat()}.parquet"
 

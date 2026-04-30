@@ -6,7 +6,7 @@ from datetime import date
 import pandas as pd
 import requests
 
-from finsynapse.config import settings
+from finsynapse import config as _cfg
 from finsynapse.providers.base import FetchRange, Provider
 
 
@@ -48,7 +48,7 @@ class FredProvider(Provider):
     layer = "macro"
 
     def fetch(self, fetch_range: FetchRange) -> pd.DataFrame:
-        if not settings.fred_api_key:
+        if not _cfg.settings.fred_api_key:
             raise RuntimeError(
                 "FRED_API_KEY not configured. Get a free key at "
                 "https://fred.stlouisfed.org/docs/api/api_key.html and put it in .env"
@@ -66,7 +66,7 @@ class FredProvider(Provider):
     def _fetch_one(self, series: FredSeries, fetch_range: FetchRange) -> pd.DataFrame:
         params = {
             "series_id": series.series_id,
-            "api_key": settings.fred_api_key,
+            "api_key": _cfg.settings.fred_api_key,
             "file_type": "json",
             "observation_start": fetch_range.start.isoformat(),
             "observation_end": fetch_range.end.isoformat(),
