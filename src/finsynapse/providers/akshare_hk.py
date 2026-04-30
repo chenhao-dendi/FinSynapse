@@ -14,17 +14,18 @@ Why HIBOR (vs just borrowing US real yield + DXY for HK liquidity):
 from __future__ import annotations
 
 from datetime import date
-from functools import lru_cache
 
 import akshare as ak
 import pandas as pd
 
+from finsynapse.providers.akshare_cn import _pick_col
 from finsynapse.providers.base import FetchRange, Provider
 
 
-@lru_cache(maxsize=4)
 def _hibor_all() -> pd.DataFrame:
-    """HIBOR all tenors daily fixings (wide format, columns like '1M-定价')."""
+    """HIBOR all tenors daily fixings (wide format, columns like '1M-定价').
+    Intentionally NOT lru_cache'd — AkShare publishes daily; a long-running
+    process must re-fetch to pick up new rows."""
     return ak.macro_china_hk_market_info()
 
 
@@ -43,12 +44,14 @@ class AkShareHkProvider(Provider):
         hibor["日期"] = pd.to_datetime(hibor["日期"]).dt.date
         # 1M tenor is the standard HIBOR reference for funding cost. Shorter
         # tenors (O/N, 1W) are noisier; longer (3M, 6M) lag too much.
+        # AkShare column rename defense — same pattern as akshare_cn SHIBOR.
+        hibor_1m_col = _pick_col(hibor, ("1M-定价", "1M", "1月-定价"), "macro_china_hk_market_info")
         hibor_long = pd.DataFrame(
             {
                 "date": hibor["日期"],
-                "value": pd.to_numeric(hibor["1M-定价"], errors="coerce"),
+                "value": pd.to_numeric(hibor[hibor_1m_col], errors="coerce"),
                 "indicator": "hk_hibor_1m",
-                "source_symbol": "macro_china_hk_market_info/1M-定价",
+                "source_symbol": f"macro_china_hk_market_info/{hibor_1m_col}",
             }
         ).dropna(subset=["value"])
         out = _slice_dates(hibor_long, fetch_range.start, fetch_range.end)

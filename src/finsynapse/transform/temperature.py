@@ -19,6 +19,41 @@ class WeightsConfig:
     indicator_weights: dict
     percentile_window: str  # default; per-indicator `window:` field overrides
 
+    def __post_init__(self) -> None:
+        # Validate each non-empty indicator block sums to 1.0. Without this
+        # check, a future PR that bumps a single weight without rebalancing
+        # silently produces temperatures on a different scale (the
+        # renormalization in _sub_temperature only kicks in when an
+        # indicator is missing on a given DAY, not when the spec is wrong).
+        for block_name, block in self.indicator_weights.items():
+            if not block:
+                continue
+            total = sum(spec["weight"] for spec in block.values())
+            if abs(total - 1.0) > 1e-6:
+                raise ValueError(
+                    f"weights.yaml block '{block_name}' sums to {total} (expected 1.0). "
+                    f"Each indicator_weights sub-block must be normalized."
+                )
+        # Validate per-indicator `window` overrides are consistent across
+        # blocks. Same indicator can legitimately appear in multiple blocks
+        # (e.g. us10y_real_yield in both us_liquidity and hk_liquidity), but
+        # if two blocks specify DIFFERENT windows, window_for() returns
+        # whichever it iterates first — silent inconsistency.
+        seen_windows: dict[str, str] = {}
+        for block in self.indicator_weights.values():
+            for indicator, spec in block.items():
+                w = spec.get("window")
+                if not w:
+                    continue
+                prev = seen_windows.get(indicator)
+                if prev and prev != w:
+                    raise ValueError(
+                        f"weights.yaml indicator '{indicator}' has inconsistent "
+                        f"`window:` overrides ({prev} vs {w}). Make them match or "
+                        f"remove one."
+                    )
+                seen_windows[indicator] = w
+
     @classmethod
     def load(cls, path: Path | None = None) -> WeightsConfig:
         p = path or CONFIG_PATH
@@ -28,7 +63,8 @@ class WeightsConfig:
 
     def window_for(self, indicator: str) -> str:
         """Resolve which percentile column (`pct_1y`/`pct_5y`/`pct_10y`) an
-        indicator should use. Falls back to the global `percentile_window`."""
+        indicator should use. Falls back to the global `percentile_window`.
+        Consistency across blocks is enforced in __post_init__."""
         for block in self.indicator_weights.values():
             spec = block.get(indicator)
             if spec and spec.get("window"):

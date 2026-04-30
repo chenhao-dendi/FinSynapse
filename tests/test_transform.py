@@ -155,24 +155,117 @@ def test_temperature_renormalizes_when_one_sub_unavailable(tmp_path):
     assert pd.isna(us["liquidity"])
 
 
-def test_derive_indicators_computes_us_erp():
-    """ERP = 100/PE − real_yield. With PE=20 (E/P=5%) and real yield=1.5%,
-    ERP should be 3.5. Confirms ffill aligns monthly PE with daily real yield."""
-    n = 30
-    dates = pd.bdate_range("2026-01-01", periods=n)
+def test_derive_indicators_computes_us_erp_with_monthly_pe_ffill():
+    """ERP = 100/PE − real_yield. PE published only first-of-month (mimicking
+    multpl's actual monthly cadence); real_yield daily. Verifies the ffill
+    path actually works — not the previous test's all-aligned-daily fixture
+    which would pass even if ffill was broken."""
+    # Real yield: daily, 60 business days
+    daily_dates = pd.bdate_range("2026-01-01", periods=60)
+    # PE: only the 3 month-start rows (Jan/Feb/Mar 2026) — must ffill to fill the gaps
+    pe_dates = [pd.Timestamp("2026-01-02"), pd.Timestamp("2026-02-02"), pd.Timestamp("2026-03-02")]
+    macro = pd.concat(
+        [
+            pd.DataFrame(
+                {
+                    "date": [d.date() for d in pe_dates],
+                    "indicator": "us_pe_ttm",
+                    "value": [20.0, 22.0, 25.0],  # changes month-over-month so ffill mistakes are detectable
+                    "source": "multpl",
+                }
+            ),
+            pd.DataFrame(
+                {
+                    "date": [d.date() for d in daily_dates],
+                    "indicator": "us10y_real_yield",
+                    "value": [1.5] * len(daily_dates),
+                    "source": "fred",
+                }
+            ),
+        ],
+        ignore_index=True,
+    )
+    out = derive_indicators(macro)
+    erp = out[out["indicator"] == "us_erp"].copy()
+    erp["date"] = pd.to_datetime(erp["date"])
+    erp = erp.set_index("date").sort_index()
+
+    assert not erp.empty
+    # Mid-January (PE=20, EY=5%) → ERP = 5 − 1.5 = 3.5
+    jan_15 = erp.loc["2026-01-15"]
+    assert 3.4 < jan_15["value"] < 3.6, f"Jan ffill broken: got {jan_15['value']}"
+    # Mid-February (PE=22, EY=4.545%) → ERP = 4.545 − 1.5 = 3.045
+    feb_15 = erp.loc["2026-02-13"]  # last bday before Feb 15 weekend
+    assert 3.0 < feb_15["value"] < 3.1, f"Feb ffill picked wrong PE: got {feb_15['value']}"
+    # Mid-March (PE=25, EY=4.0%) → ERP = 4.0 − 1.5 = 2.5
+    mar_15 = erp.loc["2026-03-13"]
+    assert 2.45 < mar_15["value"] < 2.55, f"Mar ffill picked wrong PE: got {mar_15['value']}"
+    assert (out[out["indicator"] == "us_erp"]["source"] == "derived").all()
+
+
+def test_derive_indicators_guards_against_non_positive_pe():
+    """If multpl returns PE=0 (parse error) or PE<0 (historical 2009Q1
+    negative-EPS scenario), ERP must NOT produce inf or sign-flipped values
+    that would later get inverted by direction:'-' in weights.yaml into
+    bogus 'extreme hot' US valuation readings."""
+    dates = pd.bdate_range("2026-01-01", periods=10)
     macro = pd.DataFrame(
         {
             "date": [d.date() for d in dates] * 2,
-            "indicator": ["us_pe_ttm"] * n + ["us10y_real_yield"] * n,
-            "value": [20.0] * n + [1.5] * n,
-            "source": ["multpl"] * n + ["fred"] * n,
+            "indicator": ["us_pe_ttm"] * 10 + ["us10y_real_yield"] * 10,
+            # Mix of poison values: 0, negative, and one valid 20.0 at the end
+            "value": [0.0, 0.0, -5.0, -2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 20.0]
+            + [1.5] * 10,
+            "source": ["multpl"] * 10 + ["fred"] * 10,
         }
     )
     out = derive_indicators(macro)
     erp = out[out["indicator"] == "us_erp"]
-    assert not erp.empty, "us_erp should be derived"
-    assert erp["value"].between(3.4, 3.6).all(), f"expected ~3.5, got {erp['value'].unique()}"
-    assert (erp["source"] == "derived").all()
+    # Only the last row (PE=20) should produce a valid ERP. All others guarded.
+    assert len(erp) == 1, f"expected 1 valid ERP, got {len(erp)}: {erp['value'].tolist()}"
+    assert 3.4 < erp["value"].iloc[0] < 3.6
+    # Critically: no inf or negative ERP smuggled through
+    import numpy as np
+    assert not np.isinf(erp["value"]).any()
+
+
+def test_weights_config_rejects_unbalanced_block(tmp_path):
+    """Sub-block weights MUST sum to 1.0; loading an unbalanced config
+    must raise immediately, not silently produce miscalibrated temperatures."""
+    bad_yaml = tmp_path / "bad_weights.yaml"
+    bad_yaml.write_text(
+        """sub_weights:
+  us: { valuation: 1.0, sentiment: 0.0, liquidity: 0.0 }
+indicator_weights:
+  us_valuation:
+    us_pe_ttm: { weight: 0.5, direction: "+" }
+    us_cape:   { weight: 0.7, direction: "+" }
+percentile_window: pct_10y
+"""
+    )
+    with pytest.raises(ValueError, match="sums to"):
+        WeightsConfig.load(bad_yaml)
+
+
+def test_weights_config_rejects_inconsistent_window_override(tmp_path):
+    """Same indicator across blocks must use the same window override —
+    otherwise window_for() returns whichever block iterates first."""
+    bad_yaml = tmp_path / "bad_window.yaml"
+    bad_yaml.write_text(
+        """sub_weights:
+  us: { valuation: 0.5, sentiment: 0.5, liquidity: 0.0 }
+  hk: { valuation: 0.0, sentiment: 0.0, liquidity: 1.0 }
+indicator_weights:
+  us_valuation:
+    dxy: { weight: 1.0, direction: "-", window: pct_5y }
+  us_sentiment: {}
+  hk_liquidity:
+    dxy: { weight: 1.0, direction: "-", window: pct_10y }
+percentile_window: pct_10y
+"""
+    )
+    with pytest.raises(ValueError, match="inconsistent"):
+        WeightsConfig.load(bad_yaml)
 
 
 def test_derive_indicators_skips_when_inputs_missing():

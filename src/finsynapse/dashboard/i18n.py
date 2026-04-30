@@ -156,13 +156,13 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "zh": (
             "<li><b>权重不会随时间变化</b>——一旦订就锁死，避免曲线拟合。一周温度变化的归因也是用这套固定权重做的。</li>"
             "<li><b>10 年滚动窗口</b>意味着遇到从未有过的极端值会被压在 0 或 100。这是设计——温度计衡量的是「相对历史的位置」，不是绝对水平。</li>"
-            "<li><b>data_quality 字段</b>会标 <code>ok</code> / <code>partial</code> / <code>pcr_unavailable</code>。partial 表示当天有子分量缺数据；pcr_unavailable 是 HK 期权 PCR 永久无源的降级标记。</li>"
+            "<li><b>data_quality 字段</b>会标 <code>ok</code>（三个子温度都齐）或 <code>&lt;sub&gt;_unavailable</code>（如 <code>liquidity_unavailable</code>，表示该子温度当天所有指标都缺数据）。子温度内单指标缺失会自动按可用权重重归一，不进 data_quality 字段。</li>"
             "<li><b>日报 (gold/brief)</b> 是另一回事——LLM 或模板只是把上面这些 silver 数字串成一段叙事，不会引入新计算。</li>"
         ),
         "en": (
             "<li><b>Weights are frozen</b> once set — no curve fitting. Weekly attribution uses the same fixed weights.</li>"
             '<li><b>The 10-year rolling window</b> means truly unprecedented extremes get clipped at 0 or 100. By design — the thermometer measures "position relative to history", not absolute level.</li>'
-            "<li><b>The data_quality field</b> tags rows as <code>ok</code> / <code>partial</code> / <code>pcr_unavailable</code>. partial = a sub-component was missing that day; pcr_unavailable = HK options PCR has no permanent free source.</li>"
+            "<li><b>The data_quality field</b> tags rows as <code>ok</code> (all three sub-temps produced) or <code>&lt;sub&gt;_unavailable</code> (e.g. <code>liquidity_unavailable</code> when every input in that sub-temp was missing for the day). Single-indicator gaps inside a sub-temp auto-renormalize on the available weights and don't surface in this field.</li>"
             "<li><b>The daily brief</b> in gold/ is just narrative — LLM or template stitches these silver numbers into prose, no new calculations.</li>"
         ),
     },

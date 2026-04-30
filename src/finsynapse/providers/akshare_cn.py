@@ -51,21 +51,23 @@ def _index_volume(symbol: str) -> pd.DataFrame:
     return ak.stock_zh_index_daily(symbol=symbol)
 
 
-@lru_cache(maxsize=4)
 def _margin_sh() -> pd.DataFrame:
-    """Shanghai exchange margin (两融) daily totals."""
+    """Shanghai exchange margin (两融) daily totals.
+    Intentionally NOT lru_cache'd: AkShare data is published daily, so a
+    long-running process (scheduler / notebook) calling this twice should
+    re-fetch and pick up the new day's row. CI fetches once per run anyway,
+    so there's no perf gain to lose."""
     return ak.macro_china_market_margin_sh()
 
 
-@lru_cache(maxsize=4)
 def _margin_sz() -> pd.DataFrame:
-    """Shenzhen exchange margin (两融) daily totals."""
+    """Shenzhen exchange margin (两融) daily totals. See _margin_sh re cache."""
     return ak.macro_china_market_margin_sz()
 
 
-@lru_cache(maxsize=4)
 def _shibor_all() -> pd.DataFrame:
-    """SHIBOR all tenors daily fixings (wide format: O/N, 1W, 2W, 1M, 3M, 6M, 9M, 1Y)."""
+    """SHIBOR all tenors daily fixings (wide format: O/N, 1W, 2W, 1M, 3M, 6M, 9M, 1Y).
+    Not cached, see _margin_sh."""
     return ak.macro_china_shibor_all()
 
 
@@ -73,6 +75,22 @@ def _slice_dates(df: pd.DataFrame, start: date, end: date, date_col: str = "date
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col]).dt.date
     return df[(df[date_col] >= start) & (df[date_col] <= end)]
+
+
+def _pick_col(df: pd.DataFrame, candidates: tuple[str, ...], context: str) -> str:
+    """Resolve an AkShare column from a tuple of acceptable names.
+
+    AkShare upstream renames columns across versions (e.g. `1W` → `1W-定价`).
+    Direct df[<name>] indexing produces an opaque KeyError. This helper tries
+    each candidate in order and raises with all candidates + actual columns
+    on miss, so daily-CI failures point straight at the rename."""
+    for c in candidates:
+        if c in df.columns:
+            return c
+    raise KeyError(
+        f"{context}: none of {candidates} found in upstream columns {list(df.columns)}. "
+        "AkShare likely renamed — update the candidates tuple."
+    )
 
 
 class AkShareCnProvider(Provider):
@@ -181,9 +199,13 @@ class AkShareCnProvider(Provider):
         sz_margin = _margin_sz().copy()
         sh_margin["日期"] = pd.to_datetime(sh_margin["日期"]).dt.date
         sz_margin["日期"] = pd.to_datetime(sz_margin["日期"]).dt.date
+        # AkShare has historically renamed 融资融券余额 ↔ 融资余额. Pick whatever's there.
+        margin_total_aliases = ("融资融券余额", "融资余额")
+        sh_col = _pick_col(sh_margin, margin_total_aliases, "macro_china_market_margin_sh")
+        sz_col = _pick_col(sz_margin, margin_total_aliases, "macro_china_market_margin_sz")
         margin_merged = pd.merge(
-            sh_margin[["日期", "融资融券余额"]].rename(columns={"融资融券余额": "sh_total"}),
-            sz_margin[["日期", "融资融券余额"]].rename(columns={"融资融券余额": "sz_total"}),
+            sh_margin[["日期", sh_col]].rename(columns={sh_col: "sh_total"}),
+            sz_margin[["日期", sz_col]].rename(columns={sz_col: "sz_total"}),
             on="日期",
             how="outer",
         ).sort_values("日期")
@@ -207,13 +229,14 @@ class AkShareCnProvider(Provider):
         # near-zero data cost. Direction "-": high rate = tighter = cold.
         shibor = _shibor_all().copy()
         shibor["日期"] = pd.to_datetime(shibor["日期"]).dt.date
-        # Column "1W-定价" is the fixing in %. Drop NaNs (holidays / pre-launch).
+        # AkShare has shipped this column as "1W", "1W-定价", "1周-定价" across versions.
+        shibor_1w_col = _pick_col(shibor, ("1W-定价", "1W", "1周-定价"), "macro_china_shibor_all")
         dr007_long = pd.DataFrame(
             {
                 "date": shibor["日期"],
-                "value": pd.to_numeric(shibor["1W-定价"], errors="coerce"),
+                "value": pd.to_numeric(shibor[shibor_1w_col], errors="coerce"),
                 "indicator": "cn_dr007",
-                "source_symbol": "macro_china_shibor_all/1W-定价 (DR007 proxy)",
+                "source_symbol": f"macro_china_shibor_all/{shibor_1w_col} (DR007 proxy)",
             }
         ).dropna(subset=["value"])
         records.append(_slice_dates(dr007_long, fetch_range.start, fetch_range.end))

@@ -41,6 +41,13 @@ def collect_bronze(bronze_dir: Path | None = None) -> pd.DataFrame:
     return combined[CANONICAL_COLUMNS]
 
 
+# Maximum business days to forward-fill an upstream indicator before treating
+# it as stale. ~90 BDays ≈ 4.3 months — generous enough to cover a missed
+# monthly PE publication, tight enough that a 6-month multpl outage stops
+# producing fake-fresh derived rows.
+DERIVE_FFILL_LIMIT_BDAYS = 90
+
+
 def derive_indicators(macro_long: pd.DataFrame) -> pd.DataFrame:
     """Append derived indicators (ones computed from other indicators) to the
     long-format macro frame. Run after collect_bronze, before health_check.
@@ -49,11 +56,14 @@ def derive_indicators(macro_long: pd.DataFrame) -> pd.DataFrame:
         us_erp = 100 / us_pe_ttm − us10y_real_yield   (real equity risk premium, %)
             Why this matters: percentile-of-PE alone has US locked at 90°+ for a
             decade because rates were near zero. ERP normalizes equity yield
-            against the actual bond alternative, so the temperature can register
-            'expensive vs bonds' vs 'expensive vs history' separately.
-            us_pe_ttm is monthly → ffill onto business-day grid up to today
-            (matching percentile.py's _to_daily logic) before subtracting the
-            daily real yield.
+            against the actual bond alternative.
+            us_pe_ttm is monthly → ffill onto business-day grid (with
+            DERIVE_FFILL_LIMIT_BDAYS cap so an upstream outage cannot produce
+            fake-fresh ERP forever). PE non-positive guard prevents inf/sign-
+            flip when multpl returns 0 or a historical negative-EPS reading
+            (rare but real — 2009Q1 trailing S&P EPS briefly went negative).
+            Health-check still runs after this, but health-check on the
+            DERIVED row can't recover the truth of the bad input.
     """
     if macro_long.empty:
         return macro_long
@@ -64,18 +74,24 @@ def derive_indicators(macro_long: pd.DataFrame) -> pd.DataFrame:
     if wide.empty:
         return macro_long
     bday_idx = pd.date_range(wide.index.min(), wide.index.max(), freq="B")
-    wide_ffill = wide.reindex(bday_idx).ffill()
+    wide_ffill = wide.reindex(bday_idx).ffill(limit=DERIVE_FFILL_LIMIT_BDAYS)
 
     derived: list[pd.DataFrame] = []
 
     if {"us_pe_ttm", "us10y_real_yield"}.issubset(wide_ffill.columns):
-        ey = 100.0 / wide_ffill["us_pe_ttm"]
+        # Guard PE > 0 before division. Non-positive PE produces inf or a
+        # sign-flipped earnings yield, which after direction "-" in
+        # weights.yaml becomes a bogus high-temperature reading on US
+        # valuation. Dropping the row is correct: there is no meaningful
+        # "100/0" equity risk premium.
+        pe_safe = wide_ffill["us_pe_ttm"].where(wide_ffill["us_pe_ttm"] > 0)
+        ey = 100.0 / pe_safe
         erp = (ey - wide_ffill["us10y_real_yield"]).dropna()
         if not erp.empty:
             derived.append(
                 pd.DataFrame(
                     {
-                        "date": [d.date() for d in erp.index],
+                        "date": erp.index.date,
                         "indicator": "us_erp",
                         "value": erp.values,
                         "source": "derived",
