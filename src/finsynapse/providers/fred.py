@@ -16,9 +16,29 @@ class FredSeries:
     indicator: str  # canonical name
 
 
-# Series chosen for Phase 1: US 10Y real rate is the headline liquidity input.
-# Add CPI / unemployment in Phase 1b when CN providers are also wired in.
-SERIES: tuple[FredSeries, ...] = (FredSeries(series_id="DFII10", indicator="us10y_real_yield"),)
+# US10Y real rate: headline liquidity input.
+# HY OAS (BAMLH0A0HYM2): high-yield credit spread — most reliable risk-off
+#   leading indicator; sentiment block.
+#   ⚠️ KNOWN LIMITATION (verified 2026-04-30): per FRED series metadata,
+#   "Starting in April 2026, this series will only include 3 years of
+#    observations. For more data, go to the source." This is an ICE BofA
+#   licensing restriction. Forward-looking signal still works (us_hy_oas
+#   gets fresh data daily, percentile baseline grows over time), but
+#   historical backtest pivots before 2023-04 will see this indicator as
+#   missing and the sentiment block renormalizes onto VIX alone — same
+#   degraded behavior as a missing indicator on any other day. Future
+#   alternative: HYG/IEF ETF yield-spread via yfinance (full history,
+#   ~0.9 correlated with OAS). Backlog'd, not blocking.
+# NFCI: Chicago Fed National Financial Conditions Index — single composite
+#   bundling credit, vol, funding stress; weekly (Wed publish), ffill'd to
+#   daily by transform/percentile.LOWFREQ_INDICATORS. Liquidity block.
+#   Full 1971→present history available (Chicago Fed is the original source,
+#   no third-party license issue).
+SERIES: tuple[FredSeries, ...] = (
+    FredSeries(series_id="DFII10", indicator="us10y_real_yield"),
+    FredSeries(series_id="BAMLH0A0HYM2", indicator="us_hy_oas"),
+    FredSeries(series_id="NFCI", indicator="us_nfci"),
+)
 
 API_BASE = "https://api.stlouisfed.org/fred/series/observations"
 

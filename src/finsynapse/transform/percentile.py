@@ -14,9 +14,18 @@ WINDOWS = {
     "10y": 252 * 10,
 }
 
-# Indicators with mixed monthly/daily frequency must be ffill'd onto a daily
-# index before percentile, otherwise the rolling window sees only ~12 points/y.
-MONTHLY_INDICATORS = {"us_cape", "us_pe_ttm", "cn_m2_yoy", "cn_social_financing_12m"}
+# Indicators published less than daily must be ffill'd onto a business-day
+# grid before percentile, otherwise rolling(252) sees ~12 (monthly) or ~52
+# (weekly) points/yr and the percentile distribution is meaningless.
+LOWFREQ_INDICATORS = {
+    # monthly
+    "us_cape",
+    "us_pe_ttm",
+    "cn_m2_yoy",
+    "cn_social_financing_12m",
+    # weekly (FRED publishes Wed)
+    "us_nfci",
+}
 
 
 def _to_daily(series: pd.Series, end: pd.Timestamp | None = None) -> pd.Series:
@@ -49,7 +58,7 @@ def compute_percentiles(macro_long: pd.DataFrame) -> pd.DataFrame:
         s = group.set_index(pd.to_datetime(group["date"]))["value"].sort_index()
         # Drop duplicate timestamps if any (e.g. same date from multiple sources after dedup)
         s = s[~s.index.duplicated(keep="last")]
-        if indicator in MONTHLY_INDICATORS:
+        if indicator in LOWFREQ_INDICATORS:
             s = _to_daily(s, end=global_max)
 
         result = pd.DataFrame({"value": s})

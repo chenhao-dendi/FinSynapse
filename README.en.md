@@ -132,22 +132,22 @@ gold/    narrative: human/LLM-readable conclusions
 
 ### 5.1 Market thermometer (0–100°)
 
-Each indicator is first converted to its **trailing 10-year rolling percentile** (window controlled by `percentile_window` in [`config/weights.yaml`](./config/weights.yaml); monthly indicators like CAPE / M2 are forward-filled to daily).
+Each indicator is first converted to its **trailing N-year rolling percentile**. **Window is per-indicator overridable** (`window:` field in [`config/weights.yaml`](./config/weights.yaml)): slow fundamentals (PE / CAPE / M2 / social financing / real yield) default to `pct_10y` to anchor long-term mean reversion, while fast indicators (VIX / credit spreads / flows / DXY / short rates) use `pct_5y` to reflect current regime. Monthly/weekly indicators (CAPE / M2 / social financing / NFCI) are forward-filled to daily automatically.
 
 Within each sub-temperature the `direction` field decides sign:
 
 - `+` : high percentile → high temperature (e.g. CAPE high = expensive = hot)
 - `-` : high percentile → low temperature (e.g. VIX high = fear = cold; strong DXY = tight liquidity = cold)
 
-Sub-temperature = weighted average across that block's indicators. **Missing indicators auto-renormalize across the available weights** — so when HK options PCR has no source (see §5.5), the rest of HK sentiment still holds up.
+Sub-temperature = weighted average across that block's indicators. **Missing indicators auto-renormalize across the available weights** — so when CN northbound stops publishing post-2024-08, the rest of CN sentiment still holds up (see §5.6).
 
 The composite temperature combines sub-temperatures with per-market weights:
 
 | Market | valuation | sentiment | liquidity | Rationale |
 |---|---:|---:|---:|---|
-| CN | 0.50 | 0.30 | 0.20 | Valuation-led; M2 / social financing are slow movers |
-| HK | 0.60 | 0.25 | 0.15 | Offshore valuation anchor is strongest; sentiment weight reduced absent PCR |
-| US | 0.40 | 0.35 | 0.25 | CAPE/PE saturated near highs — VIX + real-rate components add edge |
+| CN | 0.50 | 0.30 | 0.20 | Valuation-led; sentiment 3-factor (north / turnover / margin); M2 + social financing + SHIBOR-1W |
+| HK | 0.60 | 0.25 | 0.15 | EWH yield as valuation anchor; southbound single-factor sentiment; HIBOR-1M + US real yield/DXY for liquidity |
+| US | 0.40 | 0.35 | 0.25 | PE+CAPE+ERP three-factor valuation (breaks "PE locked at all-time-high"); VIX+HY OAS sentiment; real yield+DXY+NFCI liquidity |
 
 **Temperature bands** ([`src/finsynapse/notify/state.py`](./src/finsynapse/notify/state.py)):
 
@@ -155,13 +155,60 @@ The composite temperature combines sub-temperatures with per-market weights:
 - `30–70°` 🌤 mid
 - `≥ 70°` 🔥 hot
 
-The full indicator → sub-temperature mapping lives in [`config/weights.yaml`](./config/weights.yaml). Editing it and rerunning `transform run --layer temperature` is enough — **no need to re-ingest bronze**, since percentile baselines don't depend on the weights.
+The full indicator → sub-temperature mapping is in §5.2 and [`config/weights.yaml`](./config/weights.yaml). Editing it and rerunning `transform run --layer temperature` is enough — **no need to re-ingest bronze**, since percentile baselines don't depend on the weights.
 
-### 5.2 Weekly attribution
+Backtest verification ([`scripts/backtest_temperature.py`](./scripts/backtest_temperature.py)): current weights pass directional gate 9/9 at 9 historical pivots; strict-zone gate 7-8/9 (depends on whether FRED key is configured).
+
+### 5.2 Indicator inventory
+
+Each market's three sub-temperatures are weighted combinations of base indicators. **Direction**: `+` = high percentile → hot; `-` = inverse. **Window**: `5y` for fast-regime indicators, `10y` for slow fundamentals.
+
+#### US (composite 0.40 val + 0.35 sent + 0.25 liq)
+
+| Sub | Indicator | Weight | Dir | Window | Source | Notes |
+|---|---|---:|---|---|---|---|
+| val | `us_pe_ttm` | 0.35 | + | 10y | multpl.com | S&P500 TTM PE |
+| val | `us_cape` | 0.35 | + | 10y | multpl.com | Shiller 10Y-smoothed EPS |
+| val | `us_erp` | 0.30 | − | 10y | derived | `100/PE − real yield`; breaks "PE locked at ATH" |
+| sent | `vix` | 0.50 | − | 5y | yfinance | implied vol = fear |
+| sent | `us_hy_oas` | 0.50 | − | 5y | FRED `BAMLH0A0HYM2` | HY credit spread, ⚠️ FRED returns only 3Y rolling since 2026-04 (ICE BofA license change) |
+| liq | `us10y_real_yield` | 0.30 | − | 10y | FRED `DFII10` | high real rate = tight |
+| liq | `dxy` | 0.20 | − | 5y | yfinance | strong USD = tight global liquidity |
+| liq | `us_nfci` | 0.50 | − | 5y | FRED `NFCI` | Chicago Fed composite financial conditions, full 1971+ history |
+
+#### CN (composite 0.50 val + 0.30 sent + 0.20 liq)
+
+| Sub | Indicator | Weight | Dir | Window | Source | Notes |
+|---|---|---:|---|---|---|---|
+| val | `csi300_pe_ttm` | 0.50 | + | 10y | AkShare | CSI300 TTM PE |
+| val | `csi300_pb` | 0.50 | + | 10y | AkShare | CSI300 PB |
+| sent | `cn_north_5d` | 0.35 | + | 5y | AkShare | northbound 5d net buy, ⚠️ daily publish stopped 2024-08 (regulator), auto-renorms onto the other two |
+| sent | `cn_a_turnover_5d` | 0.25 | + | 5y | AkShare | A-share total turnover 5d mean |
+| sent | `cn_margin_balance` | 0.40 | + | 5y | AkShare | SH+SZ margin balance (亿元), classic A-share top/bottom signal |
+| liq | `cn_m2_yoy` | 0.35 | + | 10y | AkShare | M2 YoY |
+| liq | `cn_social_financing_12m` | 0.35 | + | 10y | AkShare | social financing 12M rolling sum |
+| liq | `cn_dr007` | 0.30 | − | 5y | AkShare | actually SHIBOR-1W (DR007 has no clean free daily source, >0.95 correlated) |
+
+#### HK (composite 0.60 val + 0.25 sent + 0.15 liq)
+
+| Sub | Indicator | Weight | Dir | Window | Source | Notes |
+|---|---|---:|---|---|---|---|
+| val | `hk_ewh_yield_ttm` | 1.00 | − | 10y | yfinance EWH | TTM dividend yield (high = cheap = cold) |
+| sent | `cn_south_5d` | 1.00 | + | 5y | AkShare | southbound 5d net buy |
+| liq | `us10y_real_yield` | 0.30 | − | 10y | FRED `DFII10` | borrowed via USD peg |
+| liq | `dxy` | 0.20 | − | 5y | yfinance | borrowed via USD peg |
+| liq | `hk_hibor_1m` | 0.50 | − | 5y | AkShare `macro_china_hk_market_info` | HKD-side funding cost (HKMA defends peg via this) |
+
+> **HK indicators backlogged but not implemented** (see [`docs/_local/2026-04-29-execution-plan.md`](./docs/_local/) Phase 1d):
+> - **HSI PE**: AkShare `stock_hk_index_value_em` was decommissioned in 2026-04; only alternative is scraping monthly HSI factsheet PDFs (Playwright workload, same fragility as the abandoned PCR effort)
+> - **AH premium index**: historical time-series endpoints all return 404; only spot endpoint works (no historical backfill, would need months of accumulation before percentile is meaningful)
+> - **HSI options PCR**: HKEX has no free daily source; see plan §11.6 v0.6 decision
+
+### 5.3 Weekly attribution
 
 The 7-day `Δoverall` is decomposed into `Δval / Δsent / Δliq` contributions in both the dashboard and the brief. **No dynamic weights** — once weights are set they're frozen, so directional changes come purely from the indicators themselves (avoiding curve-fitting).
 
-### 5.3 Divergence signals
+### 5.4 Divergence signals
 
 Five hard-coded `SignalPair`s ([`src/finsynapse/transform/divergence.py`](./src/finsynapse/transform/divergence.py)):
 
@@ -177,7 +224,7 @@ Five hard-coded `SignalPair`s ([`src/finsynapse/transform/divergence.py`](./src/
 
 > Five hard-coded pairs instead of statistical anomaly detection — each pair carries explicit financial meaning; over-generalization would drown signal in noise.
 
-### 5.4 Data health
+### 5.5 Data health
 
 Every indicator has a plausibility bound in [`src/finsynapse/transform/health_check.py`](./src/finsynapse/transform/health_check.py) (e.g. `vix: 5–200`, `us10y_yield: 0.1–25`, `csi300: 1000–20000`):
 
@@ -186,15 +233,15 @@ Every indicator has a plausibility bound in [`src/finsynapse/transform/health_ch
 
 Intent: catch unit drift / parsing bugs (e.g. price suddenly 100×), not "extreme but legitimate" market moves (those are exactly what the percentile machinery is for).
 
-### 5.5 Quality flags
+### 5.6 Quality flags
 
-The `data_quality` field on `temperature_daily.parquet`:
+The `data_quality` field on `temperature_daily.parquet` records actual availability per row without blocking output:
 
-- `ok` — all sub-components present
-- `partial` — at least one sub-component missing for the day
-- `pcr_unavailable` — HK options PCR has no free, stable source ([Phase 0 conclusion](./docs/_local/2026-04-29-execution-plan.md), v0.6); HK sentiment falls back to 100% southbound 5d, temperature still usable
+- `ok` — all three sub-temperatures produced
+- `<sub>_unavailable` — that sub-temperature had every input missing for the day (e.g. `liquidity_unavailable`)
+- Single-indicator gaps inside a sub-temperature: weights auto-renormalize across what's available, no flag emitted (see §5.1 — e.g. CN sentiment 0.35/0.25/0.40 → 0/0.38/0.62 after northbound stopped publishing 2024-08)
 
-### 5.6 Daily brief (gold/brief)
+### 5.7 Daily brief (gold/brief)
 
 `finsynapse report brief` priority: `auto` mode tries `ollama → deepseek → anthropic` in order, **falling back to a deterministic Jinja template if all fail** — the output is always a valid `.md`.
 
@@ -232,7 +279,7 @@ CI defaults to `deepseek-v4-pro` (priced like v4-flash through 2026-05-31; rever
 
 | Secret | Required? | Purpose |
 |---|---|---|
-| `FRED_API_KEY` | recommended | US real yield (DFII10) |
+| `FRED_API_KEY` | recommended | US real yield (DFII10) + HY credit spread (BAMLH0A0HYM2, FRED returns 3Y rolling only) + financial conditions (NFCI, full history) |
 | `DEEPSEEK_API_KEY` | optional | Daily brief in CI; falls back to template if absent |
 | `BARK_DEVICE_KEY` | optional | iOS push |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | optional | Telegram push |
@@ -301,9 +348,11 @@ chore(deps): bump pandas to 3.0.3
 - **New provider**: implement the [`providers/base.py`](./src/finsynapse/providers/base.py) interface, write to bronze, `return (df, path)`; ship a VCR cassette or pickle fixture
 - **New silver transform**: wire it into [`cli.py`](./src/finsynapse/cli.py) `transform run` and add a corresponding pytest
 - **New thermometer indicator**:
-  1. Add weights in [`config/weights.yaml`](./config/weights.yaml) (sub-block must sum to 1.0)
-  2. Add bounds in [`health_check.PLAUSIBLE_BOUNDS`](./src/finsynapse/transform/health_check.py)
+  1. Add weights in [`config/weights.yaml`](./config/weights.yaml) (sub-block must sum to 1.0; optional `window: pct_5y` overrides the default — recommend 5y for fast-regime indicators)
+  2. Add bounds in [`health_check.PLAUSIBLE_BOUNDS`](./src/finsynapse/transform/health_check.py) (catches unit drift)
   3. Run [`scripts/backtest_temperature.py`](./scripts/backtest_temperature.py) to confirm direction holds at known checkpoints
+  4. Derived indicators (computed from other indicators, e.g. `us_erp`) live in [`transform/normalize.py:derive_indicators()`](./src/finsynapse/transform/normalize.py)
+  5. Indicators with uncertain upstream APIs: write a `scripts/probe_*.py` first to validate the call before implementing the provider (see `probe_phase_b.py`)
 
 ### 8.5 Test requirements
 

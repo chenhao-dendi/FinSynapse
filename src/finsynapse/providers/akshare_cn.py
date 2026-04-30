@@ -7,6 +7,11 @@ Sources (validated by scripts/probe_akshare.py 2026-04-29):
     - macro_china_shrzgm()               — Social Financing increment monthly (132 rows)
     - stock_zh_index_daily(sh000001)     — SSE composite incl. volume (8,631 rows from 1991)
     - stock_zh_index_daily(sz399001)     — SZSE component incl. volume (8,539 rows)
+
+Phase B additions (validated by scripts/probe_phase_b.py 2026-04-29):
+    - macro_china_market_margin_sh()     — Shanghai 两融 daily (3,901 rows from 2010)
+    - macro_china_market_margin_sz()     — Shenzhen 两融 daily (3,703 rows)
+    - macro_china_shibor_all()           — SHIBOR all tenors daily (2,272 rows from 2017)
 """
 
 from __future__ import annotations
@@ -44,6 +49,24 @@ def _shrzgm() -> pd.DataFrame:
 def _index_volume(symbol: str) -> pd.DataFrame:
     """SSE/SZSE daily index incl. exchange-level volume."""
     return ak.stock_zh_index_daily(symbol=symbol)
+
+
+@lru_cache(maxsize=4)
+def _margin_sh() -> pd.DataFrame:
+    """Shanghai exchange margin (两融) daily totals."""
+    return ak.macro_china_market_margin_sh()
+
+
+@lru_cache(maxsize=4)
+def _margin_sz() -> pd.DataFrame:
+    """Shenzhen exchange margin (两融) daily totals."""
+    return ak.macro_china_market_margin_sz()
+
+
+@lru_cache(maxsize=4)
+def _shibor_all() -> pd.DataFrame:
+    """SHIBOR all tenors daily fixings (wide format: O/N, 1W, 2W, 1M, 3M, 6M, 9M, 1Y)."""
+    return ak.macro_china_shibor_all()
 
 
 def _slice_dates(df: pd.DataFrame, start: date, end: date, date_col: str = "date") -> pd.DataFrame:
@@ -147,6 +170,53 @@ class AkShareCnProvider(Provider):
             }
         ).dropna(subset=["value"])
         records.append(_slice_dates(srf_long, fetch_range.start, fetch_range.end))
+
+        # --- Margin balance (两融) — A-share retail leverage gauge (daily) ---
+        # SH + SZ totals summed. Plan §11 economist review: classic top/bottom
+        # signal in A-shares (2015 peak, 2018-12 trough, 2024-09 trough all
+        # tagged it). Direction "+" in weights.yaml: high margin = warm.
+        # Unit: 亿元 (AkShare returns raw 元, divide by 1e8 to align with
+        # social_financing's 亿元 convention).
+        sh_margin = _margin_sh().copy()
+        sz_margin = _margin_sz().copy()
+        sh_margin["日期"] = pd.to_datetime(sh_margin["日期"]).dt.date
+        sz_margin["日期"] = pd.to_datetime(sz_margin["日期"]).dt.date
+        margin_merged = pd.merge(
+            sh_margin[["日期", "融资融券余额"]].rename(columns={"融资融券余额": "sh_total"}),
+            sz_margin[["日期", "融资融券余额"]].rename(columns={"融资融券余额": "sz_total"}),
+            on="日期",
+            how="outer",
+        ).sort_values("日期")
+        # Either side missing on a given day -> drop (don't half-count). SH and
+        # SZ publish on the same trading-day calendar so missing pairs are rare.
+        margin_merged = margin_merged.dropna(subset=["sh_total", "sz_total"])
+        margin_long = pd.DataFrame(
+            {
+                "date": margin_merged["日期"],
+                "value": ((margin_merged["sh_total"] + margin_merged["sz_total"]) / 1e8).astype(float),
+                "indicator": "cn_margin_balance",
+                "source_symbol": "macro_china_market_margin_sh+sz/融资融券余额 (亿元)",
+            }
+        )
+        records.append(_slice_dates(margin_long, fetch_range.start, fetch_range.end))
+
+        # --- SHIBOR-1W as DR007 proxy (daily) ---
+        # PBoC's actual operating target is DR007 but no clean free daily source.
+        # SHIBOR-1W (Shanghai interbank 1-week unsecured) tracks DR007 with
+        # >0.95 correlation post-2014 — same liquidity-tightness signal at
+        # near-zero data cost. Direction "-": high rate = tighter = cold.
+        shibor = _shibor_all().copy()
+        shibor["日期"] = pd.to_datetime(shibor["日期"]).dt.date
+        # Column "1W-定价" is the fixing in %. Drop NaNs (holidays / pre-launch).
+        dr007_long = pd.DataFrame(
+            {
+                "date": shibor["日期"],
+                "value": pd.to_numeric(shibor["1W-定价"], errors="coerce"),
+                "indicator": "cn_dr007",
+                "source_symbol": "macro_china_shibor_all/1W-定价 (DR007 proxy)",
+            }
+        ).dropna(subset=["value"])
+        records.append(_slice_dates(dr007_long, fetch_range.start, fetch_range.end))
 
         out = pd.concat(records, ignore_index=True)
         if out.empty:

@@ -6,6 +6,7 @@ import typer
 
 from finsynapse.providers.akshare_cn import run as run_akshare_cn
 from finsynapse.providers.akshare_flow import run as run_akshare_flow
+from finsynapse.providers.akshare_hk import run as run_akshare_hk
 from finsynapse.providers.base import FetchRange
 from finsynapse.providers.fred import run as run_fred
 from finsynapse.providers.multpl import run as run_multpl
@@ -33,6 +34,7 @@ SOURCES = {
     "fred": run_fred,
     "treasury_real_yield": run_treasury_real_yield,
     "akshare_cn": run_akshare_cn,
+    "akshare_hk": run_akshare_hk,
     "akshare_flow": run_akshare_flow,
 }
 
@@ -106,11 +108,12 @@ def transform_run(
     """Run silver-layer transforms in dependency order."""
     from finsynapse.transform.divergence import compute_divergence, write_silver_divergence
     from finsynapse.transform.health_check import check, write_health_log
-    from finsynapse.transform.normalize import collect_bronze, write_silver_macro
+    from finsynapse.transform.normalize import collect_bronze, derive_indicators, write_silver_macro
     from finsynapse.transform.percentile import compute_percentiles, write_silver_percentile
     from finsynapse.transform.temperature import compute_temperature, write_silver_temperature
 
     macro = collect_bronze()
+    macro = derive_indicators(macro)
     typer.echo(f"[bronze] collected {len(macro):,} rows across {macro['indicator'].nunique()} indicators")
 
     if layer in ("health", "all"):

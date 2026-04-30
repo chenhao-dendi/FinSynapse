@@ -17,7 +17,7 @@ SUB_NAMES = ("valuation", "sentiment", "liquidity")
 class WeightsConfig:
     sub_weights: dict
     indicator_weights: dict
-    percentile_window: str
+    percentile_window: str  # default; per-indicator `window:` field overrides
 
     @classmethod
     def load(cls, path: Path | None = None) -> WeightsConfig:
@@ -25,6 +25,15 @@ class WeightsConfig:
         with p.open() as f:
             raw = yaml.safe_load(f)
         return cls(**raw)
+
+    def window_for(self, indicator: str) -> str:
+        """Resolve which percentile column (`pct_1y`/`pct_5y`/`pct_10y`) an
+        indicator should use. Falls back to the global `percentile_window`."""
+        for block in self.indicator_weights.values():
+            spec = block.get(indicator)
+            if spec and spec.get("window"):
+                return spec["window"]
+        return self.percentile_window
 
 
 def _sub_temperature(
@@ -106,9 +115,23 @@ def compute_temperature(percentile_long: pd.DataFrame, cfg: WeightsConfig | None
     if percentile_long.empty:
         return pd.DataFrame()
 
-    pct_col = cfg.percentile_window  # e.g. 'pct_10y'
-    pct_wide = percentile_long.pivot_table(index="date", columns="indicator", values=pct_col).sort_index()
-    pct_wide.index = pd.to_datetime(pct_wide.index)
+    # Build pct_wide column-by-column so each indicator picks its OWN window
+    # column. Slow-moving fundamentals (CAPE, M2) want pct_10y; fast sentiment
+    # (VIX, HY OAS) wants pct_5y because regime shifts faster than 10y. The
+    # `window:` field in weights.yaml encodes that choice per indicator.
+    pl = percentile_long.copy()
+    pl["date"] = pd.to_datetime(pl["date"])
+    series_by_ind: dict[str, pd.Series] = {}
+    for indicator, group in pl.groupby("indicator"):
+        col = cfg.window_for(str(indicator))
+        if col not in group.columns:
+            continue
+        s = group.set_index("date")[col].sort_index()
+        s = s[~s.index.duplicated(keep="last")]
+        series_by_ind[str(indicator)] = s
+    if not series_by_ind:
+        return pd.DataFrame()
+    pct_wide = pd.concat(series_by_ind, axis=1).sort_index()
 
     rows = []
     for market in MARKETS:

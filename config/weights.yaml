@@ -2,6 +2,20 @@
 # See plan §11. Edit and re-run `finsynapse transform run --layer temperature`
 # to apply. Changes are NOT retroactive: percentile baselines themselves
 # don't depend on these weights.
+#
+# Schema per indicator: { weight, direction, window? }
+#   weight    — relative weight inside its sub-block (block re-normalizes)
+#   direction — "+" : high percentile -> high (hot) temperature
+#               "-" : high percentile -> low  (cold) temperature
+#   window    — OPTIONAL override of `percentile_window` below.
+#               Use pct_5y for fast-regime indicators (VIX, HY spread, NFCI,
+#               flow data), pct_10y for slow fundamentals (PE, CAPE, M2).
+#               Plan §11.2 originally specified VIX uses 5Y; previously the
+#               global pct_10y forced all indicators into one window.
+#
+# Robustness: if an indicator is missing on a given date (e.g. north flow
+# stopped publishing 2024-08), `temperature.py` re-normalizes the remaining
+# weights within that block, and `data_quality` flags the row.
 
 # How the three sub-temperatures combine into the overall (per market).
 sub_weights:
@@ -10,52 +24,86 @@ sub_weights:
   us: { valuation: 0.4, sentiment: 0.35, liquidity: 0.25 }  # US estimated CAPE+PE so val weight slightly lower
 
 # Within each sub-temperature, how to combine the input indicators.
-# Sub-indicator weights MUST sum to 1.0 within each block.
-# Direction: "+" = high percentile -> high temp; "-" = high percentile -> low temp (cold).
+# Sub-indicator weights MUST sum to 1.0 within each block (live indicators).
 indicator_weights:
+  # ============== US ==============
   us_valuation:
-    us_pe_ttm:    { weight: 0.5, direction: "+" }
-    us_cape:      { weight: 0.5, direction: "+" }
+    # PE-TTM: cyclical (single-yr earnings noise). CAPE: 10y-smoothed Shiller.
+    # ERP (real equity risk premium): the bridge from PE to bonds — fixes
+    # "US PE locked at 90° for a decade" by anchoring vs the actual rate
+    # alternative. ERP HIGH = stocks cheap vs bonds = COLD valuation, hence
+    # direction "-". Computed in transform/normalize.derive_indicators().
+    us_pe_ttm:    { weight: 0.35, direction: "+" }
+    us_cape:      { weight: 0.35, direction: "+" }
+    us_erp:       { weight: 0.30, direction: "-" }
   us_sentiment:
-    vix:          { weight: 1.0, direction: "-" }   # VIX high = fear = cold
+    # VIX is options-implied vol (hedging demand). HY OAS is true credit
+    # risk pricing — historically leads VIX into risk-off (2008, 2020). AAII
+    # / put-call left for Phase 2 if we want a 3rd factor.
+    vix:          { weight: 0.5, direction: "-", window: pct_5y }   # high VIX = fear = cold
+    us_hy_oas:    { weight: 0.5, direction: "-", window: pct_5y }   # high spread = stress = cold
   us_liquidity:
-    us10y_real_yield: { weight: 0.5, direction: "-" }   # higher real rate = tighter = cold
-    dxy:              { weight: 0.5, direction: "-" }   # stronger dollar = tighter global liquidity = cold
+    # Real yield + DXY are correlated (rates drive the dollar) — each gets
+    # downweighted vs the historical 50/50 to avoid double-counting. NFCI
+    # is the Chicago Fed's omnibus financial-conditions index and is the
+    # cleanest single liquidity signal; weekly publish, ffill'd to daily.
+    # Curve slope (10Y-3M) deferred — adds late-cycle signal but is also
+    # rate-driven, so risks more multicollinearity until we PCA-orthogonalize.
+    us10y_real_yield: { weight: 0.30, direction: "-" }   # higher real rate = tighter = cold
+    dxy:              { weight: 0.20, direction: "-", window: pct_5y }
+    us_nfci:          { weight: 0.50, direction: "-", window: pct_5y }   # high NFCI = tight = cold
 
-  # --- CN (Phase 1b) ---------------------------------------------------
+  # ============== CN ==============
   cn_valuation:
     csi300_pe_ttm:           { weight: 0.5, direction: "+" }
     csi300_pb:               { weight: 0.5, direction: "+" }
   cn_sentiment:
-    # Northbound 5d net-buy. AkShare upstream stopped publishing daily flow
-    # in mid-2024 (regulator change). After Phase 1c we co-weight with
-    # A-share total turnover (5d mean), which IS still daily and gives a
-    # broader participation signal. North-flow gets the heavier weight
-    # because it captures *foreign* sentiment specifically; turnover blends
-    # foreign + domestic. When north flow goes NaN (post-2024-08), calc
-    # renormalizes turnover to 100% — degraded but not blank.
-    cn_north_5d:             { weight: 0.5, direction: "+" }   # inflow = warm
-    cn_a_turnover_5d:        { weight: 0.5, direction: "+" }   # high participation = warm
+    # Northbound 5d net-buy went stale 2024-08 (regulator stopped daily
+    # publish). When NaN, block renormalizes onto the other two. Margin
+    # balance (两融) is the classic A-share retail leverage gauge —
+    # 2015 peak / 2018-12 trough / 2024-09 trough all tagged it.
+    cn_north_5d:             { weight: 0.35, direction: "+", window: pct_5y }
+    cn_a_turnover_5d:        { weight: 0.25, direction: "+", window: pct_5y }
+    cn_margin_balance:       { weight: 0.40, direction: "+", window: pct_5y }
   cn_liquidity:
-    cn_m2_yoy:               { weight: 0.5, direction: "+" }   # higher M2 growth = looser
-    cn_social_financing_12m: { weight: 0.5, direction: "+" }   # higher credit creation = looser
+    # M2 + social financing are slow stock variables; SHIBOR-1W (used as
+    # DR007 proxy — DR007 has no clean free daily source, but SHIBOR-1W
+    # tracks it >0.95 post-2014) gives the daily marginal funding signal
+    # the monthly aggregates miss.
+    cn_m2_yoy:               { weight: 0.35, direction: "+" }   # higher M2 growth = looser
+    cn_social_financing_12m: { weight: 0.35, direction: "+" }   # higher credit creation = looser
+    cn_dr007:                { weight: 0.30, direction: "-", window: pct_5y }   # higher rate = tighter = cold
 
-  # --- HK (Phase 1c) ---------------------------------------------------
+  # ============== HK ==============
   hk_valuation:
-    # HSI PE/PB has no free source. EWH (iShares MSCI HK ETF, US-listed)
-    # has 30y daily history with reliable dividends → use TTM dividend
-    # yield as inverse-valuation proxy. Direction "-" because HIGH yield
-    # = CHEAP = COLD valuation temperature.
+    # EWH (iShares MSCI HK ETF, US-listed) TTM dividend yield as inverse-
+    # valuation proxy: HIGH yield = CHEAP = COLD (direction "-").
+    # HSI PE intentionally NOT used: probe 2026-04-29 confirmed AkShare
+    # `stock_hk_index_value_em` no longer exists and `stock_hk_index_daily_em`
+    # endpoint is unstable. Adding HSI PE would require Playwright scraping
+    # HSI factsheet PDFs (same level of fragility as the HSI PCR attempt
+    # plan §11.6 already gave up on). Revisit if a stable source appears.
     hk_ewh_yield_ttm:        { weight: 1.0, direction: "-" }
   hk_sentiment:
-    # Southbound 5d net-buy. AH-premium index and HSI options PCR both
-    # unavailable for free (plan §11.6 fallback) → south flow alone.
-    cn_south_5d:             { weight: 1.0, direction: "+" }
+    # Southbound 5d net-buy = mainland-side flow into HK.
+    # AH premium index intentionally NOT used: probe 2026-04-29 confirmed
+    # the historical-time-series interfaces (`stock_hk_index_daily_em(HSAHP)`,
+    # `stock_hk_index_value_em(HSAHP)`) all return errors. Only `stock_zh_ah_spot`
+    # works and gives current-day per-stock A/H spot (no history) — would need
+    # to start daily snapshot accumulation to build a usable percentile baseline,
+    # which is months of waiting before any signal. Defer.
+    # PCR likewise unavailable per plan §11.6.
+    cn_south_5d:             { weight: 1.0, direction: "+", window: pct_5y }
   hk_liquidity:
-    # HK liquidity tracks USD funding conditions (plan §11.2 — HK borrows US).
-    us10y_real_yield:        { weight: 0.5, direction: "-" }
-    dxy:                     { weight: 0.5, direction: "-" }
+    # HKMA defends the USD peg by adjusting HKD liquidity → HIBOR moves
+    # independently of Fed Funds (Sep 2018 / Mar 2020 / Aug 2022 all saw
+    # HIBOR-1M spike 100-200bp while DXY was muted). HIBOR carries the
+    # heaviest weight as the actual HKD-side gauge.
+    us10y_real_yield:        { weight: 0.30, direction: "-" }
+    dxy:                     { weight: 0.20, direction: "-", window: pct_5y }
+    hk_hibor_1m:             { weight: 0.50, direction: "-", window: pct_5y }   # higher HIBOR = tighter HKD = cold
 
-# Percentile window used by the temperature calculator (must match a key in
-# transform.percentile.WINDOWS).
+# Default percentile window when no per-indicator override is set. Picked at
+# 10y because the historical mean-reversion anchor matters most for slow
+# fundamentals (PE, CAPE, M2). Sentiment indicators override to pct_5y above.
 percentile_window: pct_10y

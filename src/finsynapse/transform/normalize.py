@@ -41,6 +41,53 @@ def collect_bronze(bronze_dir: Path | None = None) -> pd.DataFrame:
     return combined[CANONICAL_COLUMNS]
 
 
+def derive_indicators(macro_long: pd.DataFrame) -> pd.DataFrame:
+    """Append derived indicators (ones computed from other indicators) to the
+    long-format macro frame. Run after collect_bronze, before health_check.
+
+    Currently:
+        us_erp = 100 / us_pe_ttm − us10y_real_yield   (real equity risk premium, %)
+            Why this matters: percentile-of-PE alone has US locked at 90°+ for a
+            decade because rates were near zero. ERP normalizes equity yield
+            against the actual bond alternative, so the temperature can register
+            'expensive vs bonds' vs 'expensive vs history' separately.
+            us_pe_ttm is monthly → ffill onto business-day grid up to today
+            (matching percentile.py's _to_daily logic) before subtracting the
+            daily real yield.
+    """
+    if macro_long.empty:
+        return macro_long
+
+    wide = macro_long.pivot_table(index="date", columns="indicator", values="value")
+    wide.index = pd.to_datetime(wide.index)
+    wide = wide.sort_index()
+    if wide.empty:
+        return macro_long
+    bday_idx = pd.date_range(wide.index.min(), wide.index.max(), freq="B")
+    wide_ffill = wide.reindex(bday_idx).ffill()
+
+    derived: list[pd.DataFrame] = []
+
+    if {"us_pe_ttm", "us10y_real_yield"}.issubset(wide_ffill.columns):
+        ey = 100.0 / wide_ffill["us_pe_ttm"]
+        erp = (ey - wide_ffill["us10y_real_yield"]).dropna()
+        if not erp.empty:
+            derived.append(
+                pd.DataFrame(
+                    {
+                        "date": [d.date() for d in erp.index],
+                        "indicator": "us_erp",
+                        "value": erp.values,
+                        "source": "derived",
+                    }
+                )
+            )
+
+    if not derived:
+        return macro_long
+    return pd.concat([macro_long, *derived], ignore_index=True)
+
+
 def write_silver_macro(df: pd.DataFrame) -> Path:
     silver = _cfg.settings.silver_dir
     silver.mkdir(parents=True, exist_ok=True)

@@ -8,7 +8,7 @@ import pytest
 
 from finsynapse.transform.divergence import PAIRS, compute_divergence
 from finsynapse.transform.health_check import check
-from finsynapse.transform.normalize import collect_bronze
+from finsynapse.transform.normalize import collect_bronze, derive_indicators
 from finsynapse.transform.percentile import compute_percentiles
 from finsynapse.transform.temperature import WeightsConfig, compute_temperature
 
@@ -153,6 +153,78 @@ def test_temperature_renormalizes_when_one_sub_unavailable(tmp_path):
     assert us["data_quality"] == "liquidity_unavailable"
     assert not pd.isna(us["overall"])
     assert pd.isna(us["liquidity"])
+
+
+def test_derive_indicators_computes_us_erp():
+    """ERP = 100/PE − real_yield. With PE=20 (E/P=5%) and real yield=1.5%,
+    ERP should be 3.5. Confirms ffill aligns monthly PE with daily real yield."""
+    n = 30
+    dates = pd.bdate_range("2026-01-01", periods=n)
+    macro = pd.DataFrame(
+        {
+            "date": [d.date() for d in dates] * 2,
+            "indicator": ["us_pe_ttm"] * n + ["us10y_real_yield"] * n,
+            "value": [20.0] * n + [1.5] * n,
+            "source": ["multpl"] * n + ["fred"] * n,
+        }
+    )
+    out = derive_indicators(macro)
+    erp = out[out["indicator"] == "us_erp"]
+    assert not erp.empty, "us_erp should be derived"
+    assert erp["value"].between(3.4, 3.6).all(), f"expected ~3.5, got {erp['value'].unique()}"
+    assert (erp["source"] == "derived").all()
+
+
+def test_derive_indicators_skips_when_inputs_missing():
+    """If only us_pe_ttm exists (no real yield), us_erp should NOT be emitted
+    rather than producing NaN/garbage rows."""
+    n = 10
+    dates = pd.bdate_range("2026-01-01", periods=n)
+    macro = pd.DataFrame(
+        {
+            "date": [d.date() for d in dates],
+            "indicator": "us_pe_ttm",
+            "value": [22.0] * n,
+            "source": "multpl",
+        }
+    )
+    out = derive_indicators(macro)
+    assert "us_erp" not in out["indicator"].unique()
+
+
+def test_temperature_per_indicator_window_override():
+    """An indicator with window: pct_5y must read pct_5y; without override
+    must read the global percentile_window. Verifies refactor of pct_wide
+    construction picks up per-indicator columns."""
+    cfg = WeightsConfig(
+        sub_weights={"us": {"valuation": 1.0, "sentiment": 0.0, "liquidity": 0.0}},
+        indicator_weights={
+            "us_valuation": {
+                # us_pe_ttm uses default (pct_10y); us_cape overrides to pct_5y.
+                "us_pe_ttm": {"weight": 0.5, "direction": "+"},
+                "us_cape": {"weight": 0.5, "direction": "+", "window": "pct_5y"},
+            },
+            "us_sentiment": {},
+            "us_liquidity": {},
+        },
+        percentile_window="pct_10y",
+    )
+    n = 30
+    pct = pd.DataFrame(
+        {
+            "date": pd.bdate_range("2026-01-01", periods=n).date.tolist() * 2,
+            "indicator": ["us_pe_ttm"] * n + ["us_cape"] * n,
+            "value": [20.0] * (n * 2),
+            "pct_1y": [10.0] * (n * 2),
+            # pe_ttm reads pct_10y=80; cape reads pct_5y=40 (override).
+            # Equal weight → val ~= (80 + 40) / 2 = 60.
+            "pct_5y": [99.0] * n + [40.0] * n,    # pe_ttm 99 must NOT be picked
+            "pct_10y": [80.0] * n + [99.0] * n,   # cape 99 must NOT be picked
+        }
+    )
+    temp = compute_temperature(pct, cfg)
+    last = temp[temp["market"] == "us"].iloc[-1]
+    assert 55.0 < last["valuation"] < 65.0, f"expected ~60, got {last['valuation']}"
 
 
 def test_divergence_detects_signal_pair_disagreement():
