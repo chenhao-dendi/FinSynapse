@@ -22,83 +22,103 @@ from finsynapse.providers.base import FetchRange
 # mock fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_csi300_pe():
     """Shape: AkShare stock_index_pe_lg('沪深300')"""
     dates = pd.date_range("2025-01-02", "2026-04-15", freq="B")
-    return pd.DataFrame({
-        "日期": dates,
-        "滚动市盈率": [12.5 + i * 0.001 for i in range(len(dates))],
-        "静态市盈率": [13.0 + i * 0.001 for i in range(len(dates))],
-    })
+    return pd.DataFrame(
+        {
+            "日期": dates,
+            "滚动市盈率": [12.5 + i * 0.001 for i in range(len(dates))],
+            "静态市盈率": [13.0 + i * 0.001 for i in range(len(dates))],
+        }
+    )
 
 
 def _make_csi300_pb():
     dates = pd.date_range("2025-01-02", "2026-04-15", freq="B")
-    return pd.DataFrame({
-        "日期": dates,
-        "市净率": [1.4 + i * 0.0001 for i in range(len(dates))],
-    })
+    return pd.DataFrame(
+        {
+            "日期": dates,
+            "市净率": [1.4 + i * 0.0001 for i in range(len(dates))],
+        }
+    )
 
 
 def _make_m2():
-    return pd.DataFrame({
-        "月份": [f"{y}年{m:02d}月" for y in range(2025, 2027) for m in range(1, 13)],
-        "货币和准货币(M2)-同比增长": [8.5 + m * 0.1 for m in range(1, 25)],
-    })
+    return pd.DataFrame(
+        {
+            "月份": [f"{y}年{m:02d}月" for y in range(2025, 2027) for m in range(1, 13)],
+            "货币和准货币(M2)-同比增长": [8.5 + m * 0.1 for m in range(1, 25)],
+        }
+    )
 
 
 def _make_index_volume(symbol: str = ""):
     dates = pd.date_range("2025-01-02", "2026-04-15", freq="B")
-    return pd.DataFrame({
-        "date": dates,
-        "volume": [1e9 + i * 1e7 for i in range(len(dates))],
-    })
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "volume": [1e9 + i * 1e7 for i in range(len(dates))],
+        }
+    )
 
 
 def _make_margin():
     dates = pd.date_range("2025-01-02", "2026-04-15", freq="B")
-    return pd.DataFrame({
-        "日期": dates,
-        "融资融券余额": [1.5e12 + i * 1e9 for i in range(len(dates))],
-    })
+    return pd.DataFrame(
+        {
+            "日期": dates,
+            "融资融券余额": [1.5e12 + i * 1e9 for i in range(len(dates))],
+        }
+    )
 
 
 def _make_shibor():
     dates = pd.date_range("2025-01-02", "2026-04-15", freq="B")
-    return pd.DataFrame({
-        "日期": dates,
-        "1W-定价": [1.5 + 0.001 * i for i in range(len(dates))],
-        "1M-定价": [1.8 + 0.001 * i for i in range(len(dates))],
-    })
+    return pd.DataFrame(
+        {
+            "日期": dates,
+            "1W-定价": [1.5 + 0.001 * i for i in range(len(dates))],
+            "1M-定价": [1.8 + 0.001 * i for i in range(len(dates))],
+        }
+    )
 
 
 def _make_social_financing():
-    return pd.DataFrame({
-        "月份": [f"{y}{m:02d}" for y in range(2023, 2027) for m in range(1, 13)],
-        "社会融资规模增量": [20000 + m * 500 for m in range(1, 49)],
-    })
+    return pd.DataFrame(
+        {
+            "月份": [f"{y}{m:02d}" for y in range(2023, 2027) for m in range(1, 13)],
+            "社会融资规模增量": [20000 + m * 500 for m in range(1, 49)],
+        }
+    )
 
 
 def _make_hibor():
     dates = pd.date_range("2025-01-02", "2026-04-15", freq="B")
-    return pd.DataFrame({
-        "日期": dates,
-        "1M-定价": [3.5 + 0.001 * i for i in range(len(dates))],
-    })
+    return pd.DataFrame(
+        {
+            "日期": dates,
+            "1M-定价": [3.5 + 0.001 * i for i in range(len(dates))],
+        }
+    )
 
 
 def _make_flow(direction: str):
     dates = pd.date_range("2025-01-02", "2026-04-15", freq="B")
     net_values = [10.0 if i % 2 == 0 else -5.0 for i in range(len(dates))]
-    return pd.DataFrame({
-        "日期": dates,
-        "当日成交净买额": net_values,
-    })
+    return pd.DataFrame(
+        {
+            "日期": dates,
+            "当日成交净买额": net_values,
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
 # _pick_col
 # ---------------------------------------------------------------------------
+
 
 class TestPickCol:
     def test_finds_first_matching_candidate(self):
@@ -115,6 +135,7 @@ class TestPickCol:
 # ---------------------------------------------------------------------------
 # akshare_cn
 # ---------------------------------------------------------------------------
+
 
 class TestAkShareCn:
     @pytest.fixture(autouse=True)
@@ -183,6 +204,7 @@ class TestAkShareCn:
 # akshare_hk
 # ---------------------------------------------------------------------------
 
+
 class TestAkShareHk:
     def test_hibor_parsing(self, tmp_data_dir):
         with patch("finsynapse.providers.akshare_hk._hibor_all", return_value=_make_hibor()):
@@ -205,6 +227,7 @@ class TestAkShareHk:
 # ---------------------------------------------------------------------------
 # akshare_flow
 # ---------------------------------------------------------------------------
+
 
 class TestAkShareFlow:
     def test_flow_5d_rolling_sum(self, tmp_data_dir):

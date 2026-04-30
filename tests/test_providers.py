@@ -24,6 +24,7 @@ from finsynapse.providers.yfinance_hk import YFinanceHkValuationProvider
 # helpers
 # ---------------------------------------------------------------------------
 
+
 def _mock_response(json_data=None, text="", status_code=200):
     resp = MagicMock()
     resp.status_code = status_code
@@ -196,6 +197,7 @@ class TestTreasuryRealYield:
 # yfinance_hk (EWH TTM yield)
 # ---------------------------------------------------------------------------
 
+
 def _mock_ewh_frame():
     import numpy as np
 
@@ -239,6 +241,7 @@ class TestYFinanceHk:
 # ---------------------------------------------------------------------------
 # retry
 # ---------------------------------------------------------------------------
+
 
 class TestRetry:
     def test_session_is_created_with_retry_adapter(self):
