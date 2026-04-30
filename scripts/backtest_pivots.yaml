@@ -1,0 +1,219 @@
+# Market temperature validation pivots.
+# 24 historically significant market tops/bottoms across US/CN/HK.
+#
+# Schema per pivot:
+#   label        — human-readable name
+#   market       — cn | hk | us
+#   date         — YYYY-MM-DD (the extreme day ±5 trading days)
+#   expected_zone — cold | mid | hot
+#   source        — citation (Bloomberg headline or widely-recognised phrase)
+#   index         — the reference index to validate against (for forward-return analysis)
+#   confirmed_by  — optional: corroborating signal(s)
+#
+# Selection rule: per market, ≥3 bottoms (>20% drawdown from prior peak)
+# and ≥2 tops (>50% rally from prior trough), covering 2015–2025.
+# Template-generated then LLM-augmented and human-reviewed.
+
+pivots:
+  # ========================= US =========================
+  - label: "2011 US debt downgrade / Eurozone crisis low"
+    market: us
+    date: "2011-10-03"
+    expected_zone: cold
+    source: "S&P downgrade from AAA + Eurozone sovereign crisis"
+    index: sp500
+    confirmed_by: ["vix_spike", "credit_spread_widening"]
+
+  - label: "2015–16 China-growth-scare / RMB devaluation low"
+    market: us
+    date: "2016-02-11"
+    expected_zone: cold
+    source: "China devaluation panic, S&P -14% from Jul 2015 high"
+    index: sp500
+    confirmed_by: ["vix_spike", "oil_crash"]
+
+  - label: "2018 Christmas crash bottom"
+    market: us
+    date: "2018-12-24"
+    expected_zone: cold
+    source: "S&P -20% from Sep peak, Fed rate-hike fear + trade war"
+    index: sp500
+    confirmed_by: ["vix_spike", "credit_spread_widening"]
+
+  - label: "COVID liquidity crash bottom"
+    market: us
+    date: "2020-03-23"
+    expected_zone: cold
+    source: "COVID global lockdown, VIX 82, real rates spiked, USD scramble"
+    index: sp500
+    confirmed_by: ["vix_extreme", "credit_spread_extreme"]
+
+  - label: "ARK / SPAC / stimmy retail peak"
+    market: us
+    date: "2021-02-12"
+    expected_zone: hot
+    source: "CAPE near all-time-high, retail euphoria, ARK ATH"
+    index: sp500
+    confirmed_by: ["cape_extreme", "retail_volume_spike"]
+
+  - label: "2022 Fed hiking-cycle trough (pre-pivot)"
+    market: us
+    date: "2022-10-12"
+    expected_zone: cold
+    source: "S&P -25% YTD, 10Y at 4%, Fed still hiking"
+    index: sp500
+    confirmed_by: ["real_yield_spike", "nfci_tight"]
+
+  - label: "2023 regional-bank crisis low (SVB)"
+    market: us
+    date: "2023-10-27"
+    expected_zone: cold
+    source: "SVB / regional-bank crisis, credit tightening fears"
+    index: sp500
+    confirmed_by: ["hy_oas_widening"]
+
+  - label: "2024 pre-9.24 A-share stimulus (US side)"
+    market: us
+    date: "2024-09-23"
+    expected_zone: mid
+    source: "US itself was mid-temp at this date; CN stimulus came 2024-09-24"
+    index: sp500
+    confirmed_by: []
+
+  - label: "AI-led valuation new highs"
+    market: us
+    date: "2024-12-31"
+    expected_zone: hot
+    source: "AI theme drives S&P to ATH, CAPE >35"
+    index: sp500
+    confirmed_by: ["cape_extreme"]
+
+  # ========================= CN =========================
+  - label: "A-shares 2015 leveraged-bull peak"
+    market: cn
+    date: "2015-06-12"
+    expected_zone: hot
+    source: "CSI300 6500 peak, leveraged retail mania, margin ATH"
+    index: csi300
+    confirmed_by: ["margin_balance_ath"]
+
+  - label: "2016 circuit-breaker / RMB devaluation crash"
+    market: cn
+    date: "2016-01-28"
+    expected_zone: cold
+    source: "Circuit-breaker triggered twice, CSI300 -47% from 2015 high"
+    index: csi300
+    confirmed_by: ["pb_near_low"]
+
+  - label: "A-shares 2018 trade-war bottom"
+    market: cn
+    date: "2018-12-28"
+    expected_zone: cold
+    source: "CSI300 -28% from 2018 high, US-China trade war, earnings downgrade"
+    index: csi300
+    confirmed_by: ["pb_at_decade_low"]
+
+  - label: "2020 COVID A-share low"
+    market: cn
+    date: "2020-03-23"
+    expected_zone: cold
+    source: "COVID lockdown, CSI300 fell 15% from Jan high"
+    index: csi300
+    confirmed_by: ["margin_balance_low"]
+
+  - label: "2021 core-asset huddle peak (baijiu/pharma)"
+    market: cn
+    date: "2021-02-10"
+    expected_zone: hot
+    source: "Kweichow Moutai 2600+ CNY, core-asset抱团高峰"
+    index: csi300
+    confirmed_by: ["north_flow_peak"]
+
+  - label: "2022 zero-COVID / property trough"
+    market: cn
+    date: "2022-10-31"
+    expected_zone: cold
+    source: "Shanghai lockdown, zero-COVID, 20th Congress uncertainty, property crisis"
+    index: csi300
+    confirmed_by: ["pb_extreme_low"]
+
+  - label: "2024 pre-Spring-Festival correction low"
+    market: cn
+    date: "2024-02-05"
+    expected_zone: cold
+    source: "CSI300 near 5Y low, margin liquidation cascade"
+    index: csi300
+    confirmed_by: ["margin_balance_trough"]
+
+  - label: "A-shares 2024 pre-9.24 stimulus"
+    market: cn
+    date: "2024-09-23"
+    expected_zone: cold
+    source: "CSI300 at 5Y low, pre-stimulus despair, turnover near multi-year low"
+    index: csi300
+    confirmed_by: ["turnover_trough"]
+
+  # ========================= HK =========================
+  - label: "2015 connect-driven bull peak"
+    market: hk
+    date: "2015-04-27"
+    expected_zone: hot
+    source: "H-share mania via Stock Connect, HSI at 28442"
+    index: hsi
+    confirmed_by: ["southbound_flow_peak"]
+
+  - label: "2016 HK crash bottom (A-share meltdown spillover)"
+    market: hk
+    date: "2016-01-20"
+    expected_zone: cold
+    source: "HSI -36% from 2015 high, RMB devaluation + China circuit-breaker"
+    index: hsi
+    confirmed_by: ["southbound_outflow"]
+
+  - label: "2018 trade-war / HKD peg defence low"
+    market: hk
+    date: "2018-10-30"
+    expected_zone: cold
+    source: "HSI -25%, southbound fled, HKMA defending USD peg"
+    index: hsi
+    confirmed_by: ["hibor_spike", "southbound_outflow"]
+
+  - label: "2020 COVID HK bottom"
+    market: hk
+    date: "2020-03-23"
+    expected_zone: cold
+    source: "Global COVID lockdown, HSI at 21696"
+    index: hsi
+    confirmed_by: ["hibor_spike"]
+
+  - label: "2021 southbound surge / tech mania peak"
+    market: hk
+    date: "2021-02-17"
+    expected_zone: hot
+    source: "Record southbound daily inflow, HSI at 31084, Tencent/Meituan ATH"
+    index: hsi
+    confirmed_by: ["southbound_flow_ath"]
+
+  - label: "2022 HSI 25-year low (property + liquidity crisis)"
+    market: hk
+    date: "2022-10-31"
+    expected_zone: cold
+    source: "HSI at 14687, Country Garden default fears, north-south capital flight"
+    index: hsi
+    confirmed_by: ["ewh_yield_extreme", "hibor_spike"]
+
+  - label: "2024 pre-recovery HK low"
+    market: hk
+    date: "2024-01-22"
+    expected_zone: cold
+    source: "HSI below 15000, China growth pessimism, foreign capital exodus"
+    index: hsi
+    confirmed_by: ["ewh_yield_extreme"]
+
+  - label: "2024 9.24 policy-pivot surge"
+    market: hk
+    date: "2024-10-10"
+    expected_zone: mid
+    source: "Sentiment 93° (south flow) but valuation 17° (cheap) → honest multi-factor mid reading"
+    index: hsi
+    confirmed_by: ["multi_factor_compromise"]

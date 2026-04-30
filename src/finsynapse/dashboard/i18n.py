@@ -224,6 +224,33 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "th_rule": {"zh": "规则", "en": "rule"},
     "th_severity": {"zh": "严重度", "en": "severity"},
     "th_detail": {"zh": "详情", "en": "detail"},
+    # --- Validation page ---
+    "section_validation": {"zh": "温度验证", "en": "Validation"},
+    "val_no_report": {
+        "zh": "暂无验证报告。请先运行 `uv run python scripts/run_validation.py` 生成报告。",
+        "en": "No validation report yet. Run `uv run python scripts/run_validation.py` first.",
+    },
+    "val_gate_passed": {
+        "zh": "✅ Gate 通过 — 多因子温度在 {n}/{total} 个市场中击败 PE 单因子基准。",
+        "en": "✅ Gate passed — multi-factor beats PE single-factor in {n}/{total} markets.",
+    },
+    "val_gate_failed": {
+        "zh": "❌ Gate 未通过 — 多因子温度在 {n}/{total} 个市场中未击败 PE 单因子基准。建议重新审视权重和指标选择。",
+        "en": "❌ Gate failed — multi-factor does not beat PE in {n}/{total} markets. Re-examine weights.",
+    },
+    "val_hit_rate_title": {"zh": "拐点命中率 — 各控制器×市场", "en": "Pivot hit rate — by controller × market"},
+    "val_pivot_table_title": {"zh": "拐点明细 — 各控制器温度读数", "en": "Pivot detail — temperature by controller"},
+    "val_temp_vs_return": {"zh": "温度 vs 前瞻收益", "en": "Temperature vs forward return"},
+    "val_zone_heatmap_title": {"zh": "温度区间收益分布热力图", "en": "Temperature-zone return heatmap"},
+    "val_forward_correlation": {"zh": "前瞻相关性 (Spearman ρ)", "en": "Forward correlation (Spearman ρ)"},
+    "val_zone_distribution": {"zh": "温度区间收益分布", "en": "Return by temperature zone"},
+    "val_report_meta": {
+        "zh": "报告生成于 {date} · {evaluated}/{total} 个拐点被评估",
+        "en": "Report generated {date} · {evaluated}/{total} pivots evaluated",
+    },
+    "val_section_pivots": {"zh": "历史拐点验证", "en": "Historical pivot validation"},
+    "val_section_forward": {"zh": "前瞻预测力", "en": "Forward predictive power"},
+    "val_section_gate": {"zh": "Gate 结论", "en": "Gate result"},
 }
 
 # Divergence pair descriptions: stored canonically in English in

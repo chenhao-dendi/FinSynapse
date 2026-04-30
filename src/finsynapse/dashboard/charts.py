@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from finsynapse.dashboard.i18n import DEFAULT_LANG, t, translate_div
+from finsynapse.dashboard.i18n import DEFAULT_LANG, t
 
 # Shared palette aligned with the redesigned UI (Stitch reference).
 #   navy  — cold / valuation / CN accent
@@ -322,46 +322,231 @@ def divergence_recent(div_df: pd.DataFrame, n: int = 15, lang: str = DEFAULT_LAN
         fig = go.Figure()
         fig.add_annotation(text=t("no_divergence", lang), x=0.5, y=0.5, showarrow=False, font=dict(size=14))
         fig.update_layout(height=240, paper_bgcolor=COLOR_BG, font=dict(family=FONT_FAMILY))
-        return fig
+    return fig
 
-    df = div_df[div_df["is_divergent"]].copy()
-    df["date"] = pd.to_datetime(df["date"])
-    cutoff = df["date"].max() - pd.Timedelta(days=90)
-    df = df[df["date"] >= cutoff].nlargest(n * 4, "strength")
-    df["description_localized"] = df["description"].map(lambda d: translate_div(d, lang))
+
+def validation_hit_rate_bar(hit_rate_table: dict, lang: str = DEFAULT_LANG) -> go.Figure:
+    """Bar chart comparing directional hit rates across controllers × markets."""
+    controllers = list(hit_rate_table.keys())
+    market_order = ["us", "cn", "hk"]
+    display_names = [c.replace("single-factor", "SF").replace("single-point", "SP") for c in controllers]
+    market_colors_map = {"us": COLOR_HOT, "cn": COLOR_COLD, "hk": COLOR_MID}
 
     fig = go.Figure()
-    palette = {
-        "sp500_vix": COLOR_HOT,
-        "us10y_dxy": "#F59E0B",
-        "gold_real_rate": COLOR_MID,
-        "sp500_us10y": COLOR_VALUATION,
-        "hsi_dxy": COLOR_LIQUIDITY,
-        "csi300_volume": "#06B6D4",
-        "hsi_southbound": "#EC4899",
-    }
-    for pair, group in df.groupby("pair_name"):
+    for market in market_order:
+        rates = []
+        for ctrl in controllers:
+            m = hit_rate_table.get(ctrl, {}).get(market, {})
+            rates.append(m.get("directional_rate", 0) * 100)
         fig.add_trace(
-            go.Scatter(
-                x=group["date"],
-                y=group["strength"],
-                mode="markers",
-                name=pair,
-                marker=dict(size=8, color=palette.get(pair, "#6B7280"), line=dict(width=0.5, color="#374151")),
-                hovertemplate=("%{x|%Y-%m-%d}<br>" + pair + "<br>strength=%{y:.4f}<br>%{customdata}<extra></extra>"),
-                customdata=group["description_localized"],
+            go.Bar(
+                name=market.upper(),
+                x=display_names,
+                y=rates,
+                marker_color=market_colors_map.get(market, "#6B7280"),
+                text=[f"{r:.0f}%" for r in rates],
+                textposition="outside",
             )
         )
 
     fig.update_layout(
-        title=dict(text=f"<b>{t('chart_recent_div', lang)}</b>", font=dict(size=13, color="#1c1b1b")),
-        height=280,
-        margin=dict(t=44, b=30, l=50, r=20),
+        barmode="group",
+        title=dict(text=f"<b>{t('val_hit_rate_title', lang)}</b>", font=dict(size=14, color="#1c1b1b")),
+        height=360,
+        margin=dict(t=50, b=40, l=50, r=20),
         paper_bgcolor=COLOR_BG,
         plot_bgcolor=COLOR_PLOT_BG,
-        xaxis=dict(title=None, gridcolor="rgba(0,0,0,0.04)", linecolor="rgba(0,0,0,0.08)"),
-        yaxis=dict(title=t("th_strength", lang), gridcolor="rgba(0,0,0,0.06)", linecolor="rgba(0,0,0,0.08)"),
+        yaxis=dict(title="%", range=[0, 110], gridcolor="rgba(0,0,0,0.06)", zerolinecolor="rgba(0,0,0,0.08)"),
+        xaxis=dict(gridcolor="rgba(0,0,0,0.04)"),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=11)),
         font=dict(family=FONT_FAMILY, color="#1c1b1b"),
+    )
+    return fig
+
+
+def validation_forward_scatter(
+    forward_rows: list[dict],
+    market: str,
+    horizon: str = "3m",
+    lang: str = DEFAULT_LANG,
+) -> go.Figure:
+    """Scatter plot: temperature vs forward return for one market+horizon."""
+    xs = [r["temperature"] for r in forward_rows if r["market"] == market and r[f"return_{horizon}"] is not None]
+    ys = [r[f"return_{horizon}"] for r in forward_rows if r["market"] == market and r[f"return_{horizon}"] is not None]
+
+    if not xs:
+        fig = go.Figure()
+        fig.add_annotation(text=t("no_data_card", lang), x=0.5, y=0.5, showarrow=False, font=dict(size=14))
+        fig.update_layout(height=300, paper_bgcolor=COLOR_BG, font=dict(family=FONT_FAMILY))
+        return fig
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=xs,
+            y=ys,
+            mode="markers",
+            marker=dict(size=6, color=[temp_color(x) for x in xs], opacity=0.65, line=dict(width=0.5, color="#374151")),
+            hovertemplate=f"temp=%{{x:.1f}}°<br>{horizon} return=%{{y:.2%}}<extra></extra>",
+        )
+    )
+
+    # Add horizontal zero line
+    fig.add_hline(y=0, line=dict(color="rgba(0,0,0,0.15)", width=1))
+
+    # Add LOESS-ish trend via lowess approximation (rolling mean of y by x)
+    if len(xs) >= 30:
+        df = pd.DataFrame({"x": xs, "y": ys}).sort_values("x")
+        df["y_smooth"] = df["y"].rolling(50, min_periods=20, center=True).mean()
+        fig.add_trace(
+            go.Scatter(
+                x=df["x"],
+                y=df["y_smooth"],
+                mode="lines",
+                line=dict(color="#1c1b1b", width=2),
+                name="trend",
+                hovertemplate="temp=%{x:.1f}°<br>smoothed=%{y:.2%}<extra></extra>",
+            )
+        )
+
+    fig.update_layout(
+        title=dict(
+            text=f"<b>{market.upper()} — {t('val_temp_vs_return', lang)} ({horizon})</b>",
+            font=dict(size=13, color="#1c1b1b"),
+        ),
+        height=360,
+        margin=dict(t=50, b=40, l=50, r=20),
+        paper_bgcolor=COLOR_BG,
+        plot_bgcolor=COLOR_PLOT_BG,
+        xaxis=dict(title=t("overall", lang) + " (°)", range=[-5, 105], gridcolor="rgba(0,0,0,0.04)", zeroline=False),
+        yaxis=dict(
+            title=f"{horizon} return", tickformat=".0%", gridcolor="rgba(0,0,0,0.06)", zerolinecolor="rgba(0,0,0,0.08)"
+        ),
+        showlegend=False,
+        font=dict(family=FONT_FAMILY, color="#1c1b1b"),
+    )
+    return fig
+
+
+def validation_zone_heatmap(zone_distribution: dict, lang: str = DEFAULT_LANG) -> go.Figure:
+    """Heatmap of mean returns by temperature zone × time horizon."""
+    zones = list(zone_distribution.keys())
+    horizons = ["1m", "3m", "6m", "12m"]
+    z_matrix: list[list[float | None]] = []
+    z_text: list[list[str]] = []
+
+    for zone in zones:
+        z_data = zone_distribution.get(zone, [])
+        row: list[float | None] = []
+        text_row: list[str] = []
+        for h in horizons:
+            entry = next((e for e in z_data if e.get("horizon") == h), {})
+            mr = entry.get("mean_return")
+            row.append(mr)
+            text_row.append(f"{mr:.2%}" if mr is not None else "N/A")
+        z_matrix.append(row)
+        z_text.append(text_row)
+
+    fig = go.Figure(
+        go.Heatmap(
+            z=z_matrix,
+            x=horizons,
+            y=zones,
+            text=z_text,
+            texttemplate="%{text}",
+            textfont=dict(size=12),
+            colorscale=[
+                [0.0, "#1E3A8A"],
+                [0.3, "#93C5FD"],
+                [0.5, "#F8FAFC"],
+                [0.7, "#FCA5A5"],
+                [1.0, "#DC2626"],
+            ],
+            zmid=0,
+            showscale=True,
+            colorbar=dict(title="mean return", tickformat=".0%"),
+        )
+    )
+
+    fig.update_layout(
+        title=dict(text=f"<b>{t('val_zone_heatmap_title', lang)}</b>", font=dict(size=13, color="#1c1b1b")),
+        height=320,
+        margin=dict(t=50, b=30, l=120, r=40),
+        paper_bgcolor=COLOR_BG,
+        plot_bgcolor=COLOR_PLOT_BG,
+        font=dict(family=FONT_FAMILY, color="#1c1b1b"),
+    )
+    return fig
+
+
+def validation_pivot_table(pivot_results: list[dict], lang: str = DEFAULT_LANG) -> go.Figure:
+    """Table of pivot results with color-coded pass/fail cells.
+
+    Returns a Plotly table figure. `pivot_results` is a list of dicts with:
+    label, market, date, expected_zone, controllers: [{name, overall, ...}].
+    """
+    header = [
+        f"<b>{t('th_date', lang)}</b>",
+        f"<b>{t('select_market', lang).upper()}</b>",
+        "<b>Pivot</b>",
+        "<b>Expected</b>",
+        "<b>Multi-factor</b>",
+        "<b>PE SF</b>",
+        "<b>VIX SP</b>",
+        "<b>60d Mom</b>",
+    ]
+    cells: list[list] = [[] for _ in header]
+
+    for pr in pivot_results:
+        cells[0].append(pr["date"])
+        cells[1].append(pr["market"].upper())
+        cells[2].append(pr["label"])
+        cells[3].append(pr["expected_zone"])
+        ctrl_map = {c["name"]: c for c in pr.get("controllers", [])}
+        for idx, c_name in enumerate(["multi-factor", "PE single-factor", "VIX single-point", "60d momentum"]):
+            c = ctrl_map.get(c_name)
+            if c:
+                status = "✓" if c["directional_pass"] else "✗"
+                cells[4 + idx].append(f"{c['overall']:.0f}° {status}")
+            else:
+                cells[4 + idx].append("—")
+
+    fill_colors: list[list[str]] = []
+    for _col_idx, col_cells in enumerate(cells):
+        col_fills = []
+        for val in col_cells:
+            if "✗" in str(val):
+                col_fills.append("rgba(248,113,113,0.15)")
+            elif "✓" in str(val):
+                col_fills.append("rgba(16,185,129,0.15)")
+            else:
+                col_fills.append("rgba(255,255,255,0.5)")
+        fill_colors.append(col_fills)
+
+    fig = go.Figure(
+        go.Table(
+            header=dict(
+                values=header,
+                fill_color="rgba(0,0,0,0.04)",
+                font=dict(size=11, color="#1c1b1b"),
+                align="left",
+                height=32,
+            ),
+            cells=dict(
+                values=cells,
+                fill_color=fill_colors,
+                font=dict(size=11, color="#1c1b1b"),
+                align="left",
+                height=28,
+            ),
+        )
+    )
+
+    fig.update_layout(
+        title=dict(text=f"<b>{t('val_pivot_table_title', lang)}</b>", font=dict(size=13, color="#1c1b1b")),
+        height=max(240, 30 * len(pivot_results) + 60),
+        margin=dict(t=50, b=20, l=10, r=10),
+        paper_bgcolor=COLOR_BG,
+        font=dict(family=FONT_FAMILY),
     )
     return fig
