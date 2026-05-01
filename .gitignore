@@ -48,3 +48,11 @@ chroma_db/
 .cache/
 *.sqlite
 *.duckdb
+
+# --- Validation pipeline 运行产物（重跑可生成，不入库） ---
+# champion_baseline.json 是审计日志，需要入库（手动 git add 后会被覆盖跟踪）
+scripts/validation_report.json
+scripts/cnn_fear_greed.csv
+
+# --- Worktrees（code-review skill 用的临时隔离 workspace） ---
+.worktrees/

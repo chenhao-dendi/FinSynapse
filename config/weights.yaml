@@ -38,20 +38,22 @@ indicator_weights:
     us_erp:       { weight: 0.30, direction: "-" }
   us_sentiment:
     # VIX is options-implied vol (hedging demand). HY OAS is true credit
-    # risk pricing — historically leads VIX into risk-off (2008, 2020). AAII
-    # / put-call left for Phase 2 if we want a 3rd factor.
-    vix:          { weight: 0.5, direction: "-", window: pct_5y }   # high VIX = fear = cold
-    us_hy_oas:    { weight: 0.5, direction: "-", window: pct_5y }   # high spread = stress = cold
+    # risk pricing — historically leads VIX into risk-off (2008, 2020).
+    # UMich consumer sentiment (UMCSENT): slow-moving consumer psychology
+    # gauge — adds a household-level confidence layer that VIX/OAS miss.
+    vix:                 { weight: 0.40, direction: "-", window: pct_5y }
+    us_hy_oas:           { weight: 0.35, direction: "-", window: pct_5y }
+    us_umich_sentiment:  { weight: 0.25, direction: "+" }
   us_liquidity:
     # Real yield + DXY are correlated (rates drive the dollar) — each gets
     # downweighted vs the historical 50/50 to avoid double-counting. NFCI
-    # is the Chicago Fed's omnibus financial-conditions index and is the
-    # cleanest single liquidity signal; weekly publish, ffill'd to daily.
-    # Curve slope (10Y-3M) deferred — adds late-cycle signal but is also
-    # rate-driven, so risks more multicollinearity until we PCA-orthogonalize.
-    us10y_real_yield: { weight: 0.30, direction: "-" }   # higher real rate = tighter = cold
-    dxy:              { weight: 0.20, direction: "-", window: pct_5y }
-    us_nfci:          { weight: 0.50, direction: "-", window: pct_5y }   # high NFCI = tight = cold
+    # is the Chicago Fed's omnibus financial-conditions index.
+    # WALCL (Fed balance sheet, weekly): captures the QE/QT cycle — balance
+    # sheet expansion = liquidity provision = direction "+".
+    us10y_real_yield: { weight: 0.25, direction: "-" }
+    dxy:              { weight: 0.15, direction: "-", window: pct_5y }
+    us_nfci:          { weight: 0.35, direction: "-", window: pct_5y }
+    us_walcl:         { weight: 0.25, direction: "+", window: pct_5y }
 
   # ============== CN ==============
   cn_valuation:
@@ -86,14 +88,10 @@ indicator_weights:
     hk_ewh_yield_ttm:        { weight: 1.0, direction: "-" }
   hk_sentiment:
     # Southbound 5d net-buy = mainland-side flow into HK.
-    # AH premium index intentionally NOT used: probe 2026-04-29 confirmed
-    # the historical-time-series interfaces (`stock_hk_index_daily_em(HSAHP)`,
-    # `stock_hk_index_value_em(HSAHP)`) all return errors. Only `stock_zh_ah_spot`
-    # works and gives current-day per-stock A/H spot (no history) — would need
-    # to start daily snapshot accumulation to build a usable percentile baseline,
-    # which is months of waiting before any signal. Defer.
-    # PCR likewise unavailable per plan §11.6.
-    cn_south_5d:             { weight: 1.0, direction: "+", window: pct_5y }
+    # VHSI (HSI Volatility Index): HK-native fear gauge, similar to VIX for US.
+    # High VHSI = panic = cold (direction "-"), pct_5y.
+    cn_south_5d:             { weight: 0.60, direction: "+", window: pct_5y }
+    hk_vhsi:                 { weight: 0.40, direction: "-", window: pct_5y }
   hk_liquidity:
     # HKMA defends the USD peg by adjusting HKD liquidity → HIBOR moves
     # independently of Fed Funds (Sep 2018 / Mar 2020 / Aug 2022 all saw

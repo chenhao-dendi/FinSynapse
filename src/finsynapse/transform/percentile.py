@@ -23,8 +23,10 @@ LOWFREQ_INDICATORS = {
     "us_pe_ttm",
     "cn_m2_yoy",
     "cn_social_financing_12m",
+    "us_umich_sentiment",
     # weekly (FRED publishes Wed)
     "us_nfci",
+    "us_walcl",
 }
 
 
