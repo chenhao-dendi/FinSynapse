@@ -40,6 +40,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "sentiment": {"zh": "情绪", "en": "Sentiment"},
     "liquidity": {"zh": "流动性", "en": "Liquidity"},
     "overall": {"zh": "综合", "en": "Overall"},
+    "overall_short": {"zh": "短期温度 (1y)", "en": "Short-term (1y)"},
+    "overall_long": {"zh": "长期温度 (10y)", "en": "Long-term (10y)"},
+    "divergence": {"zh": "短长期分歧", "en": "S-T/L-T divergence"},
     # Plain-language aliases (suggestion B): displayed as a small subtitle next
     # to the canonical factor name, not replacing it. Lets first-time visitors
     # parse the radar without finance background.
@@ -224,6 +227,36 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "th_rule": {"zh": "规则", "en": "rule"},
     "th_severity": {"zh": "严重度", "en": "severity"},
     "th_detail": {"zh": "详情", "en": "detail"},
+    # --- Validation page ---
+    "section_validation": {"zh": "温度验证", "en": "Validation"},
+    "val_no_report": {
+        "zh": "暂无验证报告。请先运行 `uv run python scripts/run_validation.py` 生成报告。",
+        "en": "No validation report yet. Run `uv run python scripts/run_validation.py` first.",
+    },
+    "val_gate_passed": {
+        "zh": "✅ Gate 通过 — 多因子温度在 {n}/{total} 个市场中击败 PE 单因子基准。",
+        "en": "✅ Gate passed — multi-factor beats PE single-factor in {n}/{total} markets.",
+    },
+    "val_gate_failed": {
+        "zh": "❌ Gate 未通过 — 多因子温度在 {n}/{total} 个市场中未击败 PE 单因子基准。建议重新审视权重和指标选择。",
+        "en": "❌ Gate failed — multi-factor does not beat PE in {n}/{total} markets. Re-examine weights.",
+    },
+    "val_hit_rate_title": {"zh": "拐点命中率 — 各控制器×市场", "en": "Pivot hit rate — by controller × market"},
+    "val_pivot_table_title": {"zh": "拐点明细 — 各控制器温度读数", "en": "Pivot detail — temperature by controller"},
+    "val_temp_vs_return": {"zh": "温度 vs 前瞻收益", "en": "Temperature vs forward return"},
+    "val_zone_heatmap_title": {"zh": "温度区间收益分布热力图", "en": "Temperature-zone return heatmap"},
+    "val_forward_correlation": {"zh": "前瞻相关性 (Spearman ρ)", "en": "Forward correlation (Spearman ρ)"},
+    "val_zone_distribution": {"zh": "温度区间收益分布", "en": "Return by temperature zone"},
+    "val_report_meta": {
+        "zh": "报告生成于 {date} · {evaluated}/{total} 个拐点被评估",
+        "en": "Report generated {date} · {evaluated}/{total} pivots evaluated",
+    },
+    "val_section_pivots": {"zh": "历史拐点验证", "en": "Historical pivot validation"},
+    "val_section_forward": {"zh": "前瞻预测力", "en": "Forward predictive power"},
+    "val_section_gate": {"zh": "Gate 结论", "en": "Gate result"},
+    "val_bootstrap_ci": {"zh": "Bootstrap 90% CI", "en": "Bootstrap 90% CI"},
+    "val_anchor_title": {"zh": "FinSynapse vs CNN Fear & Greed", "en": "FinSynapse vs CNN Fear & Greed"},
+    "val_anchor_section": {"zh": "外部锚验证 (CNN F&G)", "en": "External anchor (CNN F&G)"},
 }
 
 # Divergence pair descriptions: stored canonically in English in

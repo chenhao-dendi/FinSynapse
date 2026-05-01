@@ -187,6 +187,49 @@ def dashboard_render(
         typer.secho(f"[dashboard] rendered -> {p} ({p.stat().st_size:,} bytes)", fg=typer.colors.GREEN)
 
 
+@transform_app.command("drift")
+def transform_drift(
+    threshold: float = typer.Option(15.0, "--threshold", "-t", help="Temperature change threshold in degrees"),
+) -> None:
+    """Compare latest temperature vs prior day for abrupt changes."""
+    import pandas as pd
+
+    from finsynapse import config as _cfg
+    from finsynapse.transform.version import drift_check
+
+    silver = _cfg.settings.silver_dir
+    temp_path = silver / "temperature_daily.parquet"
+    if not temp_path.exists():
+        typer.echo("[drift] no temperature data yet — run `transform run` first")
+        return
+
+    temp = pd.read_parquet(temp_path)
+    if temp.empty:
+        typer.echo("[drift] temperature data is empty")
+        return
+
+    temp["date"] = pd.to_datetime(temp["date"])
+    dates = sorted(temp["date"].unique())
+    if len(dates) < 2:
+        typer.echo("[drift] only one date of data — need at least 2")
+        return
+
+    yesterday = temp[temp["date"] == dates[-2]]
+    today = temp[temp["date"] == dates[-1]]
+
+    alerts = drift_check(today, yesterday, threshold=threshold)
+    if not alerts:
+        typer.echo(f"[drift] ✓ no changes exceeding {threshold}°")
+    else:
+        for a in alerts:
+            color = typer.colors.RED if a["alert"] == "zone_crossing" else typer.colors.YELLOW
+            typer.secho(
+                f"[drift] {a['market'].upper()}: {a['yesterday_temp']:.1f}° -> {a['today_temp']:.1f}° "
+                f"(Δ{a['delta']:+.1f}°) [{a['alert']}]",
+                fg=color,
+            )
+
+
 @notify_app.command("check")
 def notify_check() -> None:
     """Detect zone crossings + sub-temp extremes vs yesterday; push if any.

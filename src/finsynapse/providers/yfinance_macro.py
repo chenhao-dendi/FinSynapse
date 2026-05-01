@@ -19,6 +19,7 @@ SYMBOLS: dict[str, str] = {
     "^HSI": "hsi",
     "000300.SS": "csi300",
     "GC=F": "gold_futures",
+    "^VHSI": "hk_vhsi",
 }
 
 
