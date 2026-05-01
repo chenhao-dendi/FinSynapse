@@ -7,6 +7,7 @@ import pandas as pd
 import yaml
 
 from finsynapse import config as _cfg
+from finsynapse.transform.version import snapshot_weights, stamp_version
 
 CONFIG_PATH = Path("config/weights.yaml")
 MARKETS = ("cn", "hk", "us")
@@ -325,6 +326,8 @@ def compute_temperature(percentile_long: pd.DataFrame, cfg: WeightsConfig | None
 def write_silver_temperature(df: pd.DataFrame) -> Path:
     silver = _cfg.settings.silver_dir
     silver.mkdir(parents=True, exist_ok=True)
+    df = stamp_version(df)
     path = silver / "temperature_daily.parquet"
     df.to_parquet(path, index=False)
+    snapshot_weights()
     return path

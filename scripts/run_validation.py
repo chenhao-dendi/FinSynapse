@@ -26,6 +26,7 @@ import yaml
 from finsynapse.transform.normalize import collect_bronze, derive_indicators
 from finsynapse.transform.percentile import compute_percentiles
 from finsynapse.transform.temperature import MARKETS, SUB_NAMES, WeightsConfig, compute_temperature
+from finsynapse.transform.version import ALGO_VERSION
 
 SCRIPTS_DIR = Path(__file__).parent
 PIVOTS_PATH = SCRIPTS_DIR / "backtest_pivots.yaml"
@@ -139,7 +140,9 @@ def _directional_ok(value: float, expected: str) -> bool:
     return 25 <= value <= 75
 
 
-def _build_temperature_from_pct_wide(pct_wide: pd.DataFrame, label: str, indicator: str, direction: str) -> pd.DataFrame:
+def _build_temperature_from_pct_wide(
+    pct_wide: pd.DataFrame, label: str, indicator: str, direction: str
+) -> pd.DataFrame:
     """Build a single-indicator 'temperature' from one percentile column.
 
     Mimics the structure of `compute_temperature` output (date|market|overall|...)
@@ -270,7 +273,9 @@ def _zone_distribution(forward_rows: list[ForwardReturnRow]) -> dict[str, list]:
                     }
                 )
             else:
-                result[zone].append({"horizon": h_label, "mean_return": None, "median_return": None, "win_rate": None, "n": 0})
+                result[zone].append(
+                    {"horizon": h_label, "mean_return": None, "median_return": None, "win_rate": None, "n": 0}
+                )
     return result
 
 
@@ -279,7 +284,11 @@ def _spearman_rho(forward_rows: list[ForwardReturnRow], market: str, horizon: st
     if not SCIPY_AVAILABLE:
         return None
     xs = [r.temperature for r in forward_rows if r.market == market and getattr(r, f"return_{horizon}") is not None]
-    ys = [getattr(r, f"return_{horizon}") for r in forward_rows if r.market == market and getattr(r, f"return_{horizon}") is not None]
+    ys = [
+        getattr(r, f"return_{horizon}")
+        for r in forward_rows
+        if r.market == market and getattr(r, f"return_{horizon}") is not None
+    ]
     if len(xs) < 30:
         return None
     from scipy import stats
@@ -296,18 +305,14 @@ def _hit_rate_table(pivot_results: list[PivotResult]) -> dict:
         table[ctrl] = {}
         for market in list(MARKETS):
             relevant = [
-                pr
-                for pr in pivot_results
-                if pr.market == market and any(c.name == ctrl for c in pr.controllers)
+                pr for pr in pivot_results if pr.market == market and any(c.name == ctrl for c in pr.controllers)
             ]
             if not relevant:
                 continue
             directional_hits = sum(
                 1 for pr in relevant for c in pr.controllers if c.name == ctrl and c.directional_pass
             )
-            strict_hits = sum(
-                1 for pr in relevant for c in pr.controllers if c.name == ctrl and c.strict_pass
-            )
+            strict_hits = sum(1 for pr in relevant for c in pr.controllers if c.name == ctrl and c.strict_pass)
             table[ctrl][market] = {
                 "total": len(relevant),
                 "directional_hits": directional_hits,
@@ -471,7 +476,9 @@ def _compare_external_anchors(
     print()
     print(f"  [ext] CNN F&G pivot alignment: {aligned_count}/{total_compared} directionally aligned")
     if correlation:
-        print(f"  [ext] Spearman ρ(temp, CNN F&G) over {correlation['n']} days: {correlation['spearman_rho']:+.3f} (p={correlation['p_value']:.4f})")
+        print(
+            f"  [ext] Spearman ρ(temp, CNN F&G) over {correlation['n']} days: {correlation['spearman_rho']:+.3f} (p={correlation['p_value']:.4f})"
+        )
 
     return {
         "source": "CNN Fear & Greed Index (edition.cnn.com/markets/fear-and-greed)",
@@ -553,6 +560,92 @@ def _bootstrap_confidence(
     return result
 
 
+def _champion_compare(hit_table: dict) -> dict | None:
+    """Compare current multi-factor hit rates against prior baselines."""
+    baseline_path = SCRIPTS_DIR / "champion_baseline.json"
+    if not baseline_path.exists():
+        return None
+
+    import json as _json
+
+    try:
+        entries = _json.loads(baseline_path.read_text())
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+    if len(entries) < 2:
+        return None
+
+    prior = entries[-2]
+    current = {
+        "us": hit_table.get("multi-factor", {}).get("us", {}).get("directional_rate", 0),
+        "cn": hit_table.get("multi-factor", {}).get("cn", {}).get("directional_rate", 0),
+        "hk": hit_table.get("multi-factor", {}).get("hk", {}).get("directional_rate", 0),
+    }
+    prior_mf = {m: prior.get("markets", {}).get(m, {}).get("directional_rate", 0) for m in MARKETS}
+
+    markets_delta = {}
+    for mkt in MARKETS:
+        markets_delta[mkt] = {
+            "prior_rate": round(prior_mf[mkt], 3),
+            "current_rate": round(current[mkt], 3),
+            "directional_delta": round(current[mkt] - prior_mf[mkt], 3),
+            "prior_date": prior.get("date", "unknown"),
+        }
+
+    return {
+        "n_prior": len(entries) - 1,
+        "markets": markets_delta,
+    }
+
+
+def _write_champion_baseline(report: dict) -> None:
+    """Archive champion performance metrics for version governance.
+
+    Reads existing `champion_baseline.json`, appends current metrics,
+    and writes back. This builds an audit trail of algorithm performance
+    across versions.
+    """
+    import json as _json
+
+    baseline_path = SCRIPTS_DIR / "champion_baseline.json"
+    entries: list[dict] = []
+    if baseline_path.exists():
+        try:
+            entries = _json.loads(baseline_path.read_text())
+        except (json.JSONDecodeError, ValueError):
+            entries = []
+
+    hit = report.get("hit_rate_table", {}).get("multi-factor", {})
+    rho = report.get("spearman_rho", {})
+    gate = report.get("gate", {})
+    bootstrap_ci = report.get("bootstrap_ci", {})
+
+    entry = {
+        "date": report.get("generated", ""),
+        "algo_version": ALGO_VERSION,
+        "gate_passed": gate.get("passed", False),
+        "markets": {
+            m: {
+                "directional_rate": hit.get(m, {}).get("directional_rate", 0),
+                "strict_rate": hit.get(m, {}).get("strict_rate", 0),
+                "spearman_rho_3m": rho.get(m, {}).get("3m", None),
+                "spearman_rho_6m": rho.get(m, {}).get("6m", None),
+                "bootstrap_band_width": bootstrap_ci.get(m, {}).get("mean_band_width", None),
+            }
+            for m in MARKETS
+        },
+    }
+
+    # Don't double-insert same-date entry
+    if entries and entries[-1].get("date") == entry["date"]:
+        entries[-1] = entry
+    else:
+        entries.append(entry)
+
+    baseline_path.write_text(json.dumps(entries, indent=2, ensure_ascii=False))
+
+
 def main() -> int:
     print("=" * 60)
     print("  FinSynapse Phase 1 — Market Temperature Validation")
@@ -608,7 +701,9 @@ def main() -> int:
     pe_temp = pd.concat(pe_frames, ignore_index=True) if pe_frames else pd.DataFrame()
 
     # VIX single-point (US only)
-    vix_temp = _build_temperature_from_pct_wide(pct_wide, "us", "vix", "-") if "vix" in pct_wide.columns else pd.DataFrame()
+    vix_temp = (
+        _build_temperature_from_pct_wide(pct_wide, "us", "vix", "-") if "vix" in pct_wide.columns else pd.DataFrame()
+    )
 
     # 60d momentum
     mom_temp = _build_momentum_temperature(macro)
@@ -622,8 +717,9 @@ def main() -> int:
     print("-" * len(header))
 
     for p in pivot_list:
-        pr = PivotResult(label=p["label"], market=p["market"], date=date.fromisoformat(p["date"]),
-                         expected_zone=p["expected_zone"])
+        pr = PivotResult(
+            label=p["label"], market=p["market"], date=date.fromisoformat(p["date"]), expected_zone=p["expected_zone"]
+        )
         target = date.fromisoformat(p["date"])
 
         controllers_data: list[tuple[str, pd.DataFrame, str | None]] = [
@@ -683,6 +779,18 @@ def main() -> int:
     gate = _gate_check(hit_table, forward_rows, temp)
     print(f"  gate status: {'PASSED' if gate['passed'] else 'FAILED'}")
 
+    # --- Champion baseline comparison ---
+    champion_delta = _champion_compare(hit_table)
+    if champion_delta:
+        print()
+        print(f"  [champion] vs prior baseline (n={champion_delta.get('n_prior', 0)} entries):")
+        for mkt, d in champion_delta.get("markets", {}).items():
+            delta_us = d.get("directional_delta", 0)
+            sign = "+" if delta_us >= 0 else ""
+            print(
+                f"    {mkt.upper()}: directional {sign}{delta_us:.1%} (was {d.get('prior_rate', 0):.1%}, now {d.get('current_rate', 0):.1%})"
+            )
+
     # --- Bootstrap confidence ---
     print("[bootstrap] computing 200-sample Dirichlet bootstrap CI...")
     bootstrap_ci = _bootstrap_confidence(temp)
@@ -731,7 +839,9 @@ def main() -> int:
     print(f"GATE: {gate_status}  ({gate['markets_beaten']}/{gate['total_markets']} markets)")
     for mkt, detail in gate["details"].items():
         status = "✓" if detail["beaten"] else "✗"
-        print(f"  {status} {mkt.upper()}: MF={detail['mf_directional_rate']:.1%} vs PE={detail['pe_directional_rate']:.1%}")
+        print(
+            f"  {status} {mkt.upper()}: MF={detail['mf_directional_rate']:.1%} vs PE={detail['pe_directional_rate']:.1%}"
+        )
 
     # --- Build full report ---
     # Phase 3: external anchor comparison
@@ -739,6 +849,7 @@ def main() -> int:
 
     report = {
         "version": "1.0.0",
+        "algo_version": ALGO_VERSION,
         "generated": date.today().isoformat(),
         "pivots_total": len(pivot_list),
         "pivots_evaluated": sum(len(pr.controllers) > 0 for pr in pivot_results),
@@ -747,9 +858,7 @@ def main() -> int:
         "forward_stats": fwd_stats,
         "zone_distribution": zone_dist,
         "spearman_rho": {
-            market: {
-                label: _spearman_rho(forward_rows, market, label) for label in ["1m", "3m", "6m", "12m"]
-            }
+            market: {label: _spearman_rho(forward_rows, market, label) for label in ["1m", "3m", "6m", "12m"]}
             for market in list(MARKETS)
         },
         "gate": gate,
@@ -763,6 +872,7 @@ def main() -> int:
     }
 
     # Write report
+    _write_champion_baseline(report)
     out_path = SCRIPTS_DIR / "validation_report.json"
     with out_path.open("w") as f:
         json.dump(report, f, indent=2, ensure_ascii=False, default=str)

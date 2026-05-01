@@ -297,6 +297,78 @@ class TestGateLogic:
         assert not gate.passed
 
 
+class TestVersionModule:
+    """Verify version stamping, snapshot, and drift detection."""
+
+    def test_stamp_version_adds_column(self):
+        from finsynapse.transform.version import ALGO_VERSION, stamp_version
+
+        df = pd.DataFrame({"overall": [50.0], "market": ["us"]})
+        stamped = stamp_version(df)
+        assert "algo_version" in stamped.columns
+        assert stamped["algo_version"].iloc[0] == ALGO_VERSION
+
+    def test_stamp_version_empty_frame(self):
+        from finsynapse.transform.version import stamp_version
+
+        df = pd.DataFrame()
+        result = stamp_version(df)
+        assert result.empty
+
+    def test_snapshot_weights_creates_file(self, tmp_path, monkeypatch):
+        import yaml
+
+        from finsynapse.transform.version import snapshot_weights
+
+        # Redirect silver dir to tmp
+        from finsynapse import config as cfg
+
+        monkeypatch.setattr(cfg, "settings", cfg.Settings(data_dir=tmp_path))
+        cfg.settings.silver_dir.mkdir(parents=True, exist_ok=True)
+
+        src = tmp_path / "weights_test.yaml"
+        src.write_text("percentile_window: pct_10y\nsub_weights: {}\nindicator_weights: {}\n")
+        result = snapshot_weights(str(src))
+        assert result is not None
+        assert result.exists()
+
+    def test_drift_check_no_change(self):
+        from finsynapse.transform.version import drift_check
+
+        today = pd.DataFrame({"date": ["2026-01-02"], "market": ["us"], "overall": [50.0]})
+        yesterday = pd.DataFrame({"date": ["2026-01-01"], "market": ["us"], "overall": [51.0]})
+        alerts = drift_check(today, yesterday, threshold=15.0)
+        assert alerts == []
+
+    def test_drift_check_large_move(self):
+        from finsynapse.transform.version import drift_check
+
+        today = pd.DataFrame({"date": ["2026-01-02"], "market": ["us"], "overall": [80.0]})
+        yesterday = pd.DataFrame({"date": ["2026-01-01"], "market": ["us"], "overall": [50.0]})
+        alerts = drift_check(today, yesterday, threshold=15.0)
+        assert len(alerts) == 1
+        assert alerts[0]["alert"] == "zone_crossing"
+
+    def test_compare_snapshots_detects_change(self, tmp_path):
+        import yaml
+
+        from finsynapse.transform.version import compare_snapshots
+
+        prev = tmp_path / "prev.yaml"
+        curr = tmp_path / "curr.yaml"
+        base = {
+            "sub_weights": {"us": {"valuation": 0.4}},
+            "indicator_weights": {"us_valuation": {"vix": {"weight": 0.5, "direction": "-"}}},
+        }
+        prev.write_text(yaml.dump(base))
+        changed = dict(base)
+        changed["indicator_weights"]["us_valuation"]["vix"]["weight"] = 0.6
+        curr.write_text(yaml.dump(changed))
+        diff = compare_snapshots(prev, curr)
+        assert diff["status"] == "diff"
+        assert any("0.5" in c for c in diff.get("changed", []))
+
+
 class TestValidationReportRoundtrip:
     """Verify the validation report JSON roundtrip."""
 
