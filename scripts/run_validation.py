@@ -546,19 +546,22 @@ def _cnn_rating(value: float) -> str:
 
 def _bootstrap_confidence(
     temp: pd.DataFrame,
+    cfg: WeightsConfig,
     n_bootstrap: int = 200,
     seed: int = 42,
 ) -> dict[str, dict]:
     """Bootstrap resample sub-weights using Dirichlet to get temperature CI.
 
-    For each day and each market, resamples sub_weights from
-    Dirichlet(α=sub_weights×scale) 200 times and computes the sampling
-    distribution of overall temperature. Returns per-market dict of
-    { 'lower_5': [...], 'upper_95': [...] } series.
+    For each market, the Dirichlet center IS the production sub_weights
+    from `cfg`, so the resulting CI characterises sensitivity around the
+    actual deployed configuration — not around a hypothetical equal-weight
+    model. Scale factor of 100 means the Dirichlet is concentrated near
+    that point estimate; wider bands mean the temperature is sensitive
+    to small weight perturbations.
 
-    Scale factor of 100 means the Dirichlet is concentrated near the
-    point estimate — wider bands mean the temperature is sensitive to
-    small weight perturbations.
+    Dates where any participating sub-temperature is NaN are dropped from
+    the bootstrap rather than back-filled to neutral (50°), which
+    artificially narrowed the band and biased the mean toward 50°.
     """
     rng = np.random.default_rng(seed)
     scale = 100.0
@@ -569,22 +572,36 @@ def _bootstrap_confidence(
         if sub.empty:
             continue
         sub = sub.set_index("date").sort_index()
-        # Get sub-temp columns and sub-weights from the dataset
-        subs_present = [s for s in SUB_NAMES if s in sub.columns and sub[s].notna().any()]
+
+        # Use the configured sub_weights for this market as the Dirichlet center.
+        # Falls back to equal weights only if the market is missing from cfg
+        # (shouldn't happen with a well-formed weights.yaml).
+        configured = cfg.sub_weights.get(market, {})
+        subs_present = [
+            s
+            for s in SUB_NAMES
+            if s in sub.columns and sub[s].notna().any() and configured.get(s, 0.0) > 0.0
+        ]
         if len(subs_present) < 2:
             continue
 
-        # Use equal sub-weights as the base (no config dependency here)
-        weights = np.ones(len(subs_present)) * scale / len(subs_present)
-        n_dates = len(sub)
+        center = np.array([configured.get(s, 0.0) for s in subs_present], dtype=float)
+        # Renormalize so the Dirichlet center sums to 1, then scale by `scale`.
+        center = center / center.sum()
+        alpha = center * scale
+
+        # Drop rows where any participating sub is NaN — back-filling to 50
+        # would inject neutral readings and bias the bootstrap.
+        sub_matrix = sub[subs_present].dropna(how="any")
+        if sub_matrix.empty:
+            continue
+        n_dates = len(sub_matrix)
+        sub_values = sub_matrix.to_numpy()
 
         boot_samples = np.zeros((n_bootstrap, n_dates))
         for b in range(n_bootstrap):
-            w = rng.dirichlet(weights)
-            overall_sample = np.zeros(n_dates)
-            for i, s_name in enumerate(subs_present):
-                overall_sample += sub[s_name].fillna(50).values * w[i]
-            boot_samples[b] = overall_sample
+            w = rng.dirichlet(alpha)
+            boot_samples[b] = sub_values @ w
 
         lower = np.percentile(boot_samples, 5, axis=0)
         upper = np.percentile(boot_samples, 95, axis=0)
@@ -593,7 +610,13 @@ def _bootstrap_confidence(
         result[market] = {
             "mean_band_width": round(band_width, 1),
             "n_bootstrap": n_bootstrap,
-            "note": f"Typical uncertainty: {round(band_width, 1)}° — sub-weight resampling via Dirichlet(100)",
+            "n_dates": n_dates,
+            "subs_used": subs_present,
+            "center_weights": {s: round(float(c), 4) for s, c in zip(subs_present, center, strict=True)},
+            "note": (
+                f"Typical uncertainty: {round(band_width, 1)}° — "
+                f"Dirichlet({int(scale)}) centered on configured sub_weights"
+            ),
         }
 
     return result
@@ -641,10 +664,18 @@ def _champion_compare(hit_table: dict) -> dict | None:
 def _write_champion_baseline(report: dict) -> None:
     """Archive champion performance metrics for version governance.
 
-    Reads existing `champion_baseline.json`, appends current metrics,
-    and writes back. This builds an audit trail of algorithm performance
-    across versions.
+    A "champion" is, by definition, a run that PASSED the gate — failed
+    runs are not written to the audit trail. Within passing runs, the
+    dedup key is (date, algo_version): re-running the same algo on the
+    same day overwrites; bumping `algo_version` always appends a new
+    entry, so version history is never silently overwritten.
     """
+    gate = report.get("gate", {})
+    if not gate.get("passed", False):
+        # Failed runs don't pollute the champion log. Drift is tracked
+        # separately via run_validation.py output, not via this file.
+        return
+
     import json as _json
 
     baseline_path = SCRIPTS_DIR / "champion_baseline.json"
@@ -657,13 +688,12 @@ def _write_champion_baseline(report: dict) -> None:
 
     hit = report.get("hit_rate_table", {}).get("multi-factor", {})
     rho = report.get("spearman_rho", {})
-    gate = report.get("gate", {})
     bootstrap_ci = report.get("bootstrap_ci", {})
 
     entry = {
         "date": report.get("generated", ""),
         "algo_version": ALGO_VERSION,
-        "gate_passed": gate.get("passed", False),
+        "gate_passed": True,
         "markets": {
             m: {
                 "directional_rate": hit.get(m, {}).get("directional_rate", 0),
@@ -676,10 +706,16 @@ def _write_champion_baseline(report: dict) -> None:
         },
     }
 
-    # Don't double-insert same-date entry
-    if entries and entries[-1].get("date") == entry["date"]:
-        entries[-1] = entry
-    else:
+    # Dedup key: (date, algo_version). Same-day re-run on same version overwrites.
+    # Bumping ALGO_VERSION always appends — version history is preserved.
+    dedup_key = (entry["date"], entry["algo_version"])
+    overwritten = False
+    for i, existing in enumerate(entries):
+        if (existing.get("date"), existing.get("algo_version")) == dedup_key:
+            entries[i] = entry
+            overwritten = True
+            break
+    if not overwritten:
         entries.append(entry)
 
     baseline_path.write_text(json.dumps(entries, indent=2, ensure_ascii=False))
@@ -834,7 +870,7 @@ def main() -> int:
 
     # --- Bootstrap confidence ---
     print("[bootstrap] computing 200-sample Dirichlet bootstrap CI...")
-    bootstrap_ci = _bootstrap_confidence(temp)
+    bootstrap_ci = _bootstrap_confidence(temp, cfg)
     for market, ci in bootstrap_ci.items():
         print(f"  {market.upper()}: mean band width = {ci['mean_band_width']:.1f}° (n={ci['n_bootstrap']})")
 
@@ -880,8 +916,19 @@ def main() -> int:
     print(f"GATE: {gate_status}  ({gate['markets_beaten']}/{gate['total_markets']} markets)")
     for mkt, detail in gate["details"].items():
         status = "✓" if detail["beaten"] else "✗"
+        hit_flag = "✓" if detail["mf_directional_win"] else "✗"
+        rho_flag = "✓" if detail["mf_rho_win"] else "✗"
+        mf_rho = detail.get("mf_rho_3m")
+        pe_rho = detail.get("pe_rho_3m")
+        rho_str = (
+            f"|ρ_MF|={abs(mf_rho):.3f} vs |ρ_PE|={abs(pe_rho):.3f}"
+            if mf_rho is not None and pe_rho is not None
+            else "ρ unavailable"
+        )
         print(
-            f"  {status} {mkt.upper()}: MF={detail['mf_directional_rate']:.1%} vs PE={detail['pe_directional_rate']:.1%}"
+            f"  {status} {mkt.upper()}: "
+            f"hit {hit_flag} (MF={detail['mf_directional_rate']:.1%} vs PE={detail['pe_directional_rate']:.1%})  "
+            f"ρ {rho_flag} ({rho_str})"
         )
 
     # --- Build full report ---

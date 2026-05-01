@@ -114,8 +114,25 @@ def drift_check(
     for market in ["us", "cn", "hk"]:
         if market not in today_latest.index or market not in yesterday_latest.index:
             continue
-        t_today = float(today_latest.loc[market, "overall"])
-        t_yesterday = float(yesterday_latest.loc[market, "overall"])
+        raw_today = today_latest.loc[market, "overall"]
+        raw_yesterday = yesterday_latest.loc[market, "overall"]
+        # NaN means the algorithm failed to produce a temperature. Silently
+        # skipping would mask data outages — emit an explicit data_gap alert
+        # so downstream monitoring sees the failure.
+        if pd.isna(raw_today) or pd.isna(raw_yesterday):
+            alerts.append(
+                {
+                    "market": market,
+                    "today_temp": None if pd.isna(raw_today) else round(float(raw_today), 1),
+                    "yesterday_temp": None if pd.isna(raw_yesterday) else round(float(raw_yesterday), 1),
+                    "delta": None,
+                    "alert": "data_gap",
+                    "algo_version": ALGO_VERSION,
+                }
+            )
+            continue
+        t_today = float(raw_today)
+        t_yesterday = float(raw_yesterday)
         delta = t_today - t_yesterday
         if abs(delta) >= threshold:
             zone_today = "hot" if t_today >= 70 else ("cold" if t_today < 30 else "mid")

@@ -116,10 +116,18 @@ def _sub_temperature(
 
     contrib_list = list(contributions.values())
     contrib_df = pd.concat(contrib_list, axis=1)
+    # Dispersion requires at least 2 non-NaN indicators on a given date.
+    # Filling missing-indicator dispersion to 0 would falsely report "perfect
+    # agreement" when really we just lacked data — biasing confidence high.
+    valid_count = contrib_df.notna().sum(axis=1)
     max_contrib = contrib_df.max(axis=1)
     min_contrib = contrib_df.min(axis=1)
-    dispersion = (max_contrib - min_contrib).fillna(0)
+    dispersion = (max_contrib - min_contrib).where(valid_count >= 2)
     confidence = 1.0 - (dispersion / 50.0).clip(0, 1)
+    # When dispersion is undefined (only one indicator that day), fall back
+    # to the same single-indicator default we use in the early-return branch.
+    confidence = confidence.where(dispersion.notna(), 0.8)
+    confidence = confidence.where(sub_temp.notna())
     return sub_temp, confidence
 
 

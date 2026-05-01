@@ -126,52 +126,6 @@ def main() -> None:
                     else:
                         st.markdown(f"- {label}: N/A")
 
-    # Forward scatter plots
-    forward_rows = []
-    for pr in report.pivot_results:
-        forward_rows.append(
-            {
-                "temperature": next((c.overall for c in pr.controllers if c.name == "multi-factor"), 0),
-                "market": pr.market,
-            }
-        )
-    # For forward scatter we use the zone distribution data; synthesize row-level data
-    # from the pivot temperatures for scatter display
-    scatter_market = st.radio(
-        "Market",
-        options=["us", "cn", "hk"],
-        horizontal=True,
-        format_func=lambda m: m.upper(),
-        label_visibility="collapsed",
-    )
-    scatter_horizon = st.radio(
-        "Horizon",
-        options=["1m", "3m", "6m", "12m"],
-        horizontal=True,
-        index=1,
-        label_visibility="collapsed",
-    )
-
-    # Build synthetic forward rows from pivot data for scatter
-    syn_rows = [
-        {
-            "market": r["market"],
-            "temperature": r["temperature"],
-            "return_1m": None,
-            "return_3m": None,
-            "return_6m": None,
-            "return_12m": None,
-        }
-        for r in forward_rows
-    ]
-    st.plotly_chart(
-        charts.validation_forward_scatter(syn_rows, scatter_market, scatter_horizon, lang),
-        use_container_width=True,
-    )
-    st.caption("Note: scatter shows pivot-point temperatures only. Full forward-return analysis in zone heatmap below.")
-
-    st.divider()
-
     # Zone heatmap
     st.subheader(t("val_zone_distribution", lang))
     st.plotly_chart(
