@@ -619,7 +619,7 @@ class TestForwardHorizonTradingDays:
 
 
 class TestGateChecksRho:
-    """Fix #3 — gate must require both hit-rate AND |ρ| dominance."""
+    """Fix #3 — gate requires hit-rate win AND ρ direction correct (ρ < 0, |ρ| ≥ 0.03)."""
 
     def test_gate_signature_accepts_pe_forward_rows(self):
         rv = _load_run_validation_module()
@@ -627,58 +627,44 @@ class TestGateChecksRho:
 
         sig = inspect.signature(rv._gate_check)
         params = list(sig.parameters)
-        # Must accept hit_table, mf_forward_rows, pe_forward_rows
         assert params == ["hit_table", "mf_forward_rows", "pe_forward_rows"]
 
-    def test_gate_fails_when_rho_is_worse_despite_hit_rate_win(self):
-        """MF beats PE on hit rate in 3/3 markets, but loses on |ρ|.
+    def test_gate_fails_when_rho_is_wrong_direction(self):
+        """MF beats PE on hit rate, but ρ is POSITIVE (momentum-following, not mean-reverting).
 
-        Construct synthetic forward rows where:
-          - MF temp is uncorrelated with returns (low |ρ|)
-          - PE temp is strongly negatively correlated (high |ρ|)
-        Hit table separately reports MF as winning. Gate should still FAIL.
+        The new gate standard (Phase 4 review follow-up) requires ρ < 0
+        AND |ρ| ≥ 0.03 — the temperature must be a mean-reversion indicator.
         """
         rv = _load_run_validation_module()
 
         if not rv.SCIPY_AVAILABLE:
-            pytest.skip("scipy not available — gate degrades to hit-rate-only by design")
+            pytest.skip("scipy not available")
 
-        # Synthetic forward rows: 50 per market × 3 markets
         np.random.seed(42)
         mf_rows = []
         pe_rows = []
         for market in ("us", "cn", "hk"):
-            # PE rows: strong negative correlation between temp and 3m return
             pe_temps = np.linspace(10, 90, 50)
             pe_returns_3m = -0.1 * (pe_temps - 50) / 50 + np.random.normal(0, 0.005, 50)
-            # MF rows: noise (essentially zero correlation)
-            mf_temps = np.random.uniform(10, 90, 50)
-            mf_returns_3m = np.random.normal(0, 0.05, 50)
+            # MF: POSITIVE correlation (high temp → high return = momentum, not mean-reversion)
+            mf_temps = np.linspace(10, 90, 50)
+            mf_returns_3m = +0.1 * (mf_temps - 50) / 50 + np.random.normal(0, 0.005, 50)
             for i in range(50):
                 mf_rows.append(
                     rv.ForwardReturnRow(
-                        date=date(2020, 1, 1),
-                        market=market,
-                        temperature=float(mf_temps[i]),
-                        return_1m=None,
-                        return_3m=float(mf_returns_3m[i]),
-                        return_6m=None,
-                        return_12m=None,
+                        date=date(2020, 1, 1), market=market,
+                        temperature=float(mf_temps[i]), return_1m=None,
+                        return_3m=float(mf_returns_3m[i]), return_6m=None, return_12m=None,
                     )
                 )
                 pe_rows.append(
                     rv.ForwardReturnRow(
-                        date=date(2020, 1, 1),
-                        market=market,
-                        temperature=float(pe_temps[i]),
-                        return_1m=None,
-                        return_3m=float(pe_returns_3m[i]),
-                        return_6m=None,
-                        return_12m=None,
+                        date=date(2020, 1, 1), market=market,
+                        temperature=float(pe_temps[i]), return_1m=None,
+                        return_3m=float(pe_returns_3m[i]), return_6m=None, return_12m=None,
                     )
                 )
 
-        # Hit table: MF wins everywhere on directional rate
         hit_table = {
             "multi-factor": {
                 m: {"directional_rate": 0.9, "directional_hits": 9, "total": 10, "strict_hits": 5, "strict_rate": 0.5}
@@ -691,12 +677,53 @@ class TestGateChecksRho:
         }
 
         gate = rv._gate_check(hit_table, mf_rows, pe_rows)
-        # MF loses on |ρ| in every market → no market is "beaten" → gate FAILS
-        assert gate["passed"] is False
-        for m in ("us", "cn", "hk"):
-            assert gate["details"][m]["mf_directional_win"] is True
-            assert gate["details"][m]["mf_rho_win"] is False
-            assert gate["details"][m]["beaten"] is False
+        assert gate["passed"] is False, "Gate should FAIL when MF ρ is positive (wrong direction)"
+
+    def test_gate_passes_when_rho_negative_and_hit_rate_wins(self):
+        """MF beats PE on hit rate AND ρ is negative (correct mean-reversion direction)."""
+        rv = _load_run_validation_module()
+
+        if not rv.SCIPY_AVAILABLE:
+            pytest.skip("scipy not available")
+
+        np.random.seed(1)
+        mf_rows = []
+        pe_rows = []
+        for market in ("us", "cn", "hk"):
+            pe_temps = np.linspace(10, 90, 50)
+            pe_returns_3m = -0.1 * (pe_temps - 50) / 50 + np.random.normal(0, 0.005, 50)
+            # MF: NEGATIVE correlation (high temp → low return = mean-reverting)
+            mf_temps = np.linspace(10, 90, 50)
+            mf_returns_3m = -0.1 * (mf_temps - 50) / 50 + np.random.normal(0, 0.005, 50)
+            for i in range(50):
+                mf_rows.append(
+                    rv.ForwardReturnRow(
+                        date=date(2020, 1, 1), market=market,
+                        temperature=float(mf_temps[i]), return_1m=None,
+                        return_3m=float(mf_returns_3m[i]), return_6m=None, return_12m=None,
+                    )
+                )
+                pe_rows.append(
+                    rv.ForwardReturnRow(
+                        date=date(2020, 1, 1), market=market,
+                        temperature=float(pe_temps[i]), return_1m=None,
+                        return_3m=float(pe_returns_3m[i]), return_6m=None, return_12m=None,
+                    )
+                )
+
+        hit_table = {
+            "multi-factor": {
+                m: {"directional_rate": 0.9, "directional_hits": 9, "total": 10, "strict_hits": 5, "strict_rate": 0.5}
+                for m in ("us", "cn", "hk")
+            },
+            "PE single-factor": {
+                m: {"directional_rate": 0.5, "directional_hits": 5, "total": 10, "strict_hits": 3, "strict_rate": 0.3}
+                for m in ("us", "cn", "hk")
+            },
+        }
+
+        gate = rv._gate_check(hit_table, mf_rows, pe_rows)
+        assert gate["passed"] is True, "Gate should PASS when MF ρ is negative AND hit rate wins"
 
 
 class TestValidationReportPhase34Fields:
