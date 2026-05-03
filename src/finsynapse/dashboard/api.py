@@ -127,6 +127,34 @@ def _build_indicators_latest(data: DashboardData) -> dict[str, Any]:
     }
 
 
+def _build_divergence_latest(data: DashboardData, window_days: int = 90) -> dict[str, Any]:
+    if data.divergence.empty:
+        return {"schema_version": API_SCHEMA_VERSION, "window_days": window_days, "signals": []}
+    df = data.divergence.copy()
+    df["date"] = pd.to_datetime(df["date"])
+    cutoff = df["date"].max() - pd.Timedelta(days=window_days)
+    active = df[(df["is_divergent"]) & (df["date"] >= cutoff)].sort_values("strength", ascending=False)
+    # De-dup by pair, keep the strongest occurrence (mirrors dashboard logic).
+    active = active.drop_duplicates(subset="pair_name", keep="first")
+    signals = [
+        {
+            "date": row["date"].strftime("%Y-%m-%d"),
+            "pair": str(row["pair_name"]),
+            "strength": _safe_float(row.get("strength")),
+            "description": str(row.get("description", "")),
+            "a_change_pct": _safe_float(row["a_change"]) * 100 if not pd.isna(row.get("a_change")) else None,
+            "b_change_pct": _safe_float(row["b_change"]) * 100 if not pd.isna(row.get("b_change")) else None,
+        }
+        for _, row in active.iterrows()
+    ]
+    return {
+        "schema_version": API_SCHEMA_VERSION,
+        "window_days": window_days,
+        "asof": active["date"].max().strftime("%Y-%m-%d") if not active.empty else None,
+        "signals": signals,
+    }
+
+
 def write_all(data: DashboardData, out_dir: Path) -> list[Path]:
     api_dir = out_dir / "api"
     api_dir.mkdir(parents=True, exist_ok=True)
@@ -143,6 +171,12 @@ def write_all(data: DashboardData, out_dir: Path) -> list[Path]:
     if indicators["indicators"]:
         p = api_dir / "indicators_latest.json"
         p.write_text(json.dumps(indicators, indent=2, ensure_ascii=False))
+        written.append(p)
+
+    divergence = _build_divergence_latest(data)
+    if divergence["signals"]:
+        p = api_dir / "divergence_latest.json"
+        p.write_text(json.dumps(divergence, indent=2, ensure_ascii=False))
         written.append(p)
 
     asof = temp_latest["asof"]

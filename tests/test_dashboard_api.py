@@ -128,3 +128,16 @@ def test_indicators_latest_payload(tmp_path: Path):
     assert by_name["vix"]["value"] == 18.5
     assert by_name["vix"]["percentile_5y"] == 45.0
     assert by_name["vix"]["percentile_10y"] == 50.0
+
+
+def test_divergence_latest_payload(tmp_path: Path):
+    data = _sample_dashboard_data(tmp_path)
+    write_all(data, tmp_path / "dist")
+    payload = json.loads((tmp_path / "dist" / "api" / "divergence_latest.json").read_text())
+    assert payload["window_days"] == 90
+    assert len(payload["signals"]) == 1
+    sig = payload["signals"][0]
+    assert sig["pair"] == "sp500_vix"
+    assert sig["strength"] == 0.55
+    assert sig["a_change_pct"] == 2.0
+    assert sig["b_change_pct"] == 10.0
