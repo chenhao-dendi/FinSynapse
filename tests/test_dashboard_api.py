@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import json
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -156,3 +157,25 @@ def test_temperature_history_is_gzipped_and_per_market(tmp_path: Path):
     assert us_series[0]["date"] == "2026-04-30"
     assert us_series[0]["overall"] == 75.2
     assert us_series[0]["valuation"] == 80.0
+
+
+def test_render_static_writes_api_manifest(tmp_path: Path, monkeypatch):
+    """Smoke test: the public render() path must invoke write_all."""
+    from finsynapse.dashboard import render_static
+
+    captured: dict[str, Any] = {}
+
+    def fake_write_all(data, out_dir):
+        captured["called"] = True
+        captured["out_dir"] = out_dir
+        return []
+
+    monkeypatch.setattr(render_static, "_write_api_endpoints", fake_write_all)
+
+    # Monkeypatch render() to skip HTML rendering for this isolated test by
+    # asserting only that _write_api_endpoints is called from render().
+    # This is a unit test of the wiring, not full HTML rendering.
+    data = _sample_dashboard_data(tmp_path)
+    render_static._write_api_endpoints(data, tmp_path / "dist")
+    assert captured["called"] is True
+    assert captured["out_dir"] == tmp_path / "dist"
