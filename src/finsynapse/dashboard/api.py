@@ -103,6 +103,30 @@ def _build_temperature_latest(data: DashboardData) -> dict[str, Any]:
     }
 
 
+def _build_indicators_latest(data: DashboardData) -> dict[str, Any]:
+    if data.percentile.empty:
+        return {"schema_version": API_SCHEMA_VERSION, "asof": None, "indicators": []}
+    pct = data.percentile.copy()
+    pct["date"] = pd.to_datetime(pct["date"])
+    asof = pct["date"].max()
+    snap = pct[pct["date"] == asof].sort_values("indicator")
+    indicators: list[dict[str, Any]] = []
+    for _, row in snap.iterrows():
+        indicators.append(
+            {
+                "indicator": str(row["indicator"]),
+                "value": _safe_float(row.get("value")),
+                "percentile_5y": _safe_float(row.get("pct_5y")),
+                "percentile_10y": _safe_float(row.get("pct_10y")),
+            }
+        )
+    return {
+        "schema_version": API_SCHEMA_VERSION,
+        "asof": asof.strftime("%Y-%m-%d"),
+        "indicators": indicators,
+    }
+
+
 def write_all(data: DashboardData, out_dir: Path) -> list[Path]:
     api_dir = out_dir / "api"
     api_dir.mkdir(parents=True, exist_ok=True)
@@ -114,6 +138,12 @@ def write_all(data: DashboardData, out_dir: Path) -> list[Path]:
     p = api_dir / "temperature_latest.json"
     p.write_text(json.dumps(temp_latest, indent=2, ensure_ascii=False))
     written.append(p)
+
+    indicators = _build_indicators_latest(data)
+    if indicators["indicators"]:
+        p = api_dir / "indicators_latest.json"
+        p.write_text(json.dumps(indicators, indent=2, ensure_ascii=False))
+        written.append(p)
 
     asof = temp_latest["asof"]
     endpoints = [p.name for p in written] + ["manifest.json"]

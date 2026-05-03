@@ -116,3 +116,15 @@ def test_temperature_latest_handles_empty_data(tmp_path: Path):
     data = _empty_dashboard_data(tmp_path)
     paths = write_all(data, tmp_path / "dist")
     assert paths == []
+
+
+def test_indicators_latest_payload(tmp_path: Path):
+    data = _sample_dashboard_data(tmp_path)
+    write_all(data, tmp_path / "dist")
+    payload = json.loads((tmp_path / "dist" / "api" / "indicators_latest.json").read_text())
+    assert payload["asof"] == "2026-04-30"
+    by_name = {item["indicator"]: item for item in payload["indicators"]}
+    assert "vix" in by_name
+    assert by_name["vix"]["value"] == 18.5
+    assert by_name["vix"]["percentile_5y"] == 45.0
+    assert by_name["vix"]["percentile_10y"] == 50.0
