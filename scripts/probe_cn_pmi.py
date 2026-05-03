@@ -14,7 +14,6 @@ from __future__ import annotations
 import sys
 import traceback
 
-
 CANDIDATES = [
     "macro_china_pmi",
     "macro_china_pmi_yearly",

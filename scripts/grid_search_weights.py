@@ -24,7 +24,6 @@ import json
 import sys
 from dataclasses import asdict, dataclass
 from datetime import date
-from itertools import product
 from pathlib import Path
 
 import pandas as pd
@@ -45,7 +44,7 @@ PIVOTS_PATH = SCRIPTS_DIR / "backtest_pivots.yaml"
 
 def enumerate_weights(step: float = 0.05) -> list[tuple[float, float, float]]:
     """Yield (val, sent, liq) tuples summing to 1.0 on a step-spaced grid."""
-    steps = int(round(1.0 / step))
+    steps = round(1.0 / step)
     out: list[tuple[float, float, float]] = []
     for i in range(steps + 1):
         for j in range(steps + 1 - i):
@@ -54,10 +53,10 @@ def enumerate_weights(step: float = 0.05) -> list[tuple[float, float, float]]:
                 continue
             v = round(i * step, 4)
             s = round(j * step, 4)
-            l = round(k * step, 4)
-            if v == 0 or s == 0 or l == 0:
+            liq = round(k * step, 4)
+            if v == 0 or s == 0 or liq == 0:
                 continue  # skip degenerate single/double-factor combos
-            out.append((v, s, l))
+            out.append((v, s, liq))
     return out
 
 
@@ -108,11 +107,7 @@ def evaluate_weight(
         if directional_ok(overall, p["expected_zone"]):
             directional_hits += 1
         zone = p["expected_zone"]
-        if zone == "hot" and overall >= 70:
-            strict_hits += 1
-        elif zone == "cold" and overall < 30:
-            strict_hits += 1
-        elif zone == "mid" and 30 <= overall < 70:
+        if (zone == "hot" and overall >= 70) or (zone == "cold" and overall < 30) or (zone == "mid" and 30 <= overall < 70):
             strict_hits += 1
 
     forward = compute_forward_returns(macro, temp[temp["market"] == market])
@@ -138,7 +133,7 @@ def _hash_run(payload: dict) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Sub_weight grid search for FinSynapse")
-    parser.add_argument("--market", choices=list(MARKETS) + ["all"], default="us")
+    parser.add_argument("--market", choices=[*list(MARKETS), "all"], default="us")
     parser.add_argument("--step", type=float, default=0.05)
     args = parser.parse_args()
 
@@ -169,7 +164,7 @@ def main() -> int:
         rows.sort(key=lambda r: (-(r.directional_rate or 0), r.rho_3m or 0))
         all_results[market] = [asdict(r) for r in rows]
         top = rows[:5]
-        print(f"  Top 5 by directional_rate (then ρ_3m):")
+        print("  Top 5 by directional_rate (then ρ_3m):")
         for r in top:
             print(
                 f"    val={r.valuation:.2f} sent={r.sentiment:.2f} liq={r.liquidity:.2f}  "
@@ -192,7 +187,7 @@ def main() -> int:
     RESULTS_PATH.write_text(json.dumps(existing, indent=2, ensure_ascii=False))
     print()
     print(f"[audit] appended -> {RESULTS_PATH}  (run_hash={run_payload['run_hash']})")
-    print(f"[audit] cite this hash in any future commit that changes config/weights.yaml")
+    print("[audit] cite this hash in any future commit that changes config/weights.yaml")
     return 0
 
 

@@ -46,10 +46,8 @@ def _probe_fred_t10y3m() -> bool:
         end = date.today()
         start = end - timedelta(days=5500)
         df = provider.fetch(FetchRange(start=start, end=end))
-        # Filter to T10Y3M by indicator column
-        df_t10 = df[df["indicator"] == "us10y_real_yield"].copy()
 
-        # Actually T10Y3M isn't mapped in SERIES. Let me check what indicators FRED has.
+        # T10Y3M isn't mapped in SERIES. Let me check what indicators FRED has.
         print(f"[probe] FRED returned indicators: {sorted(df['indicator'].unique())}")
         print(f"  total rows: {len(df)}")
         if df.empty:
@@ -109,7 +107,7 @@ def _probe_direct_t10y3m(api_key: str) -> bool:
         normal = ((s >= 0.5) & (s < 2.0)).sum()
         steep = (s >= 2.0).sum()
         total = len(s)
-        print(f"  regime breakdown:")
+        print("  regime breakdown:")
         print(f"    inverted (< 0bp):    {inverted:>5} ({inverted/total:.1%})")
         print(f"    flat ([0, 50bp)):    {flat_:>5} ({flat_/total:.1%})")
         print(f"    normal ([50, 200bp)):{normal:>5} ({normal/total:.1%})")

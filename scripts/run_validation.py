@@ -33,15 +33,23 @@ from finsynapse.transform.percentile import compute_percentiles
 from finsynapse.transform.temperature import MARKETS, SUB_NAMES, WeightsConfig, compute_temperature
 from finsynapse.transform.version import ALGO_VERSION
 from scripts.validation_lib import (
-    FORWARD_HORIZONS,
     INDEX_MAP,
     SCIPY_AVAILABLE,
-    STRICT_ZONES,
     ForwardReturnRow,
+)
+from scripts.validation_lib import (
     compute_forward_returns as _compute_forward_returns,
+)
+from scripts.validation_lib import (
     directional_ok as _directional_ok,
+)
+from scripts.validation_lib import (
     spearman_rho as _spearman_rho,
+)
+from scripts.validation_lib import (
     strict_ok as _strict_ok,
+)
+from scripts.validation_lib import (
     zone_of as _zone,
 )
 

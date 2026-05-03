@@ -27,5 +27,5 @@ def test_enumerate_weights_sums_to_one_within_tolerance():
     mod = _load_grid_module()
     combos = list(mod.enumerate_weights(step=0.1))
     assert combos, "grid must produce at least one combination"
-    for v, s, l in combos:
-        assert abs(v + s + l - 1.0) < 1e-6, (v, s, l)
+    for v, s, liq in combos:
+        assert abs(v + s + liq - 1.0) < 1e-6, (v, s, liq)

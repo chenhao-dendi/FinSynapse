@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 SCRIPTS_DIR = Path(__file__).parent
