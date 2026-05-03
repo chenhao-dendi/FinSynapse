@@ -50,22 +50,75 @@ def build_manifest(asof: str, endpoints: list[str]) -> dict[str, Any]:
     }
 
 
-def write_all(data: DashboardData, out_dir: Path) -> list[Path]:
-    """Write every API file. Returns the list of written paths.
+def _safe_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return float(value)
 
-    Caller is responsible for creating `out_dir`. Files land in `out_dir/api/`.
-    Empty `data.temperature` is treated as a no-op (returns []).
-    """
+
+def _build_temperature_latest(data: DashboardData) -> dict[str, Any]:
+    latest = data.latest_per_market()
+    complete = data.latest_complete_date()
+    asof = pd.to_datetime(data.temperature["date"].max()).strftime("%Y-%m-%d")
+
+    markets_payload: dict[str, Any] = {}
+    for market in MARKETS:
+        if market not in latest:
+            markets_payload[market] = {"available": False}
+            continue
+        row = latest[market]
+        markets_payload[market] = {
+            "available": True,
+            "asof": pd.to_datetime(row["date"]).strftime("%Y-%m-%d"),
+            "latest_complete_date": complete.get(market),
+            "overall": _safe_float(row.get("overall")),
+            "sub_temperatures": {
+                "valuation": _safe_float(row.get("valuation")),
+                "sentiment": _safe_float(row.get("sentiment")),
+                "liquidity": _safe_float(row.get("liquidity")),
+            },
+            "change_1w": {
+                "overall": _safe_float(row.get("overall_change_1w")),
+                "attribution": {
+                    "valuation": _safe_float(row.get("valuation_contribution_1w")),
+                    "sentiment": _safe_float(row.get("sentiment_contribution_1w")),
+                    "liquidity": _safe_float(row.get("liquidity_contribution_1w")),
+                },
+            },
+            "data_quality": row.get("data_quality", "ok"),
+            "subtemp_completeness": int(row["subtemp_completeness"])
+            if "subtemp_completeness" in row and not pd.isna(row.get("subtemp_completeness"))
+            else None,
+            "is_complete": bool(row.get("is_complete", False)),
+        }
+    return {
+        "schema_version": API_SCHEMA_VERSION,
+        "asof": asof,
+        "markets": markets_payload,
+    }
+
+
+def write_all(data: DashboardData, out_dir: Path) -> list[Path]:
     api_dir = out_dir / "api"
     api_dir.mkdir(parents=True, exist_ok=True)
     if data.temperature.empty:
         return []
     written: list[Path] = []
-    # Subsequent tasks fill in the actual builders; manifest must be last
-    # so the asof reflects what was actually written.
-    asof = pd.to_datetime(data.temperature["date"].max()).strftime("%Y-%m-%d")
-    manifest = build_manifest(asof=asof, endpoints=["manifest.json"])
-    p = api_dir / "manifest.json"
-    p.write_text(json.dumps(manifest, indent=2, ensure_ascii=False))
+
+    temp_latest = _build_temperature_latest(data)
+    p = api_dir / "temperature_latest.json"
+    p.write_text(json.dumps(temp_latest, indent=2, ensure_ascii=False))
     written.append(p)
+
+    asof = temp_latest["asof"]
+    endpoints = [p.name for p in written] + ["manifest.json"]
+    manifest = build_manifest(asof=asof, endpoints=endpoints)
+    mp = api_dir / "manifest.json"
+    mp.write_text(json.dumps(manifest, indent=2, ensure_ascii=False))
+    written.append(mp)
     return written

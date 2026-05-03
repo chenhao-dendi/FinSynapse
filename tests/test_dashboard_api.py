@@ -91,3 +91,28 @@ def test_manifest_lists_endpoints_and_schema():
     assert manifest["asof"] == "2026-04-30"
     assert "temperature_latest.json" in manifest["endpoints"]
     assert manifest["endpoints"]["temperature_latest.json"]["description"]
+
+
+def test_temperature_latest_payload_structure(tmp_path: Path):
+    data = _sample_dashboard_data(tmp_path)
+    paths = write_all(data, tmp_path / "dist")
+    payload_path = tmp_path / "dist" / "api" / "temperature_latest.json"
+    assert payload_path in paths
+    payload = json.loads(payload_path.read_text())
+    assert payload["asof"] == "2026-04-30"
+    assert payload["schema_version"]
+    assert "us" in payload["markets"]
+    us = payload["markets"]["us"]
+    assert us["overall"] == 75.2
+    assert us["sub_temperatures"]["valuation"] == 80.0
+    assert us["change_1w"]["overall"] == 1.2
+    assert us["change_1w"]["attribution"]["valuation"] == 0.4
+    assert us["data_quality"] == "ok"
+    assert us["subtemp_completeness"] == 3
+    assert us["is_complete"] is True
+
+
+def test_temperature_latest_handles_empty_data(tmp_path: Path):
+    data = _empty_dashboard_data(tmp_path)
+    paths = write_all(data, tmp_path / "dist")
+    assert paths == []
