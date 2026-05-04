@@ -134,15 +134,17 @@ Each daily build publishes machine-readable JSON endpoints alongside the dashboa
 
 | Endpoint | Contents |
 |---|---|
-| `/api/manifest.json` | Schema version + asof + endpoint inventory |
-| `/api/temperature_latest.json` | Per-market latest overall + sub-temps + 1-week change attribution |
+| `/api/manifest.json` | Schema version + asof + per-market dates + build time + endpoint inventory |
+| `/api/temperature_latest.json` | Per-market latest overall + sub-temps + 1-week change attribution + completeness/confidence flags |
 | `/api/temperature_history.json.gz` | Full historical time series (gzipped) |
-| `/api/indicators_latest.json` | All underlying factors' latest values + 5y/10y rolling percentiles |
-| `/api/divergence_latest.json` | Active divergence signals from the last 90 days, sorted by strength |
+| `/api/indicators_latest.json` | Each factor's own latest value + 5y/10y rolling percentiles + source/staleness |
+| `/api/divergence_latest.json` | Active divergence signals from the last 90 days, sorted by product strength |
 
 Live: `https://hgdendi.github.io/FinSynapse/api/manifest.json`
 
-Schema version follows SemVer: adding fields is non-breaking (no bump); removing or changing field semantics bumps major.
+Current `schema_version = 2.0.0`. Schema version follows SemVer: adding fields is non-breaking and does not force a bump; removing fields, renaming fields, or changing existing field semantics bumps major.
+
+`indicators_latest.json` v2 migration note: in v1, `asof` meant a global latest-day snapshot and every indicator came from that same day. In v2, each indicator emits its own latest available row; use per-row `last_seen` for the indicator date, `days_stale` for lag versus API `asof`, and `raw_percentile_asof` for the raw max date in `percentile_daily.parquet`. External consumers that assumed all indicators shared one date should switch to `last_seen`.
 
 ---
 
@@ -157,7 +159,7 @@ Within each sub-temperature the `direction` field decides sign:
 - `+` : high percentile → high temperature (e.g. CAPE high = expensive = hot)
 - `-` : high percentile → low temperature (e.g. VIX high = fear = cold; strong DXY = tight liquidity = cold)
 
-Sub-temperature = weighted average across that block's indicators. **Missing indicators auto-renormalize across the available weights** — so when CN northbound stops publishing post-2024-08, the rest of CN sentiment still holds up (see §5.6).
+Sub-temperature = weighted average across that block's indicators. **Missing indicators auto-renormalize across the available weights** — so when CN northbound stops publishing post-2024-08, the rest of CN sentiment still holds up (see §5.7).
 
 The composite temperature combines sub-temperatures with per-market weights:
 
@@ -224,11 +226,21 @@ Each market's three sub-temperatures are weighted combinations of base indicator
 
 > **HK native valuation not yet available**: AkShare `stock_hk_index_value_em` does not exist in the current version; `stock_hk_index_daily_em` returns only price data. HSI PE/PB would require scraping HSI factsheet PDFs (same fragility tier as the abandoned HSI PCR attempt). EWH dividend yield serves as the valuation proxy for now. See `scripts/probe_hk_valuation.py`.
 
-### 5.3 Weekly attribution
+### 5.3 Data freshness and completeness
+
+The raw latest date in `silver/temperature_daily.parquet` (`raw_temperature_asof`) can contain incomplete rows, for example when only one sub-temperature has updated for a market. The dashboard picks the most complete recent row per market and exposes both the **actual market row used** (`market_asof`) and the **latest fully complete date** (`latest_complete_date`) in market cards and the JSON API.
+
+`temperature_daily` carries these completeness fields:
+- `subtemp_completeness` — 0-3, how many sub-temperatures are available
+- `conf_ok` — 0/1, whether the within-sub-temperature confidence gate passed; exported in each market payload in `temperature_latest.json`
+- `is_complete` — True when `subtemp_completeness == 3`
+- `data_quality` — `ok` or `<sub>_unavailable`
+
+### 5.4 Weekly attribution
 
 The 7-day `Δoverall` is decomposed into `Δval / Δsent / Δliq` contributions in both the dashboard and the brief. **No dynamic weights** — once weights are set they're frozen, so directional changes come purely from the indicators themselves (avoiding curve-fitting).
 
-### 5.4 Divergence signals
+### 5.5 Divergence signals
 
 Five hard-coded `SignalPair`s ([`src/finsynapse/transform/divergence.py`](./src/finsynapse/transform/divergence.py)):
 
@@ -240,11 +252,11 @@ Five hard-coded `SignalPair`s ([`src/finsynapse/transform/divergence.py`](./src/
 | `hsi_southbound` | same | HSI up but mainland flow out → foreign-led, no local follow-through |
 | `csi300_volume` | same | up on falling volume → distribution warning |
 
-`strength = |a%Δ - b%Δ| × inverse_factor`, bucketed into four tiers (≥ 0.5 / 0.1 / 0.01 / other).
+`strength = |a%Δ| × |b%Δ| × 100`, bucketed into four tiers (≥ 0.5 / 0.1 / 0.01 / other). This product definition prioritizes divergences where both sides moved meaningfully instead of one large move paired with a near-flat leg. The latest 90-day calibration was `<0.01`: 89 rows, `0.01-0.1`: 40, `0.1-0.5`: 10, `>=0.5`: 14, so the current buckets stay unchanged.
 
 > Five hard-coded pairs instead of statistical anomaly detection — each pair carries explicit financial meaning; over-generalization would drown signal in noise.
 
-### 5.5 Data health
+### 5.6 Data health
 
 Every indicator has a plausibility bound in [`src/finsynapse/transform/health_check.py`](./src/finsynapse/transform/health_check.py) (e.g. `vix: 5–200`, `us10y_yield: 0.1–25`, `csi300: 1000–20000`):
 
@@ -253,7 +265,7 @@ Every indicator has a plausibility bound in [`src/finsynapse/transform/health_ch
 
 Intent: catch unit drift / parsing bugs (e.g. price suddenly 100×), not "extreme but legitimate" market moves (those are exactly what the percentile machinery is for).
 
-### 5.6 Quality flags
+### 5.7 Quality flags
 
 The `data_quality` field on `temperature_daily.parquet` records actual availability per row without blocking output:
 
@@ -261,7 +273,7 @@ The `data_quality` field on `temperature_daily.parquet` records actual availabil
 - `<sub>_unavailable` — that sub-temperature had every input missing for the day (e.g. `liquidity_unavailable`)
 - Single-indicator gaps inside a sub-temperature: weights auto-renormalize across what's available, no flag emitted (see §5.1 — e.g. CN sentiment 0.35/0.25/0.40 → 0/0.38/0.62 after northbound stopped publishing 2024-08)
 
-### 5.7 Daily brief (gold/brief)
+### 5.8 Daily brief (gold/brief)
 
 `finsynapse report brief` priority: `auto` mode tries `ollama → deepseek → anthropic` in order, **falling back to a deterministic Jinja template if all fail** — the output is always a valid `.md`.
 

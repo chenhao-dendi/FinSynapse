@@ -37,10 +37,16 @@ jobs:
       - name: ruff check
         run: uv run ruff check src tests
 
+      - name: ruff check validation scripts
+        run: uv run ruff check scripts/validation_lib.py scripts/run_validation.py scripts/oos_backtest.py scripts/grid_search_weights.py
+
       - name: ruff format --check
         # Fails CI when committed code drifts from the formatter — keeps
         # diffs clean without anyone having to remember to run it locally.
         run: uv run ruff format --check src tests
+
+      - name: ruff format --check validation scripts
+        run: uv run ruff format --check scripts/validation_lib.py scripts/run_validation.py scripts/oos_backtest.py scripts/grid_search_weights.py
 
   test:
     name: Tests (py${{ matrix.python-version }})

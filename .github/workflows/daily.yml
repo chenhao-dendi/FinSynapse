@@ -1,11 +1,13 @@
 name: Daily ingest + dashboard publish
 
 # Triggers:
-#  - schedule: every day at 22:00 UTC = 06:00 BJT (after A-share close,
-#    ~1h after US close).
+#  - schedule:
+#      * 09:30 UTC Mon-Fri = 17:30 BJT, after CN/HK cash close
+#      * 22:00 UTC daily   = 06:00 BJT, after US cash close
 #  - workflow_dispatch: manual run from the Actions UI for testing.
 on:
   schedule:
+    - cron: '30 9 * * 1-5'
     - cron: '0 22 * * *'
   workflow_dispatch:
 

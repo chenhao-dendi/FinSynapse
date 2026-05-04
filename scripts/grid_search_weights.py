@@ -107,7 +107,11 @@ def evaluate_weight(
         if directional_ok(overall, p["expected_zone"]):
             directional_hits += 1
         zone = p["expected_zone"]
-        if (zone == "hot" and overall >= 70) or (zone == "cold" and overall < 30) or (zone == "mid" and 30 <= overall < 70):
+        if (
+            (zone == "hot" and overall >= 70)
+            or (zone == "cold" and overall < 30)
+            or (zone == "mid" and 30 <= overall < 70)
+        ):
             strict_hits += 1
 
     forward = compute_forward_returns(macro, temp[temp["market"] == market])

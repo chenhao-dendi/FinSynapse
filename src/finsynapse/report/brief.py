@@ -66,10 +66,11 @@ def assemble_facts() -> FactPack:
     if data.temperature.empty:
         raise RuntimeError("No silver data — run `finsynapse transform run --layer all` first.")
 
-    asof = data.asof().date().isoformat()
+    latest = data.latest_per_market()
+    asof_dates = [pd.to_datetime(row["date"]) for row in latest.values()]
+    asof = (max(asof_dates) if asof_dates else data.asof()).date().isoformat()
     fp = FactPack(asof=asof)
 
-    latest = data.latest_per_market()
     for market in MARKETS:
         if market not in latest:
             continue
@@ -342,16 +343,17 @@ def render_markdown(facts: FactPack, narrative: str, llm: LLMResult) -> str:
     # --- 三市场温度快照（fact, deterministic）
     lines.append("## 一、三市场温度快照")
     lines.append("")
-    lines.append("| 市场 | 综合 | 区间 | 估值 | 情绪 | 流动性 | 一周Δ | 数据 |")
-    lines.append("|------|-----:|:----:|-----:|-----:|-------:|------:|------|")
+    lines.append("| 市场 | 使用日期 | 综合 | 区间 | 估值 | 情绪 | 流动性 | 一周Δ | 数据 |")
+    lines.append("|------|:--------:|-----:|:----:|-----:|-----:|-------:|------:|------|")
     for m in MARKETS:
         info = facts.markets.get(m)
         if not info:
-            lines.append(f"| {m.upper()} | — | — | — | — | — | — | _missing_ |")
+            lines.append(f"| {m.upper()} | — | — | — | — | — | — | — | _missing_ |")
             continue
         zone_label = f"{_zone_emoji(info['overall_zone'])} {info['overall_zone']}"
         lines.append(
             f"| {m.upper()} "
+            f"| {info['date']} "
             f"| {_fmt(info['overall'])} "
             f"| {zone_label} "
             f"| {_fmt(info['valuation'])} "
