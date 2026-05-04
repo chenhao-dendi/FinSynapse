@@ -71,6 +71,31 @@ class DashboardData:
                 out[m] = latest.strftime("%Y-%m-%d") if pd.notna(latest) else None
         return out
 
+    def market_asof(self) -> dict[str, str | None]:
+        """Per-market date actually used by `latest_per_market()`.
+
+        This is the date users should see beside each market. It can differ
+        across CN/HK/US because market holidays, weekends, and upstream vendor
+        latency do not line up.
+        """
+        latest = self.latest_per_market()
+        out: dict[str, str | None] = {}
+        for m in MARKETS:
+            row = latest.get(m)
+            if row is None:
+                out[m] = None
+                continue
+            d = pd.to_datetime(row["date"])
+            out[m] = d.strftime("%Y-%m-%d") if pd.notna(d) else None
+        return out
+
+    def effective_asof(self) -> pd.Timestamp | None:
+        """Latest date among per-market rows actually shown to users."""
+        dates = [pd.to_datetime(d) for d in self.market_asof().values() if d]
+        if dates:
+            return max(dates)
+        return self.asof()
+
     def asof(self) -> pd.Timestamp | None:
         if self.temperature.empty:
             return None

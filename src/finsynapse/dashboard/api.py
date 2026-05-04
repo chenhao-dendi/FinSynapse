@@ -5,21 +5,23 @@ Output layout under `dist/api/`:
   manifest.json              schema version + endpoint inventory + asof
   temperature_latest.json    per-market latest overall + sub-temps
   temperature_history.json.gz long time series (gzipped, full history)
-  indicators_latest.json     all underlying factor latest values + pct
+  indicators_latest.json     per-indicator latest values + pct/source/staleness
   divergence_latest.json     active divergence signals (last 90 days)
 
 Consumers:
   - external AI agents wanting the latest reading without HTML scraping
   - downstream tools / notebooks that want a stable JSON contract
 
-Schema versioning: bump `API_SCHEMA_VERSION` whenever a field is removed
-or its meaning changes. Adding new fields is non-breaking.
+Schema versioning: adding fields is non-breaking; changing existing field
+names, shapes, or semantics is a major version bump.
 """
 
 from __future__ import annotations
 
 import gzip
 import json
+import math
+from numbers import Real
 from pathlib import Path
 from typing import Any
 
@@ -27,23 +29,34 @@ import pandas as pd
 
 from finsynapse.dashboard.data import MARKETS, DashboardData
 
-API_SCHEMA_VERSION = "1.0.0"
+API_SCHEMA_VERSION = "2.0.0"
 
 ENDPOINT_DESCRIPTIONS: dict[str, str] = {
-    "manifest.json": "Schema version, asof date, and inventory of all endpoints.",
+    "manifest.json": "Schema version, per-market as-of dates, build time, and endpoint inventory.",
     "temperature_latest.json": "Per-market latest temperature: overall + valuation/sentiment/liquidity sub-temps + 1-week change attribution.",
     "temperature_history.json.gz": "Per-market full daily history of overall + sub-temps. Gzipped JSON.",
-    "indicators_latest.json": "All underlying factor latest values and rolling percentiles (5y/10y).",
-    "divergence_latest.json": "Active divergence signals from the last 90 days, sorted by strength.",
+    "indicators_latest.json": "Latest available value for each factor, with rolling percentiles (5y/10y), source, and staleness.",
+    "divergence_latest.json": "Active divergence signals from the last 90 days, sorted by product strength.",
 }
 
 
-def build_manifest(asof: str, endpoints: list[str]) -> dict[str, Any]:
+def build_manifest(
+    asof: str | None,
+    endpoints: list[str],
+    *,
+    generated_at_utc: str | None = None,
+    market_asof: dict[str, str | None] | None = None,
+    latest_complete_date: dict[str, str | None] | None = None,
+    raw_temperature_asof: str | None = None,
+) -> dict[str, Any]:
     """Assemble the manifest payload describing what's published and when."""
     return {
         "schema_version": API_SCHEMA_VERSION,
         "asof": asof,
-        "generated_at_utc": pd.Timestamp.now("UTC").strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "market_asof": market_asof or {},
+        "latest_complete_date": latest_complete_date or {},
+        "raw_temperature_asof": raw_temperature_asof,
+        "generated_at_utc": generated_at_utc or pd.Timestamp.now("UTC").strftime("%Y-%m-%dT%H:%M:%SZ"),
         "endpoints": {
             name: {"path": f"api/{name}", "description": ENDPOINT_DESCRIPTIONS.get(name, "")} for name in endpoints
         },
@@ -53,18 +66,38 @@ def build_manifest(asof: str, endpoints: list[str]) -> dict[str, Any]:
 def _safe_float(value: Any) -> float | None:
     if value is None:
         return None
-    try:
+    if isinstance(value, str):
+        try:
+            out = float(value.strip())
+        except ValueError as exc:
+            raise TypeError(f"Expected numeric scalar, got {type(value).__name__}") from exc
+    elif isinstance(value, bool):
+        raise TypeError("Expected numeric scalar, got bool")
+    elif isinstance(value, Real):
         if pd.isna(value):
             return None
-    except (TypeError, ValueError):
-        pass
-    return float(value)
+        out = float(value)
+    else:
+        try:
+            if pd.isna(value) is True:
+                return None
+        except (TypeError, ValueError):
+            pass
+        raise TypeError(f"Expected numeric scalar, got {type(value).__name__}")
+    if pd.isna(out):
+        return None
+    if not math.isfinite(out):
+        raise TypeError("Expected finite numeric scalar")
+    return out
 
 
 def _build_temperature_latest(data: DashboardData) -> dict[str, Any]:
     latest = data.latest_per_market()
     complete = data.latest_complete_date()
-    asof = pd.to_datetime(data.temperature["date"].max()).strftime("%Y-%m-%d")
+    market_asof = data.market_asof()
+    raw_asof = pd.to_datetime(data.temperature["date"].max()).strftime("%Y-%m-%d")
+    effective = data.effective_asof()
+    asof = effective.strftime("%Y-%m-%d") if effective is not None else None
 
     markets_payload: dict[str, Any] = {}
     for market in MARKETS:
@@ -94,35 +127,57 @@ def _build_temperature_latest(data: DashboardData) -> dict[str, Any]:
             "subtemp_completeness": int(row["subtemp_completeness"])
             if "subtemp_completeness" in row and not pd.isna(row.get("subtemp_completeness"))
             else None,
+            "conf_ok": int(row["conf_ok"]) if "conf_ok" in row and not pd.isna(row.get("conf_ok")) else None,
             "is_complete": bool(row.get("is_complete", False)),
         }
     return {
         "schema_version": API_SCHEMA_VERSION,
         "asof": asof,
+        "market_asof": market_asof,
+        "latest_complete_date": complete,
+        "raw_temperature_asof": raw_asof,
         "markets": markets_payload,
     }
 
 
 def _build_indicators_latest(data: DashboardData) -> dict[str, Any]:
     if data.percentile.empty:
-        return {"schema_version": API_SCHEMA_VERSION, "asof": None, "indicators": []}
+        return {"schema_version": API_SCHEMA_VERSION, "asof": None, "raw_percentile_asof": None, "indicators": []}
     pct = data.percentile.copy()
     pct["date"] = pd.to_datetime(pct["date"])
-    asof = pct["date"].max()
-    snap = pct[pct["date"] == asof].sort_values("indicator")
+    raw_asof = pct["date"].max()
+    api_asof = data.effective_asof()
+    api_asof = api_asof.normalize() if api_asof is not None else raw_asof.normalize()
+    snap = (
+        pct.sort_values(["indicator", "date"]).drop_duplicates(subset="indicator", keep="last").sort_values("indicator")
+    )
+    sources: dict[str, str | None] = {}
+    if not data.macro.empty and {"indicator", "date", "source"}.issubset(data.macro.columns):
+        macro = data.macro[["indicator", "date", "source"]].copy()
+        macro["date"] = pd.to_datetime(macro["date"])
+        source_rows = macro.sort_values(["indicator", "date"]).drop_duplicates(subset="indicator", keep="last")
+        sources = {
+            str(row["indicator"]): None if pd.isna(row["source"]) else str(row["source"])
+            for _, row in source_rows.iterrows()
+        }
     indicators: list[dict[str, Any]] = []
     for _, row in snap.iterrows():
+        last_seen = pd.to_datetime(row["date"]).normalize()
         indicators.append(
             {
                 "indicator": str(row["indicator"]),
                 "value": _safe_float(row.get("value")),
                 "percentile_5y": _safe_float(row.get("pct_5y")),
                 "percentile_10y": _safe_float(row.get("pct_10y")),
+                "last_seen": last_seen.strftime("%Y-%m-%d"),
+                "days_stale": max(0, int((api_asof - last_seen).days)),
+                "source": sources.get(str(row["indicator"])),
             }
         )
     return {
         "schema_version": API_SCHEMA_VERSION,
-        "asof": asof.strftime("%Y-%m-%d"),
+        "asof": api_asof.strftime("%Y-%m-%d"),
+        "raw_percentile_asof": raw_asof.strftime("%Y-%m-%d"),
         "indicators": indicators,
     }
 
@@ -177,12 +232,14 @@ def _build_temperature_history(data: DashboardData) -> dict[str, Any]:
         markets_payload[market] = rows
     return {
         "schema_version": API_SCHEMA_VERSION,
-        "asof": pd.to_datetime(data.temperature["date"].max()).strftime("%Y-%m-%d"),
+        "asof": data.effective_asof().strftime("%Y-%m-%d") if data.effective_asof() is not None else None,
+        "market_asof": data.market_asof(),
+        "raw_temperature_asof": pd.to_datetime(data.temperature["date"].max()).strftime("%Y-%m-%d"),
         "markets": markets_payload,
     }
 
 
-def write_all(data: DashboardData, out_dir: Path) -> list[Path]:
+def write_all(data: DashboardData, out_dir: Path, *, generated_at_utc: str | None = None) -> list[Path]:
     api_dir = out_dir / "api"
     api_dir.mkdir(parents=True, exist_ok=True)
     if data.temperature.empty:
@@ -214,7 +271,14 @@ def write_all(data: DashboardData, out_dir: Path) -> list[Path]:
 
     asof = temp_latest["asof"]
     endpoints = [p.name for p in written] + ["manifest.json"]
-    manifest = build_manifest(asof=asof, endpoints=endpoints)
+    manifest = build_manifest(
+        asof=asof,
+        endpoints=endpoints,
+        generated_at_utc=generated_at_utc,
+        market_asof=temp_latest["market_asof"],
+        latest_complete_date=temp_latest["latest_complete_date"],
+        raw_temperature_asof=temp_latest["raw_temperature_asof"],
+    )
     mp = api_dir / "manifest.json"
     mp.write_text(json.dumps(manifest, indent=2, ensure_ascii=False))
     written.append(mp)

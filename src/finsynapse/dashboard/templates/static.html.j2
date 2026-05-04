@@ -120,9 +120,21 @@
     <div>
       <h1 class="text-4xl md:text-5xl font-bold tracking-tight">{{ tx.page_title }}</h1>
       <p class="mt-2 text-ink-soft text-base">
-        {{ tx.data_as_of }} <span class="font-semibold text-ink">{{ asof }}</span>
+        {{ tx.page_generated_at }} <span class="font-semibold text-ink">{{ generated_at.bjt }}</span>
         · {{ tx.data_meta_suffix }} <code class="font-mono text-xs px-1.5 py-0.5 rounded bg-white/60 border border-white/60">config/weights.yaml</code>
       </p>
+      <div class="mt-3 flex flex-wrap gap-2 text-xs text-ink-soft">
+        {% for item in market_asof_status %}
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/50 border border-white/60">
+          <span class="font-semibold text-ink">{{ item.label }}</span>
+          <span class="material-symbols-outlined text-sm opacity-60">calendar_today</span>
+          <span>{{ tx.data_as_of }} {{ item.asof or '—' }}</span>
+          {% if item.latest_complete_date and item.latest_complete_date != item.asof %}
+          <span class="text-ink-muted">· {{ tx.market_complete_through }} {{ item.latest_complete_date }}</span>
+          {% endif %}
+        </span>
+        {% endfor %}
+      </div>
     </div>
     <a href="{{ glossary_href }}"
        title="{{ tx.glossary_body | striptags }}"
@@ -214,12 +226,15 @@
             <span class="px-2.5 py-1 rounded-full text-xs font-semibold border border-white/60 bg-white/60 accent-{{ c.accent }}">{{ c.zone_label }}</span>
           </div>
 
-          {% if c.latest_complete_date %}
+          {% if c.asof %}
           <div class="flex items-center gap-1.5 text-xs text-ink-muted -mt-3">
             <span class="material-symbols-outlined text-sm opacity-70">calendar_today</span>
-            {{ c.latest_complete_date }}
+            {{ tx.market_used_date }} {{ c.asof }}
+            {% if c.latest_complete_date and c.latest_complete_date != c.asof %}
+            <span class="ml-1">{{ tx.market_complete_through }} {{ c.latest_complete_date }}</span>
+            {% endif %}
             {% if c.subtemp_completeness is not none and c.subtemp_completeness < 3 %}
-            <span class="ml-1 px-1.5 py-0.5 rounded-full bg-amber-100/60 text-amber-800 text-[10px] font-medium">数据不完整 ({{ c.subtemp_completeness }}/3)</span>
+            <span class="ml-1 px-1.5 py-0.5 rounded-full bg-amber-100/60 text-amber-800 text-[10px] font-medium">{{ tx.market_incomplete_badge }} ({{ c.subtemp_completeness }}/3)</span>
             {% endif %}
           </div>
           {% endif %}

@@ -28,9 +28,10 @@ def main() -> None:
         st.error(t("no_silver_data", lang))
         st.stop()
 
-    asof = data.asof()
     st.title(t("header_title", lang))
-    st.caption(f"{t('data_as_of', lang)} **{asof.date()}**  ·  silver: `{data.silver_dir}`")
+    market_asof = data.market_asof()
+    market_dates = " · ".join(f"{m.upper()} {d or '—'}" for m, d in market_asof.items())
+    st.caption(f"{t('data_as_of', lang)} **{market_dates}**  ·  silver: `{data.silver_dir}`")
 
     latest = data.latest_per_market()
 

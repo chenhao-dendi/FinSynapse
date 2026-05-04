@@ -10,8 +10,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "page_title": {"zh": "FinSynapse — 宏观温度计", "en": "FinSynapse — Macro Thermometer"},
     "header_title": {"zh": "🌡️ FinSynapse — 宏观温度计", "en": "🌡️ FinSynapse — Macro Thermometer"},
     "data_as_of": {"zh": "数据截至", "en": "Data as of"},
+    "page_generated_at": {"zh": "页面生成", "en": "Generated"},
+    "market_used_date": {"zh": "使用数据", "en": "Using data"},
+    "market_complete_through": {"zh": "完整截至", "en": "complete through"},
+    "market_incomplete_badge": {"zh": "数据不完整", "en": "incomplete"},
     "data_meta_suffix": {
-        "zh": "由 GitHub Actions 每日重建 · 权重见",
+        "zh": "由 GitHub Actions 自动重建 · 权重见",
         "en": "auto-rebuilt by GitHub Actions · weights in",
     },
     "lang_toggle_label": {"zh": "EN", "en": "中文"},
@@ -97,8 +101,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "glossary_back_to_dashboard": {"zh": "← 回到温度计", "en": "← Back to dashboard"},
     "glossary_intro_title": {"zh": "市场温度计是什么", "en": "What the market thermometer is"},
     "glossary_intro_body": {
-        "zh": "把<b>估值</b>、<b>情绪</b>、<b>流动性</b>三类指标，统一换算到 0–100 的相对刻度上。0 = 这个市场历史上最冷的水平；100 = 历史上最热。每天 06:00（北京时间）由 GitHub Actions 自动重算，所有数字都来自 silver 层、可在 git 历史里追溯。",
-        "en": "We collapse <b>valuation</b>, <b>sentiment</b>, and <b>liquidity</b> indicators onto a single 0–100 relative scale. 0 = the coldest the market has ever been within its lookback; 100 = the hottest ever. Recomputed every day at 22:00 UTC by GitHub Actions; all numbers come from the silver layer and are reproducible from git history.",
+        "zh": "把<b>估值</b>、<b>情绪</b>、<b>流动性</b>三类指标，统一换算到 0–100 的相对刻度上。0 = 这个市场历史上最冷的水平；100 = 历史上最热。GitHub Actions 在工作日 17:30（北京时间，覆盖中港收盘后）和每日 06:00（北京时间，覆盖美股收盘后）自动重算，所有数字都来自 silver 层、可在 git 历史里追溯。",
+        "en": "We collapse <b>valuation</b>, <b>sentiment</b>, and <b>liquidity</b> indicators onto a single 0–100 relative scale. 0 = the coldest the market has ever been within its lookback; 100 = the hottest ever. GitHub Actions recomputes on weekdays at 09:30 UTC for post-CN/HK close and daily at 22:00 UTC for post-US close; all numbers come from the silver layer and are reproducible from git history.",
     },
     "glossary_step1_title": {
         "zh": "第一步：把每个指标换成历史百分位",

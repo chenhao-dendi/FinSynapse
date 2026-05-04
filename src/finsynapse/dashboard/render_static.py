@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import os
 import shutil
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 import markdown as _md
 import pandas as pd
@@ -31,6 +33,16 @@ from finsynapse.transform.temperature import WeightsConfig
 
 # Public source repo — surfaced in the footer and on the glossary page.
 REPO_URL = "https://github.com/hgDendi/FinSynapse"
+BJT = ZoneInfo("Asia/Shanghai")
+
+
+def _build_generated_at(now: datetime | None = None) -> dict[str, str]:
+    """Timestamp shared by rendered HTML and JSON manifest."""
+    utc = now.astimezone(UTC) if now is not None else datetime.now(UTC)
+    return {
+        "utc": utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "bjt": utc.astimezone(BJT).strftime("%Y-%m-%d %H:%M BJT"),
+    }
 
 
 def _clarity_id() -> str | None:
@@ -166,6 +178,7 @@ def _build_market_cards(
                 "market": market,
                 "meta": meta,
                 "missing": False,
+                "asof": pd.to_datetime(row["date"]).date().isoformat(),
                 "overall": float(overall) if overall is not None and not pd.isna(overall) else None,
                 "overall_int": round(overall) if overall is not None and not pd.isna(overall) else None,
                 "change_1w": None if (change_1w is None or pd.isna(change_1w)) else float(change_1w),
@@ -332,6 +345,7 @@ def _render_one(
     alt_href: str,
     archive_href: str,
     glossary_href: str,
+    generated_at: dict[str, str],
 ) -> str:
     latest = data.latest_per_market()
     history_market = next(iter(latest), MARKETS[0])
@@ -374,6 +388,16 @@ def _render_one(
     narrative_html = Markup(_md.markdown(narrative_md, extensions=["extra"])) if narrative_md else ""
 
     market_cards = _build_market_cards(latest, data_quality, lang, history_stats, data.latest_complete_date())
+    market_asof_status = [
+        {
+            "market": c["market"],
+            "label": c["meta"]["label"],
+            "asof": None if c.get("missing") else c.get("asof"),
+            "latest_complete_date": None if c.get("missing") else c.get("latest_complete_date"),
+            "is_complete": c.get("subtemp_completeness") == 3 if not c.get("missing") else False,
+        }
+        for c in market_cards
+    ]
     divergence_cards = _build_divergence_cards(data.divergence, lang)
     key_takeaways = _build_key_takeaways(data, latest, divergence_cards, lang)
 
@@ -397,7 +421,9 @@ def _render_one(
         repo_url=REPO_URL,
         clarity_project_id=_clarity_id(),
         page_type="dashboard",
-        asof=data.asof().date().isoformat(),
+        asof=data.effective_asof().date().isoformat(),
+        raw_asof=data.asof().date().isoformat(),
+        generated_at=generated_at,
         markets=MARKETS,
         gauges=gauges,
         data_quality=data_quality,
@@ -409,6 +435,7 @@ def _render_one(
         narrative_html=narrative_html,
         narrative_asof=narrative_asof,
         market_cards=market_cards,
+        market_asof_status=market_asof_status,
         divergence_cards=divergence_cards,
         key_takeaways=key_takeaways,
         health_summary=health_summary,
@@ -513,7 +540,7 @@ def _render_glossary_pages(env: Environment, out_dir: Path, data: DashboardData,
             alt_lang_href=alt_lang_href,
             dashboard_href=dashboard_href,
             repo_url=REPO_URL,
-            asof=data.asof().date().isoformat() if data.asof() is not None else "",
+            asof=data.effective_asof().date().isoformat() if data.effective_asof() is not None else "",
             markets_meta=_build_glossary_markets(weights, lang),
             history_rows=_build_glossary_history_rows(history_stats, lang),
             clarity_project_id=_clarity_id(),
@@ -618,7 +645,8 @@ def render(out_dir: Path | str = "dist", data: DashboardData | None = None) -> l
 
     briefs = list_briefs()
     weights = WeightsConfig.load()
-    asof_str = data.asof().date().isoformat()
+    asof_str = data.effective_asof().date().isoformat()
+    generated_at = _build_generated_at()
 
     written: list[Path] = []
     for lang in SUPPORTED:
@@ -636,12 +664,12 @@ def render(out_dir: Path | str = "dist", data: DashboardData | None = None) -> l
 
         archive_href = ARCHIVE_FILENAME[lang]
         glossary_href = GLOSSARY_FILENAME[lang]
-        html = _render_one(env, data, lang, alt_href, archive_href, glossary_href)
+        html = _render_one(env, data, lang, alt_href, archive_href, glossary_href, generated_at)
         target.write_text(html, encoding="utf-8")
         written.append(target)
 
     written.extend(_render_glossary_pages(env, out_dir, data, weights))
     written.extend(_render_brief_pages(env, out_dir, briefs))
     written.extend(_render_archive_index(env, out_dir, briefs, asof_str))
-    written.extend(_write_api_endpoints(data, out_dir))
+    written.extend(_write_api_endpoints(data, out_dir, generated_at_utc=generated_at["utc"]))
     return written

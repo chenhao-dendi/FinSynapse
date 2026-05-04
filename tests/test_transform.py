@@ -334,6 +334,20 @@ def test_divergence_detects_signal_pair_disagreement():
     assert sp500_vix["is_divergent"].all()
 
 
+def test_divergence_strength_is_product_scaled_by_100():
+    macro = _build_macro(
+        {
+            # Day 2: SP500 +2%, VIX +10% → strength = 0.02 * 0.10 * 100 = 0.2.
+            "sp500": [100.0, 102.0],
+            "vix": [20.0, 22.0],
+        }
+    )
+    div = compute_divergence(macro)
+    sp500_vix = div[div["pair_name"] == "sp500_vix"].iloc[0]
+    assert bool(sp500_vix["is_divergent"]) is True
+    assert sp500_vix["strength"] == pytest.approx(0.2)
+
+
 def test_divergence_skips_pairs_missing_indicators():
     macro = _build_macro({"sp500": [100.0, 101.0, 102.0]})  # no vix
     div = compute_divergence(macro)

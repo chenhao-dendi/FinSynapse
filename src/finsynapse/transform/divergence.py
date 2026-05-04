@@ -100,8 +100,8 @@ def compute_divergence(macro_long: pd.DataFrame) -> pd.DataFrame:
 
     Output schema:
         date | pair_name | a_change | b_change | is_divergent | strength | description
-    `strength` = product of |pct_change| of both indicators — used to rank
-    "interesting" divergences (a 0.1% mismatch is noise, a 2% mismatch matters).
+    `strength = |a%Δ| × |b%Δ| × 100`: product strength used to rank
+    "interesting" divergences where both sides moved meaningfully.
     """
     if macro_long.empty:
         return pd.DataFrame(columns=_DIVERGENCE_COLUMNS)
@@ -122,7 +122,7 @@ def compute_divergence(macro_long: pd.DataFrame) -> pd.DataFrame:
         same_sign = (a > 0) == (b > 0)
         divergent = ~same_sign if pair.expected == "same" else same_sign
 
-        strength = a.abs() * b.abs() * 100  # scale for readability
+        strength = a.abs() * b.abs() * 100  # |a%Δ| × |b%Δ| × 100
 
         for dt in wide.index[valid]:
             is_div = bool(divergent.loc[dt])
