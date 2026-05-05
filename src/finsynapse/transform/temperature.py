@@ -7,11 +7,26 @@ import pandas as pd
 import yaml
 
 from finsynapse import config as _cfg
+from finsynapse.transform.calendars import cn_mainland_closed
 from finsynapse.transform.version import snapshot_weights, stamp_version
 
 CONFIG_PATH = Path("config/weights.yaml")
 MARKETS = ("cn", "hk", "us")
 SUB_NAMES = ("valuation", "sentiment", "liquidity")
+
+
+def _expected_stale_subs(d, market: str) -> set[str]:
+    """Sub-temps whose primary input is structurally absent on date `d`.
+
+    A NaN in one of these subs is "expected" — it should not push the row
+    into the unpublishable bucket. Currently:
+      - HK sentiment relies on `cn_south_5d` (Stock Connect southbound 5d
+        net-buy). That stops trading on CN mainland public holidays, so on
+        CN-closed days HK sentiment NaN is structural.
+    """
+    if market == "hk" and cn_mainland_closed(d):
+        return {"sentiment"}
+    return set()
 
 
 @dataclass
@@ -208,6 +223,18 @@ def _compute_market_rows(
         df["data_quality"] = df.apply(_row_quality, axis=1)
         df["subtemp_completeness"] = df[["valuation", "sentiment", "liquidity"]].notna().sum(axis=1)
         df["is_complete"] = df["subtemp_completeness"] == 3
+
+        def _publishable(row: pd.Series) -> tuple[int, bool]:
+            missing = {s for s in SUB_NAMES if pd.isna(row[s])}
+            if not missing:
+                return 3, True
+            stale = _expected_stale_subs(row["date"], row["market"])
+            effective = int(row["subtemp_completeness"]) + len(missing & stale)
+            return effective, missing.issubset(stale)
+
+        publishable = df.apply(_publishable, axis=1, result_type="expand")
+        df["effective_completeness"] = publishable[0].astype(int)
+        df["is_publishable"] = publishable[1].astype(bool)
         rows.append(df)
     return rows
 

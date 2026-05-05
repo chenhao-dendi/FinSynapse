@@ -26,7 +26,10 @@ class DashboardData:
         ffill'd past the last available daily date, leaving daily sub-temps
         NaN (e.g. M2 ffilled to today but VIX hasn't updated yet). Instead,
         within the last 10 trading days, pick the row with maximum
-        sub-temperature completeness; tiebreak by latest date.
+        effective completeness (real data + structurally-expected gaps,
+        e.g. HK sentiment during CN mainland holidays); tiebreak by latest
+        date. Falls back to raw `subtemp_completeness` for older silver
+        snapshots that predate the `effective_completeness` column.
         """
         out = {}
         if self.temperature.empty:
@@ -36,7 +39,9 @@ class DashboardData:
             sub = temp[temp["market"] == m].copy()
             if sub.empty:
                 continue
-            if "subtemp_completeness" in sub.columns:
+            if "effective_completeness" in sub.columns:
+                sub["_completeness"] = sub["effective_completeness"]
+            elif "subtemp_completeness" in sub.columns:
                 sub["_completeness"] = sub["subtemp_completeness"]
             else:
                 sub["_completeness"] = sub[["valuation", "sentiment", "liquidity"]].notna().sum(axis=1)

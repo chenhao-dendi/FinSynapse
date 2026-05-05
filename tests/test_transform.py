@@ -155,6 +155,78 @@ def test_temperature_renormalizes_when_one_sub_unavailable(tmp_path):
     assert pd.isna(us["liquidity"])
 
 
+def test_hk_publishable_during_cn_holiday_when_only_sentiment_missing():
+    """HK rows whose only NaN sub-temp is sentiment AND fall on a CN-mainland-
+    closed date must be marked is_publishable=True. Non-CN-closed dates with
+    the same NaN pattern must NOT be publishable — the relaxation is calendar-
+    gated, not "always tolerate missing sentiment"."""
+    cfg = WeightsConfig(
+        sub_weights={"hk": {"valuation": 0.6, "sentiment": 0.25, "liquidity": 0.15}},
+        indicator_weights={
+            "hk_valuation": {"hk_ewh_yield_ttm": {"weight": 1.0, "direction": "-"}},
+            "hk_sentiment": {"cn_south_5d": {"weight": 1.0, "direction": "+"}},
+            "hk_liquidity": {"hk_hibor_1m": {"weight": 1.0, "direction": "-"}},
+        },
+        percentile_window="pct_10y",
+    )
+    # Span a non-holiday Tuesday (2026-04-28) and a Labour-Day-week date
+    # (2026-05-04, Monday — CN closed, HK open). Drop south-flow on 05-04
+    # to mimic the real holiday data shape.
+    dates = [date(2026, 4, 28), date(2026, 5, 4)]
+    rows = []
+    for d in dates:
+        for ind in ["hk_ewh_yield_ttm", "hk_hibor_1m"]:
+            rows.append({"date": d, "indicator": ind, "value": 50.0, "pct_1y": 50.0, "pct_5y": 50.0, "pct_10y": 50.0})
+        # cn_south_5d only present on 04-28
+        if d == date(2026, 4, 28):
+            rows.append(
+                {"date": d, "indicator": "cn_south_5d", "value": 100.0, "pct_1y": 60.0, "pct_5y": 60.0, "pct_10y": 60.0}
+            )
+    pct = pd.DataFrame(rows)
+
+    temp = compute_temperature(pct, cfg)
+    hk = temp[temp["market"] == "hk"].set_index("date")
+
+    apr28 = hk.loc[pd.Timestamp("2026-04-28")]
+    may04 = hk.loc[pd.Timestamp("2026-05-04")]
+
+    # Sanity: 04-28 is fully complete; 05-04 is sentiment-NaN.
+    assert bool(apr28["is_complete"]) is True
+    assert pd.isna(may04["sentiment"])
+    assert bool(may04["is_complete"]) is False
+
+    # The relaxation kicks in on the CN-closed day only.
+    assert int(may04["effective_completeness"]) == 3
+    assert bool(may04["is_publishable"]) is True
+    assert bool(apr28["is_publishable"]) is True
+
+
+def test_hk_not_publishable_when_sentiment_missing_outside_cn_holiday():
+    """If sentiment goes NaN on a regular CN trading day, that's a real data
+    gap, not structural — must not be marked publishable."""
+    cfg = WeightsConfig(
+        sub_weights={"hk": {"valuation": 0.6, "sentiment": 0.25, "liquidity": 0.15}},
+        indicator_weights={
+            "hk_valuation": {"hk_ewh_yield_ttm": {"weight": 1.0, "direction": "-"}},
+            "hk_sentiment": {"cn_south_5d": {"weight": 1.0, "direction": "+"}},
+            "hk_liquidity": {"hk_hibor_1m": {"weight": 1.0, "direction": "-"}},
+        },
+        percentile_window="pct_10y",
+    )
+    # 2026-04-28 (Tue) is a normal CN trading day. Drop south flow.
+    d = date(2026, 4, 28)
+    rows = [
+        {"date": d, "indicator": "hk_ewh_yield_ttm", "value": 50.0, "pct_1y": 50.0, "pct_5y": 50.0, "pct_10y": 50.0},
+        {"date": d, "indicator": "hk_hibor_1m", "value": 50.0, "pct_1y": 50.0, "pct_5y": 50.0, "pct_10y": 50.0},
+    ]
+    pct = pd.DataFrame(rows)
+    temp = compute_temperature(pct, cfg)
+    hk = temp[temp["market"] == "hk"].iloc[-1]
+    assert pd.isna(hk["sentiment"])
+    assert bool(hk["is_publishable"]) is False
+    assert int(hk["effective_completeness"]) == 2
+
+
 def test_derive_indicators_computes_us_erp_with_monthly_pe_ffill():
     """ERP = 100/PE − real_yield. PE published only first-of-month (mimicking
     multpl's actual monthly cadence); real_yield daily. Verifies the ffill
