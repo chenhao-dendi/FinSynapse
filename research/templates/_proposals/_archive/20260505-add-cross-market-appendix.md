@@ -2,7 +2,7 @@
 
 > 提出日期：2026-05-05
 > 提出人 / agent：Claude（v0.2 试跑撰写 SMIC A 股 / HK 报告时发现）
-> 状态：pending（**与 `20260505-cross-market-metrics-pack.md` 关联**，建议合并 review）
+> 状态：**merged 2026-05-05 → template_version 0.2 主模板末尾**（与 cross-market-metrics-pack 配套合并，附录 A 内容定义在 cross-market-policy.md §4）
 
 ## 出现在哪份报告
 

@@ -2,7 +2,7 @@
 
 > 提出日期：2026-05-05
 > 提出人 / agent：Claude（v0.2 试跑撰写 SMIC A 股报告时发现）
-> 状态：pending
+> 状态：**merged 2026-05-05 → template_version 0.2 §5.5 + assets/report-quality-checklist.md A4 例外**
 
 ## 出现在哪份报告
 

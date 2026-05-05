@@ -2,7 +2,7 @@
 
 > 提出日期：2026-05-05
 > 提出人 / agent：Claude（v0.2 试跑撰写 SMIC A 股 / HK 报告时发现）
-> 状态：pending
+> 状态：**merged 2026-05-05 → template_version 0.2 + references/cross-market-policy.md**（明确"主报告 = 流动性更好的市场"）
 
 ## 出现在哪份报告
 

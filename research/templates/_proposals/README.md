@@ -13,8 +13,9 @@
 ## 合并节奏
 
 - **每 5 份新报告** 或 **每月** 至少一次，由人工 review proposals
-- review 通过 → 改主文件 → bump `template_version` → 在主 spec changelog 记录 → 删除已合并的 proposal（或归档到 `_archive/`）
-- review 拒绝 → 在 proposal 末尾写"Rejected YYYY-MM-DD: 原因" → 留档不删，便于将来重新评估
+- review 通过 → 改主文件 → bump `template_version` → 在主 spec changelog 记录 → **移动**到 `_archive/` 并在文件顶部状态行写 `merged YYYY-MM-DD → template_version X.Y`
+- review 拒绝 → 移动到 `_archive/` 并在文件顶部写 `rejected YYYY-MM-DD: 原因` → 留档不删，便于将来重新评估
+- review 推后 → 留在 `_proposals/` 根目录，状态保持 `pending`
 
 ## 优先级（自评）
 
@@ -24,10 +25,14 @@
 
 ## 当前未合并的 proposals
 
-| 文件 | 优先级 | 主题 | 来源 |
-|------|:------:|------|------|
-| [20260505-add-rating-matrix.md](20260505-add-rating-matrix.md) | 高 | 第 7 章前置加"维度评级矩阵"（保留多维颗粒度） | SMIC v0.2 试跑 |
-| [20260505-ah-shared-content-policy.md](20260505-ah-shared-content-policy.md) | 高 | AH/ADR 双股报告允许"共享内容引用"模式 | SMIC v0.2 试跑 |
-| [20260505-cross-market-metrics-pack.md](20260505-cross-market-metrics-pack.md) | 中 | industry-metrics.md 增加"跨市场补充指标"小节 | SMIC v0.2 试跑 |
-| [20260505-add-cross-market-appendix.md](20260505-add-cross-market-appendix.md) | 中 | 主模板增加可选附录"A. 跨市场对照"（与上一条配套） | SMIC v0.2 试跑 |
-| [20260505-clarify-incentive-data-policy.md](20260505-clarify-incentive-data-policy.md) | 中 | §4.2 管理层激励数据缺失的处理政策明确化 | SMIC v0.2 试跑 |
+（暂无 pending proposals）
+
+## 已归档（_archive/）
+
+| 文件 | 状态 | 主题 |
+|------|------|------|
+| [20260505-add-rating-matrix.md](_archive/20260505-add-rating-matrix.md) | merged → v0.2 | §7.0 6 维评级矩阵 |
+| [20260505-ah-shared-content-policy.md](_archive/20260505-ah-shared-content-policy.md) | merged → v0.2 | AH/ADR 主从报告共享引用模式 |
+| [20260505-cross-market-metrics-pack.md](_archive/20260505-cross-market-metrics-pack.md) | merged → cross-market-policy.md | 跨市场补充指标 |
+| [20260505-add-cross-market-appendix.md](_archive/20260505-add-cross-market-appendix.md) | merged → v0.2 主模板 | 可选附录 A 跨市场对照 |
+| [20260505-clarify-incentive-data-policy.md](_archive/20260505-clarify-incentive-data-policy.md) | merged → v0.2 §5.5 | 激励数据缺失处理政策 |

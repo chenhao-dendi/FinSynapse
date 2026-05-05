@@ -2,10 +2,11 @@
 
 ## 撰写规范
 
-- **个股报告**：统一使用 [`templates/company-analysis.md`](templates/company-analysis.md)（v0.1）
+- **个股报告**：统一使用 [`templates/company-analysis.md`](templates/company-analysis.md)（v0.2）
   - frontmatter：[`templates/report-frontmatter.md`](templates/report-frontmatter.md)
   - 数据规范：[`templates/references/data-source-policy.md`](templates/references/data-source-policy.md)
   - 行业指标：[`templates/references/industry-metrics.md`](templates/references/industry-metrics.md)
+  - 跨市场（AH/ADR）：[`templates/references/cross-market-policy.md`](templates/references/cross-market-policy.md)
   - 写完自检：[`templates/assets/report-quality-checklist.md`](templates/assets/report-quality-checklist.md)
   - 改进建议：[`templates/_proposals/`](templates/_proposals/)
 - **个股文件命名**：`stocks/<market>/<ticker>-<slug>-YYYYMMDD.md`（详见主 spec 第 2 节）
