@@ -25,7 +25,11 @@
 
 ## 当前未合并的 proposals
 
-（暂无 pending proposals）
+| 文件 | 优先级 | 主题 | 来源 |
+|------|:------:|------|------|
+| [20260505-fill-consumer-pack.md](20260505-fill-consumer-pack.md) | P1 | industry-metrics.md 消费 pack 填实内容 | Pop Mart 试跑 |
+| [20260505-add-ip-subpack.md](20260505-add-ip-subpack.md) | P1 | 消费 pack 下新增 IP/版权类子包 | Pop Mart 试跑 |
+| [20260505-monthly-ops-cadence.md](20260505-monthly-ops-cadence.md) | P2 | 消费/零售类的月度运营数据节奏补充 | Pop Mart 试跑 |
 
 ## 已归档（_archive/）
 
