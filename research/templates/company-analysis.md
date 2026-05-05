@@ -18,7 +18,7 @@
 | 数据来源优先级 / 审计线索 / 估算标注 | [`references/data-source-policy.md`](./references/data-source-policy.md) |
 | 行业特定指标扩展包 | [`references/industry-metrics.md`](./references/industry-metrics.md) |
 | 跨市场上市公司补充规范（AH/ADR 双股） | [`references/cross-market-policy.md`](./references/cross-market-policy.md) |
-| 估值方法 (DCF/comps) 详细说明 | `references/valuation-methods.md`（计划中） |
+| 估值方法 (DCF/comps) 详细说明 | [`references/valuation-methods.md`](./references/valuation-methods.md) |
 | 报告完成度与 sanity 自检 | [`assets/report-quality-checklist.md`](./assets/report-quality-checklist.md) |
 | 模板改进建议提交流程 | [`_proposals/README.md`](./_proposals/README.md) |
 
