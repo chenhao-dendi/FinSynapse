@@ -1,7 +1,17 @@
 # 调研索引
 
-> 文件名命名规范：`[主题]-YYYYMMDD.md`，日期表示最后实质性更新日期。
-> 新增研究报告请使用 [`templates/report-frontmatter.md`](templates/report-frontmatter.md) 的 front matter，避免标题、日期、市场、来源等级和免责声明散落在正文里。
+## 撰写规范
+
+- **个股报告**：统一使用 [`templates/company-analysis.md`](templates/company-analysis.md)（v0.1）
+  - frontmatter：[`templates/report-frontmatter.md`](templates/report-frontmatter.md)
+  - 数据规范：[`templates/references/data-source-policy.md`](templates/references/data-source-policy.md)
+  - 行业指标：[`templates/references/industry-metrics.md`](templates/references/industry-metrics.md)
+  - 写完自检：[`templates/assets/report-quality-checklist.md`](templates/assets/report-quality-checklist.md)
+  - 改进建议：[`templates/_proposals/`](templates/_proposals/)
+- **个股文件命名**：`stocks/<market>/<ticker>-<slug>-YYYYMMDD.md`（详见主 spec 第 2 节）
+  - 示例：`stocks/hk/00981-HK-smic-20260505.md`
+- **行业研究** / **其他主题报告**：暂沿用 `[主题]-YYYYMMDD.md`
+- **旧报告**：不强制迁移到新模板，只约束新报告
 
 ## 行业调研
 

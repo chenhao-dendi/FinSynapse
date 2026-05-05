@@ -1,0 +1,203 @@
+# 公司分析报告模板（Company Analysis Spec）
+
+> **template_version**: 0.1
+> **last_revised**: 2026-05-05
+> **适用**：所有遵循本规范的个股公司分析报告（行业研究模板见后续版本）
+
+---
+
+## 0. 本文件是什么 / 不是什么
+
+本文件是**单一真源**，规定一份公司分析报告应该包含哪些章节、写到什么程度、按什么口径。任何 agent（Claude / Gemini / Codex / opencode-DeepSeek）在产出报告前**必须**重新读取本文件。
+
+**本文件只放骨架与引用，不重复其他文件已经规定的内容**：
+
+| 关注点 | 文件 |
+|--------|------|
+| Frontmatter 字段定义 | [`report-frontmatter.md`](./report-frontmatter.md) |
+| 数据来源优先级 / 审计线索 / 估算标注 | [`references/data-source-policy.md`](./references/data-source-policy.md) |
+| 行业特定指标扩展包 | [`references/industry-metrics.md`](./references/industry-metrics.md) |
+| 估值方法 (DCF/comps) 详细说明 | `references/valuation-methods.md`（v0.2 新增） |
+| 报告完成度与 sanity 自检 | [`assets/report-quality-checklist.md`](./assets/report-quality-checklist.md) |
+| 模板改进建议提交流程 | [`_proposals/README.md`](./_proposals/README.md) |
+
+发现需要新增/修改 spec 时 → 写 proposal 到 `_proposals/`，**不要**直接改本文件或上述 references / assets。
+
+---
+
+## 1. 使用规则（写给 agent）
+
+1. **重读 spec**：每次产出报告前，重新读取本文件 + 上表所有 references + assets，不允许使用记忆中的旧版本
+2. **不复刻模板**：薄壳 skill / instruction 里**不允许**复制本文件的章节正文，只能引用路径
+3. **改模板走 proposal**：发现模板不足 → 写到 `_proposals/YYYYMMDD-<slug>.md`，不要直接改本文件
+4. **重名询问**：落盘前检查 `research/stocks/<market>/` 是否已有同标的报告，若有，问用户是"更新现有报告"还是"新建快照（用日期区分）"
+5. **写完自检**：按 `assets/report-quality-checklist.md` 全部勾选；任何不通过项必须在报告 `## Meta` 段说明
+6. **更新索引**：报告写完后必须更新 `research/README.md` 的索引表
+
+---
+
+## 2. 文件命名与落盘
+
+- **路径**：`research/stocks/<market>/<ticker>-<slug>-YYYYMMDD.md`
+  - `market`：`cn` / `hk` / `us`
+  - `ticker`：A 股用代码（`688981`）；港股带后缀（`00981-HK`）；美股用代码（`NVDA`）
+  - `slug`：英文小写短名（`smic` / `nvidia`）
+  - `YYYYMMDD`：报告**最后实质性更新日期**
+- **示例**：`research/stocks/hk/00981-HK-smic-20260505.md`
+- **A/H/ADR 同公司**：分别建文件（不同 `market` 子目录），各自独立。frontmatter 的 `tickers` 字段交叉引用其他市场代码
+
+---
+
+## 3. Frontmatter
+
+完全复用 [`report-frontmatter.md`](./report-frontmatter.md)。本文件**不重复**字段定义，避免双轨维护。
+
+新报告的 `template_version` 必须填写本文件顶部的版本号（当前 `0.1`）。
+
+---
+
+## 4. 正文骨架（金字塔结构）
+
+> 塔尖：TL;DR（独立可读的结论摘要）
+> 塔身：6 个固定章节（业务 / 财务 / 护城河 / 治理 / 风险 / 估值）
+> 塔基：第 7 章结论 + Meta（thesis 跟踪 + 数据缺口 + 模板反馈）
+
+```markdown
+# <公司中文名> / <英文名> (<primary ticker>) 分析报告
+
+## TL;DR（≤200 字，独立可读）
+- **业务**：一句话描述
+- **当下叙事**：市场现在怎么看它
+- **多空核心**：bull / bear 各一句（不是同一句话的正反面）
+- **研究结论**：积极 / 中性 / 谨慎 / 回避（详见第 7 章）
+
+## 1. 业务画像（What it does）
+1.1 商业模式
+1.2 收入结构（按业务线 / 地域 / 客户类型拆分）
+1.3 客户与渠道（含集中度）
+1.4 行业地位与市场份额
+[行业指标补充：依 frontmatter `industry` 引用 references/industry-metrics.md 对应包]
+
+## 2. 财务体检（How it performs）
+2.1 三表关键指标（近 3-5 年趋势表）
+2.2 成长性（营收 / 利润 / 订单 / 产能 等）
+2.3 盈利质量（毛利率 / 净利率 / ROE / ROIC）
+2.4 现金流与资本开支（FCF / Capex / 折旧）
+2.5 资产负债健康度（负债率 / 有息负债 / 流动性）
+[行业指标补充]
+
+## 3. 护城河与竞争（Why it wins/loses）
+3.1 核心竞争优势（技术 / 规模 / 牌照 / 网络效应 / 品牌）
+3.2 主要对手对比表
+3.3 替代品与新进入者威胁
+
+## 4. 治理与资本配置（Who runs it & how they allocate capital）
+4.1 股权结构（前 N 大股东 / 实际控制人 / 国资/民资/外资属性）
+4.2 管理层（核心高管履历、任期、激励对齐）
+4.3 资本配置历史（分红 / 回购 / 融资 / 并购 的轨迹与靠谱度）
+4.4 关联交易 / 公司治理风险
+
+## 5. 增长驱动与风险（Where it goes）
+5.1 看多逻辑（bull case，分点）
+5.2 看空逻辑（bear case，分点）
+5.3 监管 / 地缘 / 合规
+5.4 关键事件日历（财报 / 产品 / 政策窗口）
+
+## 6. 估值（What it's worth）
+6.1 当前估值表（PE/PB/PS/EV-EBITDA + 历史分位 + 同业对比）
+6.2 多情景估值（Bull / Base / Bear，每个情景写明假设）
+6.3 催化剂（什么发生估值会重估）
+
+## 7. 结论与跟踪（Thesis & Tracking）
+7.1 **研究结论**：{积极 | 中性 | 谨慎 | 回避}
+7.2 **当前 Thesis（一句话）**：研究上看好/谨慎的最核心理由
+7.3 **强化事件**（什么发生会让 thesis 更成立）：3-5 条
+7.4 **削弱事件**（什么发生会让 thesis 受损）：3-5 条
+7.5 **证伪事件**（什么发生会推翻 thesis）：1-3 条
+7.6 适用期限 + 重审日期
+
+## Meta（必填，用于模板自迭代）
+- **数据缺口**（必填）：本次没拿到的关键数据，及其影响
+- **不适用章节**（必填，若有 N/A）：哪些章节标注了 N/A，原因
+- **模板改进建议**（可选）：本次撰写中发现模板的不足；如有，agent 须同步在 `_proposals/` 提交 proposal
+```
+
+---
+
+## 5. 章节字段说明（关键章节的 bad/good 示例）
+
+### 5.1 TL;DR
+
+**Bad**（不独立、太长、混杂细节）：
+> 该公司主营 X，最近季度营收增长 27%，毛利率 18%，主要风险是 ...（继续 500 字）
+
+**Good**（≤200 字，独立可读，结论到位）：
+> SMIC 是中国大陆唯一具备 14nm 量产能力的晶圆代工厂，2024 营收 $80.3 亿（YoY +27%）。
+> 当下叙事：市场把它当作"国产替代 + 国家战略"溢价标的（PE 188x vs TSMC 25x）。
+> Bull：先进制程突破 + 国内 AI 芯片需求 + 28nm 产能稀缺议价。
+> Bear：折旧高企压缩利润 + 制裁限制 EUV 升级路径 + AH 双股流动性分化。
+> 研究结论：**中性**——叙事支撑短期估值，但盈利能力短期难以匹配市值。
+
+### 5.2 多空逻辑（5.1 / 5.2）
+
+**Bad**（同一句话正反面）：
+> Bull：国产替代加速。
+> Bear：国产替代受阻。
+
+**Good**（各自基于不同维度，各 ≥3 条）：
+> Bull：
+> 1. 28nm 成熟节点产能持续紧张，定价权强（产能维度）
+> 2. 国家集成电路大基金 III 期 3000 亿入场，资本支持持续（资金维度）
+> 3. 主要客户华为、寒武纪、海光绑定深 → 订单可见度高（客户维度）
+>
+> Bear：
+> 1. 年折旧 $22 亿持续压制净利率（成本维度）
+> 2. 美国出口管制堵死 7nm 以下 EUV 升级路径（地缘维度）
+> 3. 7nm 以下需要光源/光刻胶/EDA 同步突破，单点突破不解决（技术栈维度）
+
+### 5.3 第 7 章结论事件
+
+**Bad**（事件含糊不可观察）：
+> 强化事件：业绩好。
+> 削弱事件：行业不景气。
+
+**Good**（具体、可观察、有触发条件）：
+> 强化事件：
+> 1. 2026 Q2 季报毛利率 ≥ 25%（连续 3 个季度向上）
+> 2. 公开披露 N+1（5nm 等效）小批量流片
+> 3. 大基金 III 期对 SMIC 的具体出资额公布
+> 削弱事件：
+> 1. 美国新一轮制裁覆盖到 28nm 设备
+> 2. 主要客户华为/寒武纪订单大幅下修
+> 3. Capex 维持 $70 亿+ 但毛利率不再向上
+> 证伪事件：
+> 1. 公司因合规问题被撤销前道设备进口许可
+
+---
+
+## 6. 评级体系（去投资建议化）
+
+| 标签 | 含义 |
+|------|------|
+| 积极 | 研究上看好，需明确利好假设与时间窗 |
+| 中性 | 多空因素均衡，观察为主 |
+| 谨慎 | 存在显著未消化风险，倾向回避 |
+| 回避 | 重大瑕疵或不可承受风险，研究上不建议持有 |
+
+⚠️ **标签不构成投资建议**。每份报告 frontmatter 已声明 `not_investment_advice: true`。结论必须配套写"thesis + 强化/削弱/证伪事件"（见第 7 章）。
+
+---
+
+## 7. 数据与质量
+
+- **数据来源、审计线索、估算标注、口径规范** → [`references/data-source-policy.md`](./references/data-source-policy.md)
+- **行业特定指标** → [`references/industry-metrics.md`](./references/industry-metrics.md)
+- **报告写完自检** → [`assets/report-quality-checklist.md`](./assets/report-quality-checklist.md)
+
+---
+
+## 8. Changelog
+
+| 版本 | 日期 | 变更 |
+|------|------|------|
+| 0.1  | 2026-05-05 | 初版：薄骨架 + references/data-source-policy + assets/report-quality-checklist + industry-metrics 占位 + _proposals 流程 |
