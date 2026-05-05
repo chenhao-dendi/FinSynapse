@@ -4,6 +4,9 @@ as_of:
 last_material_update:
 tickers:
 markets:
+industry:                       # 行业标签，如 semiconductor / saas / bank / consumer / resource / other
+template_version:               # 撰写时所遵循的模板版本，如 0.1；旧报告可留空
+depth: standard                 # brief | standard | deep（v0.1 仅启用 standard，brief/deep 见 v0.2/v0.3）
 source_level: primary | secondary | mixed
 confidence: high | medium | low
 stale_after:
