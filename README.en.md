@@ -100,7 +100,7 @@ FinSynapse/
 │   ├── transform/         normalize → percentile → health_check → temperature → divergence
 │   ├── dashboard/         Streamlit app + bilingual static HTML (i18n + plotly)
 │   ├── notify/            Bark / Telegram state-change alerts
-│   └── report/            brief.py (LLM-first, template fallback)
+│   └── report/            brief orchestration + facts / llm / markdown layers
 ├── tests/                 pytest + VCR offline tests (CI never hits the network)
 ├── pyproject.toml         deps, ruff rules, Python 3.11+
 ├── .env.example           Secret inventory

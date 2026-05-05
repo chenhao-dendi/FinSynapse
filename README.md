@@ -100,7 +100,7 @@ FinSynapse/
 │   ├── transform/         normalize → percentile → health_check → temperature → divergence
 │   ├── dashboard/         Streamlit app + 双语静态 HTML 渲染（i18n + plotly）
 │   ├── notify/            Bark / Telegram 状态变化推送
-│   └── report/            brief.py（LLM 优先，模板兜底）
+│   └── report/            brief 编排 + facts / llm / markdown 分层
 ├── tests/                 pytest + VCR 离线测试（CI 不发真实请求）
 ├── pyproject.toml         依赖、ruff 规则、Python 3.11+
 ├── .env.example           secret 清单
