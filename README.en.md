@@ -186,7 +186,7 @@ Each market's three sub-temperatures are weighted combinations of base indicator
 #### US (composite 0.35 val + 0.45 sent + 0.20 liq)
 
 | Sub | Indicator | Weight | Dir | Window | Source | Notes |
-|---|---|---|---:|---|---|---|---|
+|---|---|---:|---|---|---|---|
 | val | `us_pe_ttm` | 0.35 | + | 10y | multpl.com | S&P500 TTM PE |
 | val | `us_cape` | 0.35 | + | 10y | multpl.com | Shiller 10Y-smoothed EPS |
 | val | `us_erp` | 0.30 | − | 10y | derived | `100/PE − real yield` |
@@ -201,7 +201,7 @@ Each market's three sub-temperatures are weighted combinations of base indicator
 #### CN (composite 0.65 val + 0.20 sent + 0.15 liq)
 
 | Sub | Indicator | Weight | Dir | Window | Source | Notes |
-|---|---|---|---:|---|---|---|---|
+|---|---|---:|---|---|---|---|
 | val | `csi300_pe_ttm` | 0.50 | + | 10y | AkShare | CSI300 TTM PE |
 | val | `csi300_pb` | 0.50 | + | 10y | AkShare | CSI300 PB |
 | sent | `cn_north_5d` | 0.25 | + | 5y | AkShare | northbound 5d net buy |
@@ -216,7 +216,7 @@ Each market's three sub-temperatures are weighted combinations of base indicator
 #### HK (composite 0.60 val + 0.25 sent + 0.15 liq)
 
 | Sub | Indicator | Weight | Dir | Window | Source | Notes |
-|---|---|---|---:|---|---|---|---|
+|---|---|---:|---|---|---|---|
 | val | `hk_ewh_yield_ttm` | 1.00 | − | 10y | yfinance EWH | TTM dividend yield (high = cheap = cold) |
 | sent | `cn_south_5d` | 0.60 | + | 5y | AkShare | southbound 5d net buy |
 | sent | `hk_vhsi` | 0.40 | − | 5y | AkShare | HSI Volatility Index (HK native VIX) |
