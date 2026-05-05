@@ -204,12 +204,12 @@ def test_safe_float_rejects_non_numeric_scalars():
 
 
 def test_risk_bucket_boundaries():
-    from finsynapse.dashboard import render_static
+    from finsynapse.dashboard import view_models
 
-    assert render_static._risk_bucket(0.0099) == ("risk_weak", 1, "navy")
-    assert render_static._risk_bucket(0.01) == ("risk_low", 2, "navy")
-    assert render_static._risk_bucket(0.1) == ("risk_med", 3, "gold")
-    assert render_static._risk_bucket(0.5) == ("risk_high", 4, "coral")
+    assert view_models._risk_bucket(0.0099) == ("risk_weak", 1, "navy")
+    assert view_models._risk_bucket(0.01) == ("risk_low", 2, "navy")
+    assert view_models._risk_bucket(0.1) == ("risk_med", 3, "gold")
+    assert view_models._risk_bucket(0.5) == ("risk_high", 4, "coral")
 
 
 def test_render_static_writes_api_manifest(tmp_path: Path, monkeypatch):
