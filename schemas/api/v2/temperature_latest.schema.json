@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/api/v2/temperature_latest.schema.json",
+  "title": "Temperature Latest",
+  "description": "Per-market latest temperature: overall + valuation/sentiment/liquidity sub-temps + 1-week change attribution.",
+  "type": "object",
+  "required": ["schema_version", "asof", "markets"],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "asof": { "type": ["string", "null"] },
+    "market_asof": {
+      "type": "object",
+      "properties": {
+        "cn": { "type": ["string", "null"] },
+        "hk": { "type": ["string", "null"] },
+        "us": { "type": ["string", "null"] }
+      }
+    },
+    "latest_complete_date": {
+      "type": "object",
+      "properties": {
+        "cn": { "type": ["string", "null"] },
+        "hk": { "type": ["string", "null"] },
+        "us": { "type": ["string", "null"] }
+      }
+    },
+    "raw_temperature_asof": { "type": ["string", "null"] },
+    "markets": {
+      "type": "object",
+      "required": ["cn", "hk", "us"],
+      "properties": {
+        "cn": { "$ref": "#/$defs/marketBlock" },
+        "hk": { "$ref": "#/$defs/marketBlock" },
+        "us": { "$ref": "#/$defs/marketBlock" }
+      }
+    }
+  },
+  "$defs": {
+    "marketBlock": {
+      "type": "object",
+      "required": ["available"],
+      "properties": {
+        "available": { "type": "boolean" },
+        "asof": { "type": ["string", "null"] },
+        "latest_complete_date": { "type": ["string", "null"] },
+        "overall": { "type": ["number", "null"] },
+        "sub_temperatures": {
+          "type": "object",
+          "properties": {
+            "valuation": { "type": ["number", "null"] },
+            "sentiment": { "type": ["number", "null"] },
+            "liquidity": { "type": ["number", "null"] }
+          }
+        },
+        "change_1w": {
+          "type": "object",
+          "properties": {
+            "overall": { "type": ["number", "null"] },
+            "attribution": {
+              "type": "object",
+              "properties": {
+                "valuation": { "type": ["number", "null"] },
+                "sentiment": { "type": ["number", "null"] },
+                "liquidity": { "type": ["number", "null"] }
+              }
+            }
+          }
+        },
+        "data_quality": { "type": "string" },
+        "subtemp_completeness": { "type": ["integer", "null"] },
+        "conf_ok": { "type": ["integer", "null"] },
+        "is_complete": { "type": "boolean" }
+      }
+    }
+  }
+}

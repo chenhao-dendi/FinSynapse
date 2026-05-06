@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/api/v2/manifest.schema.json",
+  "title": "API Manifest",
+  "description": "Schema version, per-market as-of dates, build time, and endpoint inventory.",
+  "type": "object",
+  "required": ["schema_version", "asof", "endpoints"],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "asof": { "type": ["string", "null"] },
+    "market_asof": {
+      "type": "object",
+      "properties": {
+        "cn": { "type": ["string", "null"] },
+        "hk": { "type": ["string", "null"] },
+        "us": { "type": ["string", "null"] }
+      }
+    },
+    "latest_complete_date": {
+      "type": "object",
+      "properties": {
+        "cn": { "type": ["string", "null"] },
+        "hk": { "type": ["string", "null"] },
+        "us": { "type": ["string", "null"] }
+      }
+    },
+    "raw_temperature_asof": { "type": ["string", "null"] },
+    "generated_at_utc": { "type": "string" },
+    "endpoints": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["path", "description"],
+        "properties": {
+          "path": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}

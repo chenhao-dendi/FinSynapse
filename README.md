@@ -283,6 +283,39 @@ gold/    叙事：人类/LLM 读得懂的结论
 
 CI 默认用 `deepseek-v4-pro`（2026-05-31 前折扣同 v4-flash 价位；过期后改回 v4-flash）。本地可以用 `--provider ollama` 跑离线模型零成本。
 
+### 5.9 权重改动流程 (champion-challenger gate)
+
+更改 `config/weights.yaml` 或 `src/finsynapse/transform/` 下任何文件时，**必须先通过本地 gate 验证**，防止退化上线。
+
+**机械流程**：
+
+1. **grid_search**（如改 sub_weight）：`uv run python scripts/grid_search_weights.py` 生成候选权重
+2. **suite**：`uv run python -m finsynapse.eval.suite --silver tests/fixtures/eval_silver_2026Q1 --weights config/weights.yaml --out /tmp/latest.json`
+3. **gate 本地 PASS**：`uv run python -m finsynapse.eval.gate --champion eval/champion.json --challenger /tmp/latest.json`
+4. **开 PR**：正常提 PR
+5. **CI eval-gate PASS**：PR diff 触及 eval-relevant 路径时自动跑 gate
+6. **merge → promote**：merge 到 main 后在 main 分支上执行：
+
+```bash
+uv run python scripts/promote_champion.py \
+    --latest /tmp/latest.json \
+    --commit-sha $(git rev-parse --short HEAD) \
+    --pr "https://github.com/.../pull/N" \
+    --reason "简述改进原因"
+```
+
+**Gate 规则**（见 `src/finsynapse/eval/champion.py`）：
+
+| 指标 | 方向 | 容忍度 | 级别 |
+|---|---|---|---|
+| `pivot_directional_rate` | higher_better | 0 | block |
+| `mean_reversion_strength.3m.us` | higher_better | 0.02 | block |
+| `mean_reversion_strength.3m.cn` | higher_better | 0.02 | block |
+| `mean_reversion_strength.3m.hk` | higher_better | 0.02 | block |
+| `pivot_strict_rate` | higher_better | 0 | warn |
+
+> `mean_reversion_strength = -ic_mean`，把"IC 期望为负"翻译成"越大越好"。
+
 ---
 
 ## 6. GitHub Actions 与分支策略

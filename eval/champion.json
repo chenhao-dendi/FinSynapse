@@ -1,0 +1,726 @@
+{
+  "algo_version": "2.1",
+  "config_hash": "0e0a7b7077c3",
+  "fixture_id": "eval_silver_2026Q1@4bbbb1b",
+  "metrics": {
+    "pivot_directional_rate": 0.92,
+    "pivot_strict_rate": 0.64,
+    "mean_reversion_strength.1m.cn": 0.2194,
+    "oos_ic_mean.1m.cn": -0.2704,
+    "oos_ic_ir.1m.cn": -4.2739,
+    "mean_reversion_strength.3m.cn": 0.3947,
+    "oos_ic_mean.3m.cn": -0.4216,
+    "oos_ic_ir.3m.cn": -5.1943,
+    "mean_reversion_strength.6m.cn": 0.5052,
+    "oos_ic_mean.6m.cn": -0.5424,
+    "oos_ic_ir.6m.cn": -7.2594,
+    "mean_reversion_strength.12m.cn": 0.7055,
+    "oos_ic_mean.12m.cn": null,
+    "oos_ic_ir.12m.cn": null,
+    "regime_ic_bull.1m.cn": null,
+    "regime_ic_bull.3m.cn": null,
+    "regime_ic_bull.6m.cn": null,
+    "regime_ic_bull.12m.cn": null,
+    "regime_ic_bear.1m.cn": -0.2194,
+    "regime_ic_bear.3m.cn": -0.3947,
+    "regime_ic_bear.6m.cn": -0.5052,
+    "regime_ic_bear.12m.cn": -0.7055,
+    "regime_ic_sideways.1m.cn": null,
+    "regime_ic_sideways.3m.cn": null,
+    "regime_ic_sideways.6m.cn": null,
+    "regime_ic_sideways.12m.cn": null,
+    "bootstrap_ic_ci_low.1m.cn": -0.2835,
+    "bootstrap_ic_ci_high.1m.cn": -0.1572,
+    "bootstrap_ic_ci_low.3m.cn": -0.4571,
+    "bootstrap_ic_ci_high.3m.cn": -0.334,
+    "bootstrap_ic_ci_low.6m.cn": -0.5564,
+    "bootstrap_ic_ci_high.6m.cn": -0.451,
+    "bootstrap_ic_ci_low.12m.cn": -0.7405,
+    "bootstrap_ic_ci_high.12m.cn": -0.6644,
+    "mean_reversion_strength.1m.hk": 0.0734,
+    "oos_ic_mean.1m.hk": -0.0468,
+    "oos_ic_ir.1m.hk": -0.2694,
+    "mean_reversion_strength.3m.hk": 0.147,
+    "oos_ic_mean.3m.hk": -0.0781,
+    "oos_ic_ir.3m.hk": -0.2965,
+    "mean_reversion_strength.6m.hk": 0.1543,
+    "oos_ic_mean.6m.hk": -0.0899,
+    "oos_ic_ir.6m.hk": -0.2921,
+    "mean_reversion_strength.12m.hk": 0.1854,
+    "oos_ic_mean.12m.hk": -0.111,
+    "oos_ic_ir.12m.hk": -0.3329,
+    "regime_ic_bull.1m.hk": 0.036,
+    "regime_ic_bull.3m.hk": -0.0087,
+    "regime_ic_bull.6m.hk": -0.0437,
+    "regime_ic_bull.12m.hk": -0.1319,
+    "regime_ic_bear.1m.hk": -0.1564,
+    "regime_ic_bear.3m.hk": -0.2686,
+    "regime_ic_bear.6m.hk": -0.2742,
+    "regime_ic_bear.12m.hk": -0.2784,
+    "regime_ic_sideways.1m.hk": null,
+    "regime_ic_sideways.3m.hk": null,
+    "regime_ic_sideways.6m.hk": null,
+    "regime_ic_sideways.12m.hk": null,
+    "bootstrap_ic_ci_low.1m.hk": -0.1064,
+    "bootstrap_ic_ci_high.1m.hk": -0.0366,
+    "bootstrap_ic_ci_low.3m.hk": -0.1806,
+    "bootstrap_ic_ci_high.3m.hk": -0.1106,
+    "bootstrap_ic_ci_low.6m.hk": -0.1896,
+    "bootstrap_ic_ci_high.6m.hk": -0.1181,
+    "bootstrap_ic_ci_low.12m.hk": -0.2237,
+    "bootstrap_ic_ci_high.12m.hk": -0.1462,
+    "mean_reversion_strength.1m.us": 0.1491,
+    "oos_ic_mean.1m.us": -0.2038,
+    "oos_ic_ir.1m.us": -1.1782,
+    "mean_reversion_strength.3m.us": 0.1852,
+    "oos_ic_mean.3m.us": -0.2241,
+    "oos_ic_ir.3m.us": -0.7733,
+    "mean_reversion_strength.6m.us": 0.1243,
+    "oos_ic_mean.6m.us": -0.169,
+    "oos_ic_ir.6m.us": -0.5277,
+    "mean_reversion_strength.12m.us": 0.1946,
+    "oos_ic_mean.12m.us": -0.2683,
+    "oos_ic_ir.12m.us": -1.0389,
+    "regime_ic_bull.1m.us": -0.1613,
+    "regime_ic_bull.3m.us": -0.2577,
+    "regime_ic_bull.6m.us": -0.1698,
+    "regime_ic_bull.12m.us": -0.2128,
+    "regime_ic_bear.1m.us": -0.1064,
+    "regime_ic_bear.3m.us": -0.0271,
+    "regime_ic_bear.6m.us": -0.0319,
+    "regime_ic_bear.12m.us": -0.0335,
+    "regime_ic_sideways.1m.us": null,
+    "regime_ic_sideways.3m.us": null,
+    "regime_ic_sideways.6m.us": null,
+    "regime_ic_sideways.12m.us": null,
+    "bootstrap_ic_ci_low.1m.us": -0.1848,
+    "bootstrap_ic_ci_high.1m.us": -0.1103,
+    "bootstrap_ic_ci_low.3m.us": -0.2169,
+    "bootstrap_ic_ci_high.3m.us": -0.1486,
+    "bootstrap_ic_ci_low.6m.us": -0.1587,
+    "bootstrap_ic_ci_high.6m.us": -0.0881,
+    "bootstrap_ic_ci_low.12m.us": -0.2293,
+    "bootstrap_ic_ci_high.12m.us": -0.16
+  },
+  "per_market": {
+    "cn": {
+      "directional_rate": 1.0,
+      "strict_rate": 0.875,
+      "mean_reversion_strength": {
+        "1m": 0.2194,
+        "3m": 0.3947,
+        "6m": 0.5052,
+        "12m": 0.7055
+      },
+      "oos_ic": {
+        "1m": {
+          "n_windows": 3,
+          "ic_mean": -0.2704,
+          "ic_std": 0.0633,
+          "ic_ir": -4.2739,
+          "ic_neg_rate": 1.0
+        },
+        "3m": {
+          "n_windows": 3,
+          "ic_mean": -0.4216,
+          "ic_std": 0.0812,
+          "ic_ir": -5.1943,
+          "ic_neg_rate": 1.0
+        },
+        "6m": {
+          "n_windows": 2,
+          "ic_mean": -0.5424,
+          "ic_std": 0.0747,
+          "ic_ir": -7.2594,
+          "ic_neg_rate": 1.0
+        },
+        "12m": {
+          "n_windows": 0,
+          "ic_mean": null,
+          "ic_std": null,
+          "ic_ir": null,
+          "ic_neg_rate": null
+        }
+      },
+      "regime_ic": {
+        "bull": {
+          "1m": {
+            "ic_mean": null,
+            "n": 0
+          },
+          "3m": {
+            "ic_mean": null,
+            "n": 0
+          },
+          "6m": {
+            "ic_mean": null,
+            "n": 0
+          },
+          "12m": {
+            "ic_mean": null,
+            "n": 0
+          }
+        },
+        "bear": {
+          "1m": {
+            "ic_mean": -0.2194,
+            "n": 905
+          },
+          "3m": {
+            "ic_mean": -0.3947,
+            "n": 863
+          },
+          "6m": {
+            "ic_mean": -0.5052,
+            "n": 800
+          },
+          "12m": {
+            "ic_mean": -0.7055,
+            "n": 674
+          }
+        },
+        "sideways": {
+          "1m": {
+            "ic_mean": null,
+            "n": 0
+          },
+          "3m": {
+            "ic_mean": null,
+            "n": 0
+          },
+          "6m": {
+            "ic_mean": null,
+            "n": 0
+          },
+          "12m": {
+            "ic_mean": null,
+            "n": 0
+          }
+        }
+      },
+      "bootstrap": {
+        "1m": {
+          "ic_mean": -0.2198,
+          "ic_ci_low": -0.2835,
+          "ic_ci_high": -0.1572,
+          "n": 905
+        },
+        "3m": {
+          "ic_mean": -0.3948,
+          "ic_ci_low": -0.4571,
+          "ic_ci_high": -0.334,
+          "n": 863
+        },
+        "6m": {
+          "ic_mean": -0.5041,
+          "ic_ci_low": -0.5564,
+          "ic_ci_high": -0.451,
+          "n": 800
+        },
+        "12m": {
+          "ic_mean": -0.7052,
+          "ic_ci_low": -0.7405,
+          "ic_ci_high": -0.6644,
+          "n": 674
+        }
+      }
+    },
+    "hk": {
+      "directional_rate": 0.875,
+      "strict_rate": 0.625,
+      "mean_reversion_strength": {
+        "1m": 0.0734,
+        "3m": 0.147,
+        "6m": 0.1543,
+        "12m": 0.1854
+      },
+      "oos_ic": {
+        "1m": {
+          "n_windows": 38,
+          "ic_mean": -0.0468,
+          "ic_std": 0.1735,
+          "ic_ir": -0.2694,
+          "ic_neg_rate": 0.6316
+        },
+        "3m": {
+          "n_windows": 37,
+          "ic_mean": -0.0781,
+          "ic_std": 0.2633,
+          "ic_ir": -0.2965,
+          "ic_neg_rate": 0.6486
+        },
+        "6m": {
+          "n_windows": 36,
+          "ic_mean": -0.0899,
+          "ic_std": 0.3079,
+          "ic_ir": -0.2921,
+          "ic_neg_rate": 0.6389
+        },
+        "12m": {
+          "n_windows": 34,
+          "ic_mean": -0.111,
+          "ic_std": 0.3335,
+          "ic_ir": -0.3329,
+          "ic_neg_rate": 0.5882
+        }
+      },
+      "regime_ic": {
+        "bull": {
+          "1m": {
+            "ic_mean": 0.036,
+            "n": 1281
+          },
+          "3m": {
+            "ic_mean": -0.0087,
+            "n": 1281
+          },
+          "6m": {
+            "ic_mean": -0.0437,
+            "n": 1281
+          },
+          "12m": {
+            "ic_mean": -0.1319,
+            "n": 1281
+          }
+        },
+        "bear": {
+          "1m": {
+            "ic_mean": -0.1564,
+            "n": 1747
+          },
+          "3m": {
+            "ic_mean": -0.2686,
+            "n": 1705
+          },
+          "6m": {
+            "ic_mean": -0.2742,
+            "n": 1642
+          },
+          "12m": {
+            "ic_mean": -0.2784,
+            "n": 1516
+          }
+        },
+        "sideways": {
+          "1m": {
+            "ic_mean": null,
+            "n": 0
+          },
+          "3m": {
+            "ic_mean": null,
+            "n": 0
+          },
+          "6m": {
+            "ic_mean": null,
+            "n": 0
+          },
+          "12m": {
+            "ic_mean": null,
+            "n": 0
+          }
+        }
+      },
+      "bootstrap": {
+        "1m": {
+          "ic_mean": -0.0725,
+          "ic_ci_low": -0.1064,
+          "ic_ci_high": -0.0366,
+          "n": 3028
+        },
+        "3m": {
+          "ic_mean": -0.1465,
+          "ic_ci_low": -0.1806,
+          "ic_ci_high": -0.1106,
+          "n": 2986
+        },
+        "6m": {
+          "ic_mean": -0.1537,
+          "ic_ci_low": -0.1896,
+          "ic_ci_high": -0.1181,
+          "n": 2923
+        },
+        "12m": {
+          "ic_mean": -0.1838,
+          "ic_ci_low": -0.2237,
+          "ic_ci_high": -0.1462,
+          "n": 2797
+        }
+      }
+    },
+    "us": {
+      "directional_rate": 0.8889,
+      "strict_rate": 0.4444,
+      "mean_reversion_strength": {
+        "1m": 0.1491,
+        "3m": 0.1852,
+        "6m": 0.1243,
+        "12m": 0.1946
+      },
+      "oos_ic": {
+        "1m": {
+          "n_windows": 43,
+          "ic_mean": -0.2038,
+          "ic_std": 0.173,
+          "ic_ir": -1.1782,
+          "ic_neg_rate": 0.814
+        },
+        "3m": {
+          "n_windows": 42,
+          "ic_mean": -0.2241,
+          "ic_std": 0.2898,
+          "ic_ir": -0.7733,
+          "ic_neg_rate": 0.8095
+        },
+        "6m": {
+          "n_windows": 41,
+          "ic_mean": -0.169,
+          "ic_std": 0.3202,
+          "ic_ir": -0.5277,
+          "ic_neg_rate": 0.7073
+        },
+        "12m": {
+          "n_windows": 39,
+          "ic_mean": -0.2683,
+          "ic_std": 0.2582,
+          "ic_ir": -1.0389,
+          "ic_neg_rate": 0.8205
+        }
+      },
+      "regime_ic": {
+        "bull": {
+          "1m": {
+            "ic_mean": -0.1613,
+            "n": 2726
+          },
+          "3m": {
+            "ic_mean": -0.2577,
+            "n": 2684
+          },
+          "6m": {
+            "ic_mean": -0.1698,
+            "n": 2621
+          },
+          "12m": {
+            "ic_mean": -0.2128,
+            "n": 2495
+          }
+        },
+        "bear": {
+          "1m": {
+            "ic_mean": -0.1064,
+            "n": 708
+          },
+          "3m": {
+            "ic_mean": -0.0271,
+            "n": 708
+          },
+          "6m": {
+            "ic_mean": -0.0319,
+            "n": 708
+          },
+          "12m": {
+            "ic_mean": -0.0335,
+            "n": 708
+          }
+        },
+        "sideways": {
+          "1m": {
+            "ic_mean": null,
+            "n": 0
+          },
+          "3m": {
+            "ic_mean": null,
+            "n": 0
+          },
+          "6m": {
+            "ic_mean": null,
+            "n": 0
+          },
+          "12m": {
+            "ic_mean": null,
+            "n": 0
+          }
+        }
+      },
+      "bootstrap": {
+        "1m": {
+          "ic_mean": -0.1494,
+          "ic_ci_low": -0.1848,
+          "ic_ci_high": -0.1103,
+          "n": 3434
+        },
+        "3m": {
+          "ic_mean": -0.1846,
+          "ic_ci_low": -0.2169,
+          "ic_ci_high": -0.1486,
+          "n": 3392
+        },
+        "6m": {
+          "ic_mean": -0.1242,
+          "ic_ci_low": -0.1587,
+          "ic_ci_high": -0.0881,
+          "n": 3329
+        },
+        "12m": {
+          "ic_mean": -0.1942,
+          "ic_ci_low": -0.2293,
+          "ic_ci_high": -0.16,
+          "n": 3203
+        }
+      }
+    }
+  },
+  "pivot_details": [
+    {
+      "label": "2011 US debt downgrade / Eurozone crisis low",
+      "market": "us",
+      "date": "2011-10-03",
+      "expected_zone": "cold",
+      "temperature": 24.6,
+      "zone": "cold",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "2015–16 China-growth-scare correction (US was not cold — PE still elevated)",
+      "market": "us",
+      "date": "2016-02-11",
+      "expected_zone": "mid",
+      "temperature": 75.8,
+      "zone": "hot",
+      "directional_pass": false,
+      "strict_pass": false
+    },
+    {
+      "label": "2018 Christmas crash bottom",
+      "market": "us",
+      "date": "2018-12-24",
+      "expected_zone": "cold",
+      "temperature": 46.9,
+      "zone": "mid",
+      "directional_pass": true,
+      "strict_pass": false
+    },
+    {
+      "label": "COVID liquidity crash bottom",
+      "market": "us",
+      "date": "2020-03-23",
+      "expected_zone": "cold",
+      "temperature": 42.8,
+      "zone": "mid",
+      "directional_pass": true,
+      "strict_pass": false
+    },
+    {
+      "label": "ARK / SPAC / stimmy retail peak",
+      "market": "us",
+      "date": "2021-02-12",
+      "expected_zone": "hot",
+      "temperature": 51.4,
+      "zone": "mid",
+      "directional_pass": true,
+      "strict_pass": false
+    },
+    {
+      "label": "2022 Fed hiking-cycle trough (pre-pivot)",
+      "market": "us",
+      "date": "2022-10-12",
+      "expected_zone": "cold",
+      "temperature": 5.3,
+      "zone": "cold",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "2023 regional-bank crisis low (SVB)",
+      "market": "us",
+      "date": "2023-10-27",
+      "expected_zone": "cold",
+      "temperature": 30.9,
+      "zone": "mid",
+      "directional_pass": true,
+      "strict_pass": false
+    },
+    {
+      "label": "2024 pre-9.24 US near ATH (US was hot — S&P ATH, CAPE>35)",
+      "market": "us",
+      "date": "2024-09-23",
+      "expected_zone": "hot",
+      "temperature": 88.0,
+      "zone": "hot",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "AI-led valuation new highs",
+      "market": "us",
+      "date": "2024-12-31",
+      "expected_zone": "hot",
+      "temperature": 95.1,
+      "zone": "hot",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "A-shares 2015 leveraged-bull peak",
+      "market": "cn",
+      "date": "2015-06-12",
+      "expected_zone": "hot",
+      "temperature": 85.5,
+      "zone": "hot",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "2016 circuit-breaker / RMB devaluation crash",
+      "market": "cn",
+      "date": "2016-01-28",
+      "expected_zone": "cold",
+      "temperature": 43.0,
+      "zone": "mid",
+      "directional_pass": true,
+      "strict_pass": false
+    },
+    {
+      "label": "A-shares 2018 trade-war bottom",
+      "market": "cn",
+      "date": "2018-12-28",
+      "expected_zone": "cold",
+      "temperature": 17.5,
+      "zone": "cold",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "2020 COVID A-share low",
+      "market": "cn",
+      "date": "2020-03-23",
+      "expected_zone": "cold",
+      "temperature": 17.0,
+      "zone": "cold",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "2021 core-asset huddle peak (baijiu/pharma)",
+      "market": "cn",
+      "date": "2021-02-10",
+      "expected_zone": "hot",
+      "temperature": 93.8,
+      "zone": "hot",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "2022 zero-COVID / property trough",
+      "market": "cn",
+      "date": "2022-10-31",
+      "expected_zone": "cold",
+      "temperature": 15.0,
+      "zone": "cold",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "2024 pre-Spring-Festival correction low",
+      "market": "cn",
+      "date": "2024-02-05",
+      "expected_zone": "cold",
+      "temperature": 7.3,
+      "zone": "cold",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "A-shares 2024 pre-9.24 stimulus",
+      "market": "cn",
+      "date": "2024-09-23",
+      "expected_zone": "cold",
+      "temperature": 11.0,
+      "zone": "cold",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "2015 connect-driven bull peak",
+      "market": "hk",
+      "date": "2015-04-27",
+      "expected_zone": "hot",
+      "temperature": 32.4,
+      "zone": "mid",
+      "directional_pass": false,
+      "strict_pass": false
+    },
+    {
+      "label": "2016 HK crash bottom (A-share meltdown spillover)",
+      "market": "hk",
+      "date": "2016-01-20",
+      "expected_zone": "cold",
+      "temperature": 25.3,
+      "zone": "cold",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "2018 trade-war / HKD peg defence low",
+      "market": "hk",
+      "date": "2018-10-30",
+      "expected_zone": "cold",
+      "temperature": 2.8,
+      "zone": "cold",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "2020 COVID HK bottom",
+      "market": "hk",
+      "date": "2020-03-23",
+      "expected_zone": "cold",
+      "temperature": 37.7,
+      "zone": "mid",
+      "directional_pass": true,
+      "strict_pass": false
+    },
+    {
+      "label": "2021 southbound surge / tech mania peak",
+      "market": "hk",
+      "date": "2021-02-17",
+      "expected_zone": "hot",
+      "temperature": 94.1,
+      "zone": "hot",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "2022 HSI 25-year low (property + liquidity crisis)",
+      "market": "hk",
+      "date": "2022-10-31",
+      "expected_zone": "cold",
+      "temperature": 35.3,
+      "zone": "mid",
+      "directional_pass": true,
+      "strict_pass": false
+    },
+    {
+      "label": "2024 pre-recovery HK low",
+      "market": "hk",
+      "date": "2024-01-22",
+      "expected_zone": "cold",
+      "temperature": 19.8,
+      "zone": "cold",
+      "directional_pass": true,
+      "strict_pass": true
+    },
+    {
+      "label": "2024 9.24 policy-pivot surge",
+      "market": "hk",
+      "date": "2024-10-10",
+      "expected_zone": "mid",
+      "temperature": 38.6,
+      "zone": "mid",
+      "directional_pass": true,
+      "strict_pass": true
+    }
+  ],
+  "generated_at": "2026-05-06T07:38:28.657426+00:00"
+}

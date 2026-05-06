@@ -75,4 +75,112 @@ jobs:
       - name: Run pytest
         # All tests are offline (VCR cassettes for HTTP, fixtures for parquet).
         # If a test ever hits the network in CI, it will time-out — that's by design.
-        run: uv run pytest -q
+        run: uv run pytest -q --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage artifact (py${{ matrix.python-version }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-py${{ matrix.python-version }}
+          path: coverage.xml
+          retention-days: 1
+
+  coverage-report:
+    name: Diff Coverage Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: test
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-py*
+          merge-multiple: true
+          path: .
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install deps
+        run: uv sync --frozen --all-extras
+
+      - name: Run diff-cover
+        run: |
+          uv run diff-cover coverage.xml --compare-branch=origin/main --fail-under=0 --html-report=diff-cover.html || true
+          echo "### Diff Coverage" >> $GITHUB_STEP_SUMMARY
+          uv run diff-cover coverage.xml --compare-branch=origin/main --fail-under=0 --markdown-report=/tmp/dc.md || true
+          cat /tmp/dc.md >> $GITHUB_STEP_SUMMARY
+
+  eval-gate:
+    name: Eval Gate (champion-challenger)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only run on PRs (not push to main); the gate compares challenger vs champion.
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check if eval-relevant paths changed
+        id: paths
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            eval-trigger:
+              - 'config/weights.yaml'
+              - 'src/finsynapse/transform/**'
+              - 'src/finsynapse/eval/**'
+              - 'scripts/validation_lib.py'
+
+      - name: Install uv
+        if: steps.paths.outputs.eval-trigger == 'true'
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install deps
+        if: steps.paths.outputs.eval-trigger == 'true'
+        run: uv sync --frozen --all-extras
+
+      - name: Run benchmark suite
+        if: steps.paths.outputs.eval-trigger == 'true'
+        run: |
+          uv run python -m finsynapse.eval.suite \
+            --silver tests/fixtures/eval_silver_2026Q1 \
+            --weights config/weights.yaml \
+            --out /tmp/latest.json
+
+      - name: Run champion-challenger gate
+        if: steps.paths.outputs.eval-trigger == 'true'
+        run: |
+          uv run python -m finsynapse.eval.gate \
+            --champion eval/champion.json \
+            --challenger /tmp/latest.json
+
+      - name: Check for improvement hints
+        if: steps.paths.outputs.eval-trigger == 'true'
+        run: |
+          python -c "
+          import json
+          champ = json.load(open('eval/champion.json'))
+          chal = json.load(open('/tmp/latest.json'))
+          ms = champ.get('metrics', {})
+          mc = chal.get('metrics', {})
+          improved = []
+          for k in ms:
+              cv = ms[k]
+              nv = mc.get(k)
+              if cv is not None and nv is not None and isinstance(cv, (int, float)) and isinstance(nv, (int, float)):
+                  delta = nv - cv
+                  if delta >= 0.01:
+                      improved.append(f'{k}: {cv:+.4f} -> {nv:+.4f} (Δ{delta:+.4f})')
+          if improved:
+              print('::notice::Metrics improved vs champion:')
+              for line in improved:
+                  print(f'  {line}')
+          " || true

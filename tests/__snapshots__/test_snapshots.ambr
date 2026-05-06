@@ -1,0 +1,123 @@
+# serializer version: 1
+# name: test_brief_template_snapshot
+  '''
+  # FinSynapse 宏观简评 · 2024-12-31
+  
+  > 数据截至 **2024-12-31** · 叙事生成: `template` · 数字直接来自 silver 层
+  
+  ## 一、三市场温度快照
+  
+  | 市场 | 使用日期 | 综合 | 区间 | 估值 | 情绪 | 流动性 | 一周Δ | 数据 |
+  |------|:--------:|-----:|:----:|-----:|-----:|-------:|------:|------|
+  | CN | 2024-12-31 | 40.8° | 🌤 mid | 40.8° | 59.4° | 31.2° | -0.6° | ok |
+  | HK | 2024-12-31 | 35.4° | 🌤 mid | 19.5° | 92.7° | 5.7° | -0.6° | ok |
+  | US | 2024-12-31 | 95.1° | 🔥 hot | 95.1° | 64.9° | 25.9° | -0.1° | ok |
+  
+  ### 一周温度变化贡献分解
+  
+  | 市场 | Δ估值 | Δ情绪 | Δ流动性 |
+  |------|------:|------:|--------:|
+  | CN | -0.6° | -0.9° | -12.3° |
+  | HK | -0.2° | +0.4° | -1.3° |
+  | US | -0.1° | -8.9° | -0.1° |
+  
+  ## 二、今日观察
+  
+  今日三市场温度：US 最热（95°，🔥），HK 最冷（35°，🌤）。
+  
+  ## 三、最近背离信号
+  
+  _近 5 个交易日无显著背离。_
+  
+  '''
+# ---
+# name: test_temperature_latest_snapshot
+  '''
+  {
+    "schema_version": "2.0.0",
+    "asof": "FIXTURE",
+    "market_asof": {
+      "cn": "FIXTURE",
+      "hk": "FIXTURE",
+      "us": "FIXTURE"
+    },
+    "latest_complete_date": {
+      "cn": "FIXTURE",
+      "hk": "FIXTURE",
+      "us": "FIXTURE"
+    },
+    "raw_temperature_asof": "FIXTURE",
+    "markets": {
+      "cn": {
+        "available": true,
+        "asof": "FIXTURE",
+        "latest_complete_date": "FIXTURE",
+        "overall": 40.84325396825397,
+        "sub_temperatures": {
+          "valuation": 40.84325396825397,
+          "sentiment": 59.414682539682545,
+          "liquidity": 31.205984766323233
+        },
+        "change_1w": {
+          "overall": -0.6051587301587276,
+          "attribution": {
+            "valuation": -0.6051587301587276,
+            "sentiment": -0.9374999999999929,
+            "liquidity": -12.304804657927725
+          }
+        },
+        "data_quality": "ok",
+        "subtemp_completeness": 3,
+        "conf_ok": 0,
+        "is_complete": true
+      },
+      "hk": {
+        "available": true,
+        "asof": "FIXTURE",
+        "latest_complete_date": "FIXTURE",
+        "overall": 35.418858772806146,
+        "sub_temperatures": {
+          "valuation": 19.52380952380952,
+          "sentiment": 92.6984126984127,
+          "liquidity": 5.672619047619049
+        },
+        "change_1w": {
+          "overall": -0.5834831766318587,
+          "attribution": {
+            "valuation": -0.2380952380952408,
+            "sentiment": 0.39682539682539186,
+            "liquidity": -1.3154761904761898
+          }
+        },
+        "data_quality": "ok",
+        "subtemp_completeness": 3,
+        "conf_ok": 1,
+        "is_complete": true
+      },
+      "us": {
+        "available": true,
+        "asof": "FIXTURE",
+        "latest_complete_date": "FIXTURE",
+        "overall": 95.08730158730158,
+        "sub_temperatures": {
+          "valuation": 95.08730158730158,
+          "sentiment": 64.88437950937951,
+          "liquidity": 25.933531746031747
+        },
+        "change_1w": {
+          "overall": -0.09920634920634086,
+          "attribution": {
+            "valuation": -0.09920634920634086,
+            "sentiment": -8.893616704396507,
+            "liquidity": -0.11507936507936734
+          }
+        },
+        "data_quality": "ok",
+        "subtemp_completeness": 3,
+        "conf_ok": 0,
+        "is_complete": true
+      }
+    }
+  }
+  '''
+# ---

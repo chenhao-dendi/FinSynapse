@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/api/v2/temperature_history.schema.json",
+  "title": "Temperature History",
+  "description": "Per-market full daily history of overall + sub-temps. Gzipped JSON; schema validates the decompressed payload.",
+  "type": "object",
+  "required": ["schema_version", "markets"],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "asof": { "type": ["string", "null"] },
+    "market_asof": {
+      "type": "object",
+      "properties": {
+        "cn": { "type": ["string", "null"] },
+        "hk": { "type": ["string", "null"] },
+        "us": { "type": ["string", "null"] }
+      }
+    },
+    "raw_temperature_asof": { "type": ["string", "null"] },
+    "markets": {
+      "type": "object",
+      "required": ["cn", "hk", "us"],
+      "properties": {
+        "cn": { "$ref": "#/$defs/historyList" },
+        "hk": { "$ref": "#/$defs/historyList" },
+        "us": { "$ref": "#/$defs/historyList" }
+      }
+    }
+  },
+  "$defs": {
+    "historyList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/historyRow" }
+    },
+    "historyRow": {
+      "type": "object",
+      "required": ["date", "overall", "valuation", "sentiment", "liquidity"],
+      "properties": {
+        "date": { "type": "string" },
+        "overall": { "type": ["number", "null"] },
+        "valuation": { "type": ["number", "null"] },
+        "sentiment": { "type": ["number", "null"] },
+        "liquidity": { "type": ["number", "null"] }
+      }
+    }
+  }
+}
