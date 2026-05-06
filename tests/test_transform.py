@@ -159,7 +159,11 @@ def test_hk_publishable_during_cn_holiday_when_only_sentiment_missing():
     """HK rows whose only NaN sub-temp is sentiment AND fall on a CN-mainland-
     closed date must be marked is_publishable=True. Non-CN-closed dates with
     the same NaN pattern must NOT be publishable — the relaxation is calendar-
-    gated, not "always tolerate missing sentiment"."""
+    gated, not "always tolerate missing sentiment".
+
+    Indicator-level ffill bridges short gaps (up to 3 rows).  Longer outages
+    where the ffill limit is exceeded still produce NaN sub-temps, and the
+    calendar excuse makes those rows publishable."""
     cfg = WeightsConfig(
         sub_weights={"hk": {"valuation": 0.6, "sentiment": 0.25, "liquidity": 0.15}},
         indicator_weights={
@@ -169,19 +173,21 @@ def test_hk_publishable_during_cn_holiday_when_only_sentiment_missing():
         },
         percentile_window="pct_10y",
     )
-    # Span a non-holiday Tuesday (2026-04-28) and a Labour-Day-week date
-    # (2026-05-04, Monday — CN closed, HK open). Drop south-flow on 05-04
-    # to mimic the real holiday data shape.
-    dates = [date(2026, 4, 28), date(2026, 5, 4)]
+    # cn_south_5d present 04-28, then missing for 4+ rows so the 3-row
+    # indicator ffill expires before 05-04 (CN Labour Day closed).
+    # 04-29, 04-30, 05-01 are "bridge" days with hk_ewh_yield_ttm data
+    # to ensure the index has enough rows for ffill to run out.
+    dates = [date(2026, 4, 28), date(2026, 4, 29), date(2026, 4, 30),
+             date(2026, 5, 1), date(2026, 5, 4)]
     rows = []
     for d in dates:
         for ind in ["hk_ewh_yield_ttm", "hk_hibor_1m"]:
             rows.append({"date": d, "indicator": ind, "value": 50.0, "pct_1y": 50.0, "pct_5y": 50.0, "pct_10y": 50.0})
-        # cn_south_5d only present on 04-28
-        if d == date(2026, 4, 28):
-            rows.append(
-                {"date": d, "indicator": "cn_south_5d", "value": 100.0, "pct_1y": 60.0, "pct_5y": 60.0, "pct_10y": 60.0}
-            )
+    # cn_south_5d only present on 04-28.
+    rows.append(
+        {"date": date(2026, 4, 28), "indicator": "cn_south_5d",
+         "value": 100.0, "pct_1y": 60.0, "pct_5y": 60.0, "pct_10y": 60.0}
+    )
     pct = pd.DataFrame(rows)
 
     temp = compute_temperature(pct, cfg)
@@ -190,8 +196,9 @@ def test_hk_publishable_during_cn_holiday_when_only_sentiment_missing():
     apr28 = hk.loc[pd.Timestamp("2026-04-28")]
     may04 = hk.loc[pd.Timestamp("2026-05-04")]
 
-    # Sanity: 04-28 is fully complete; 05-04 is sentiment-NaN.
+    # Sanity: 04-28 is fully complete.
     assert bool(apr28["is_complete"]) is True
+    # 05-04: indicator ffill limit exceeded for cn_south_5d → sentiment NaN.
     assert pd.isna(may04["sentiment"])
     assert bool(may04["is_complete"]) is False
 
@@ -228,9 +235,10 @@ def test_hk_not_publishable_when_sentiment_missing_outside_cn_holiday():
 
 
 def test_subtemp_ffill_carries_forward_within_limit():
-    """A 1-day sentiment gap should be bridged by ffill: overall uses the
-    prior day's sentiment, raw sub column stays NaN, *_ffilled flag flips on,
-    is_publishable becomes True via the ffill excuse (not via structural-stale).
+    """A 1-day indicator gap is bridged by indicator-level ffill: the missing
+    cn_south_5d on 04-29 is ffilled from 04-28, so sentiment sub-temp is
+    computed (not NaN). The sub-temp level ffill is not triggered because
+    indicator ffill handled it first. Overall still uses the carried value.
     Use 2026-04-29 (Wed, CN open) so cn-mainland-closed doesn't apply."""
     cfg = WeightsConfig(
         sub_weights={"hk": {"valuation": 0.6, "sentiment": 0.25, "liquidity": 0.15}},
@@ -257,24 +265,23 @@ def test_subtemp_ffill_carries_forward_within_limit():
     hk = temp[temp["market"] == "hk"].set_index("date")
     apr29 = hk.loc[pd.Timestamp("2026-04-29")]
 
-    # Raw sentiment column stays NaN — we don't lie about which days had data.
-    assert pd.isna(apr29["sentiment"])
-    # But the ffill flag flips on, and overall was computed using carried value.
-    assert bool(apr29["sentiment_ffilled"]) is True
-    assert int(apr29["subtemp_ffilled"]) == 1
+    # Indicator ffill carries cn_south_5d forward → sentiment is computed (not NaN).
+    assert abs(float(apr29["sentiment"]) - 80.0) < 1e-6
+    # Sub-temp was never NaN, so sub-temp ffill didn't fire.
+    assert bool(apr29["sentiment_ffilled"]) is False
+    assert int(apr29["subtemp_ffilled"]) == 0
     assert bool(apr29["is_publishable"]) is True
     assert int(apr29["effective_completeness"]) == 3
     # Overall must reflect that sentiment=80 (carried) entered the weighted avg.
-    # Sub temps: val = 100-50 = 50, sent = 80 (ffilled), liq = 100-50 = 50.
+    # Sub temps: val = 100-50 = 50, sent = 80, liq = 100-50 = 50.
     # overall = 50*0.6 + 80*0.25 + 50*0.15 = 30 + 20 + 7.5 = 57.5
     assert abs(float(apr29["overall"]) - 57.5) < 1e-6
 
 
 def test_subtemp_ffill_stops_after_limit():
-    """When a sub is missing for more than SUBTEMP_FFILL_LIMIT_BDAYS trading
-    days, the ffill grace expires: the row falls back to within-row
-    re-normalization and is_publishable flips to False (outside structural-
-    stale rule)."""
+    """Indicator ffill (3 rows) bridges short gaps; sub-temp ffill (1 row) acts
+    as a brief safety net after indicator ffill expires. Beyond that combined
+    window, the sub stays NaN and is_publishable flips to False."""
     cfg = WeightsConfig(
         sub_weights={"hk": {"valuation": 0.6, "sentiment": 0.25, "liquidity": 0.15}},
         indicator_weights={
@@ -284,13 +291,16 @@ def test_subtemp_ffill_stops_after_limit():
         },
         percentile_window="pct_10y",
     )
-    # 5 consecutive non-holiday business days starting from a Monday.
-    dates = list(pd.bdate_range("2026-04-13", periods=5).date)
+    # 6 consecutive non-holiday business days starting from a Monday.
+    # Day 0: cn_south_5d present.
+    # Days 1-3: indicator ffill bridges (3 rows).
+    # Day 4: sub-temp ffill bridges (1 row).
+    # Day 5: all expired → NaN.
+    dates = list(pd.bdate_range("2026-04-13", periods=6).date)
     rows = []
     for d in dates:
         for ind in ["hk_ewh_yield_ttm", "hk_hibor_1m"]:
             rows.append({"date": d, "indicator": ind, "value": 50.0, "pct_1y": 50.0, "pct_5y": 50.0, "pct_10y": 50.0})
-    # cn_south_5d only on day 0 — missing on days 1..4 (4 trading days), > limit of 3.
     rows.append(
         {"date": dates[0], "indicator": "cn_south_5d", "value": 100.0, "pct_1y": 80.0, "pct_5y": 80.0, "pct_10y": 80.0}
     )
@@ -298,25 +308,35 @@ def test_subtemp_ffill_stops_after_limit():
     temp = compute_temperature(pct, cfg)
     hk = temp[temp["market"] == "hk"].set_index("date")
 
-    # Days 1-3 (within ffill window): publishable via ffill excuse.
+    # Days 1-3 (within indicator ffill window): sentiment computed from ffilled indicator.
     for i in (1, 2, 3):
         row = hk.loc[pd.Timestamp(dates[i])]
-        assert bool(row["sentiment_ffilled"]) is True, f"day {i} should be ffilled"
+        assert abs(float(row["sentiment"]) - 80.0) < 1e-6, f"day {i} should have ffilled indicator"
+        assert bool(row["sentiment_ffilled"]) is False, f"day {i} sub-temp ffill should not fire"
         assert bool(row["is_publishable"]) is True, f"day {i} should be publishable"
 
-    # Day 4 (beyond limit): ffill stops, sentiment stays NaN, not publishable.
+    # Day 4 (beyond indicator ffill, within sub-temp ffill): sub-temp NaN,
+    # ffilled from day 3, publishable.
     day4 = hk.loc[pd.Timestamp(dates[4])]
     assert pd.isna(day4["sentiment"])
-    assert bool(day4["sentiment_ffilled"]) is False
-    assert bool(day4["is_publishable"]) is False
-    assert int(day4["effective_completeness"]) == 2
+    assert bool(day4["sentiment_ffilled"]) is True
+    assert bool(day4["is_publishable"]) is True
+
+    # Day 5 (beyond both limits): sentiment stays NaN, not publishable.
+    day5 = hk.loc[pd.Timestamp(dates[5])]
+    assert pd.isna(day5["sentiment"])
+    assert bool(day5["sentiment_ffilled"]) is False
+    assert bool(day5["is_publishable"]) is False
+    assert int(day5["effective_completeness"]) == 2
 
 
 def test_sub_coverage_guard_triggers_ffill_when_minority_indicator_alone():
     """Reproduces the 2025-12-25 US-sentiment artifact: when only a minority-
-    weight indicator (<50% of sub weight) is live, the sub must NOT report a
-    re-normalized minority-only value — the coverage guard kicks it to NaN so
-    sub-temp ffill carries the prior day's broader-based value forward."""
+    weight indicator (<50% of sub weight) is live, indicator-level ffill
+    bridges short gaps in the majority indicators.  The sub-temp is computed
+    from all ffilled indicators, avoiding the re-normalization slingshot.
+    The coverage guard is a safety net that kicks in when both indicator
+    ffill AND real data are absent."""
     cfg = WeightsConfig(
         sub_weights={"us": {"valuation": 0.4, "sentiment": 0.5, "liquidity": 0.1}},
         indicator_weights={
@@ -346,7 +366,7 @@ def test_sub_coverage_guard_triggers_ffill_when_minority_indicator_alone():
             {"date": dates[0], "indicator": ind, "value": vals, "pct_1y": vals, "pct_5y": vals, "pct_10y": vals}
         )
     # Day 1: only umich live in sentiment (mimics market-closed day). VIX +
-    # HY drop out → coverage = 0.25, must trigger guard.
+    # HY drop out — indicator ffill bridges the gap within 3 rows.
     for ind, vals in [
         ("us_pe_ttm", 50.0),
         ("us_nfci", 50.0),
@@ -378,10 +398,9 @@ def test_sub_coverage_guard_triggers_ffill_when_minority_indicator_alone():
     # Day 0 sentiment computed from all three: vix(70) + hy_oas(70) + umich(5)
     # weighted 0.4/0.35/0.25 = 28 + 24.5 + 1.25 = 53.75
     assert abs(float(day0["sentiment"]) - 53.75) < 1e-6
-    # Day 1: raw sentiment NaN (coverage guard), but ffilled value = day 0's.
-    # We keep the raw column NaN so data-quality stays honest.
-    assert pd.isna(day1["sentiment"])
-    assert bool(day1["sentiment_ffilled"]) is True
+    # Day 1: vix and hy_oas ffilled from day 0 → sentiment = 53.75 (same).
+    assert abs(float(day1["sentiment"]) - 53.75) < 1e-6
+    assert bool(day1["sentiment_ffilled"]) is False
     # Day 2: back to full coverage.
     assert abs(float(day2["sentiment"]) - 53.75) < 1e-6
     assert bool(day2["sentiment_ffilled"]) is False
