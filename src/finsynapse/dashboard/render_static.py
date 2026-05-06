@@ -35,7 +35,7 @@ from finsynapse.report.brief import BriefMeta, list_briefs, load_latest_narrativ
 from finsynapse.transform.temperature import WeightsConfig
 
 # Public source repo — surfaced in the footer and on the glossary page.
-REPO_URL = "https://github.com/hgDendi/FinSynapse"
+REPO_URL = "https://github.com/chenhao-dendi/FinSynapse"
 BJT = ZoneInfo("Asia/Shanghai")
 
 

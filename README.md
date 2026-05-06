@@ -8,12 +8,12 @@
 
 > **个人多市场宏观流水线 + 市场温度计 + 可选 LLM 简评**，T+1 投资工作台。
 
-[![CI](https://github.com/hgDendi/FinSynapse/actions/workflows/ci.yml/badge.svg)](https://github.com/hgDendi/FinSynapse/actions/workflows/ci.yml)
-[![Daily](https://github.com/hgDendi/FinSynapse/actions/workflows/daily.yml/badge.svg)](https://github.com/hgDendi/FinSynapse/actions/workflows/daily.yml)
-[![CodeQL](https://github.com/hgDendi/FinSynapse/actions/workflows/codeql.yml/badge.svg)](https://github.com/hgDendi/FinSynapse/actions/workflows/codeql.yml)
+[![CI](https://github.com/chenhao-dendi/FinSynapse/actions/workflows/ci.yml/badge.svg)](https://github.com/chenhao-dendi/FinSynapse/actions/workflows/ci.yml)
+[![Daily](https://github.com/chenhao-dendi/FinSynapse/actions/workflows/daily.yml/badge.svg)](https://github.com/chenhao-dendi/FinSynapse/actions/workflows/daily.yml)
+[![CodeQL](https://github.com/chenhao-dendi/FinSynapse/actions/workflows/codeql.yml/badge.svg)](https://github.com/chenhao-dendi/FinSynapse/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-📊 **在线看板**：<https://hgdendi.github.io/FinSynapse/>（[中文](https://hgdendi.github.io/FinSynapse/) ｜ [English](https://hgdendi.github.io/FinSynapse/en.html)）
+📊 **在线看板**：<https://chenhao-dendi.github.io/FinSynapse/>（[中文](https://chenhao-dendi.github.io/FinSynapse/) ｜ [English](https://chenhao-dendi.github.io/FinSynapse/en.html)）
 
 每日北京时间 06:00 自动更新：CN / HK / US 三市场综合温度 + 估值 / 情绪 / 流动性子分量 + 一周变化归因 + 五对硬编码背离信号 + 日度宏观简评。
 
@@ -40,7 +40,7 @@
 ## 2. 5 分钟快速上手
 
 ```bash
-git clone https://github.com/hgDendi/FinSynapse.git
+git clone https://github.com/chenhao-dendi/FinSynapse.git
 cd FinSynapse
 
 # uv 比 pip 快 10-100x，详见 https://github.com/astral-sh/uv
@@ -140,7 +140,7 @@ gold/    叙事：人类/LLM 读得懂的结论
 | `/api/indicators_latest.json` | 每个底层因子各自最新读数 + 5y/10y 滚动百分位 + 来源/陈旧天数 |
 | `/api/divergence_latest.json` | 90 天内活跃背离信号，按产品强度排序 |
 
-线上访问：`https://hgdendi.github.io/FinSynapse/api/manifest.json`
+线上访问：`https://chenhao-dendi.github.io/FinSynapse/api/manifest.json`
 
 当前 `schema_version = 2.0.0`。Schema 版本遵循 SemVer：新增字段是非破坏性变更，不强制 bump；删除字段、改名或改变现有字段语义才升 major。
 
