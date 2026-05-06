@@ -14,6 +14,26 @@ CONFIG_PATH = Path("config/weights.yaml")
 MARKETS = ("cn", "hk", "us")
 SUB_NAMES = ("valuation", "sentiment", "liquidity")
 
+# How many trailing trading days a sub-temperature may be carried forward when
+# its inputs are briefly missing. Picked at 3 to bridge weekend-adjacent vendor
+# lag (e.g. cn_south_5d posting late, hk_ewh_yield_ttm Yahoo hiccup) without
+# letting a stale value persist into a real multi-day data outage. Beyond the
+# limit the row falls back to within-row weight re-normalization and is flagged
+# is_publishable=False (unless the missing sub is structurally stale).
+SUBTEMP_FFILL_LIMIT_BDAYS = 3
+
+# Minimum fraction of a sub's indicator weight that must be present on a date
+# before we trust the sub-temperature computed from the surviving indicators.
+# Below this, the sub is set NaN so the ffill path can carry the prior value
+# forward instead of letting one minority indicator dominate. Concrete trigger:
+# US sentiment on 2025-12-25 (Christmas) had only us_umich_sentiment (weight
+# 0.25) live — VIX/HY were market-closed — and re-normalization made sentiment
+# = umich's extreme-cold reading, slingshotting overall 92° → 44° → 95° across
+# three days. 0.5 = "less than half the weight is live." Stays above HK
+# sentiment's permanent cn_south_5d-only state (weight 0.6) so HK's behavior
+# is unchanged.
+MIN_SUB_COVERAGE = 0.5
+
 
 def _expected_stale_subs(d, market: str) -> set[str]:
     """Sub-temps whose primary input is structurally absent on date `d`.
@@ -120,6 +140,12 @@ def _sub_temperature(
         weight_sum = weight_sum.add(valid.astype(float) * w, fill_value=0)
     sub_temp = sub_temp.where(weight_sum > 0)
     sub_temp = sub_temp / weight_sum.where(weight_sum > 0)
+    # Coverage guard: when fewer than MIN_SUB_COVERAGE of the sub's indicator
+    # weight is live on a date, the surviving minority can swing the sub-temp
+    # wildly (the 2025-12-25 / 2026-01-01 US-sentiment artifact). Drop those
+    # cells to NaN so the caller's ffill carries the prior day's broader-based
+    # value forward instead.
+    sub_temp = sub_temp.where(weight_sum >= MIN_SUB_COVERAGE)
 
     if not with_confidence:
         return sub_temp
@@ -168,7 +194,14 @@ def _compute_market_rows(
     cfg: WeightsConfig,
     with_dispersion: bool = False,
 ) -> list[pd.DataFrame]:
-    """Compute per-market temperature rows from a wide percentile frame."""
+    """Compute per-market temperature rows from a wide percentile frame.
+
+    Sub-temperatures are forward-filled up to `SUBTEMP_FFILL_LIMIT_BDAYS`
+    trading days when computing the overall, so a brief vendor lag in one
+    indicator (e.g. cn_south_5d on a CN-pre-holiday day) doesn't slingshot
+    overall to a re-normalized other-sub value. The raw sub columns retain
+    NaN; per-sub `*_ffilled` flags mark which dates used a carried value.
+    """
     rows = []
     for market in MARKETS:
         sub_w = cfg.sub_weights.get(market, {})
@@ -176,18 +209,35 @@ def _compute_market_rows(
             continue
 
         if with_dispersion:
-            sub_temps: dict[str, pd.Series] = {}
-            sub_confs: dict[str, pd.Series] = {}
+            sub_temps_raw: dict[str, pd.Series] = {}
+            sub_confs_raw: dict[str, pd.Series] = {}
             for sub in SUB_NAMES:
                 st, sc = _sub_temperature(pct_wide, market, sub, cfg, with_confidence=True)
-                sub_temps[sub] = st
-                sub_confs[sub] = sc
+                sub_temps_raw[sub] = st
+                sub_confs_raw[sub] = sc
         else:
-            sub_temps = {sub: _sub_temperature(pct_wide, market, sub, cfg) for sub in SUB_NAMES}
+            sub_temps_raw = {sub: _sub_temperature(pct_wide, market, sub, cfg) for sub in SUB_NAMES}
+            sub_confs_raw = {}
+
+        # Carry forward each sub up to N trading days. The pct_wide index is
+        # the union of indicator dates (effectively business-day spaced), so
+        # `limit=N` ≈ N trading days. Confidence ffills alongside the value
+        # — if we left it NaN, eff_w would zero and the ffilled value would
+        # be ignored, which defeats the point.
+        sub_temps_used: dict[str, pd.Series] = {}
+        sub_confs_used: dict[str, pd.Series] = {}
+        ffilled_mask: dict[str, pd.Series] = {}
+        for sub in SUB_NAMES:
+            raw = sub_temps_raw[sub]
+            filled = raw.ffill(limit=SUBTEMP_FFILL_LIMIT_BDAYS)
+            sub_temps_used[sub] = filled
+            ffilled_mask[sub] = raw.isna() & filled.notna()
+            if with_dispersion:
+                sub_confs_used[sub] = sub_confs_raw[sub].ffill(limit=SUBTEMP_FFILL_LIMIT_BDAYS)
 
         avail_w = {}
         for sub in SUB_NAMES:
-            if sub_temps[sub].notna().any():
+            if sub_temps_used[sub].notna().any():
                 avail_w[sub] = sub_w[sub]
         if not avail_w:
             continue
@@ -197,8 +247,8 @@ def _compute_market_rows(
         overall = pd.Series(0.0, index=pct_wide.index)
         weight_sum = pd.Series(0.0, index=pct_wide.index)
         for sub, w in avail_w.items():
-            t = sub_temps[sub]
-            conf = sub_confs[sub] if with_dispersion else pd.Series(1.0, index=t.index)
+            t = sub_temps_used[sub]
+            conf = sub_confs_used[sub] if with_dispersion else pd.Series(1.0, index=t.index)
             eff_w = pd.Series(w, index=t.index) * conf.fillna(0)
             valid = t.notna() & (eff_w > 0)
             overall = overall.add(t.fillna(0) * eff_w, fill_value=0)
@@ -210,9 +260,12 @@ def _compute_market_rows(
                 "date": pct_wide.index.date,
                 "market": market,
                 "overall": overall.values,
-                "valuation": sub_temps["valuation"].values,
-                "sentiment": sub_temps["sentiment"].values,
-                "liquidity": sub_temps["liquidity"].values,
+                "valuation": sub_temps_raw["valuation"].values,
+                "sentiment": sub_temps_raw["sentiment"].values,
+                "liquidity": sub_temps_raw["liquidity"].values,
+                "valuation_ffilled": ffilled_mask["valuation"].values,
+                "sentiment_ffilled": ffilled_mask["sentiment"].values,
+                "liquidity_ffilled": ffilled_mask["liquidity"].values,
             }
         )
 
@@ -223,14 +276,17 @@ def _compute_market_rows(
         df["data_quality"] = df.apply(_row_quality, axis=1)
         df["subtemp_completeness"] = df[["valuation", "sentiment", "liquidity"]].notna().sum(axis=1)
         df["is_complete"] = df["subtemp_completeness"] == 3
+        df["subtemp_ffilled"] = df[[f"{s}_ffilled" for s in SUB_NAMES]].sum(axis=1).astype(int)
 
         def _publishable(row: pd.Series) -> tuple[int, bool]:
             missing = {s for s in SUB_NAMES if pd.isna(row[s])}
             if not missing:
                 return 3, True
             stale = _expected_stale_subs(row["date"], row["market"])
-            effective = int(row["subtemp_completeness"]) + len(missing & stale)
-            return effective, missing.issubset(stale)
+            ffilled = {s for s in SUB_NAMES if bool(row.get(f"{s}_ffilled", False))}
+            excused = stale | ffilled
+            effective = int(row["subtemp_completeness"]) + len(missing & excused)
+            return effective, missing.issubset(excused)
 
         publishable = df.apply(_publishable, axis=1, result_type="expand")
         df["effective_completeness"] = publishable[0].astype(int)
