@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/api/v2/indicators_latest.schema.json",
+  "title": "Indicators Latest",
+  "description": "Latest available value for each factor, with rolling percentiles (5y/10y), source, and staleness.",
+  "type": "object",
+  "required": ["schema_version", "indicators"],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "asof": { "type": ["string", "null"] },
+    "raw_percentile_asof": { "type": ["string", "null"] },
+    "indicators": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/indicatorRow" }
+    }
+  },
+  "$defs": {
+    "indicatorRow": {
+      "type": "object",
+      "required": ["indicator", "percentile_5y", "percentile_10y", "last_seen", "days_stale"],
+      "properties": {
+        "indicator": { "type": "string" },
+        "value": { "type": ["number", "null"] },
+        "percentile_5y": { "type": ["number", "null"] },
+        "percentile_10y": { "type": ["number", "null"] },
+        "last_seen": { "type": "string" },
+        "days_stale": { "type": "integer", "minimum": 0 },
+        "source": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

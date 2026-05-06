@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/api/v2/divergence_latest.schema.json",
+  "title": "Divergence Latest",
+  "description": "Active divergence signals from the last 90 days, sorted by product strength.",
+  "type": "object",
+  "required": ["schema_version", "signals"],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "window_days": { "type": "integer", "minimum": 1 },
+    "asof": { "type": ["string", "null"] },
+    "signals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/signalRow" }
+    }
+  },
+  "$defs": {
+    "signalRow": {
+      "type": "object",
+      "required": ["date", "pair", "strength", "description"],
+      "properties": {
+        "date": { "type": "string" },
+        "pair": { "type": "string" },
+        "strength": { "type": "number" },
+        "description": { "type": "string" },
+        "a_change_pct": { "type": ["number", "null"] },
+        "b_change_pct": { "type": ["number", "null"] }
+      }
+    }
+  }
+}

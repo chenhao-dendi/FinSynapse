@@ -617,6 +617,8 @@ def _write_champion_baseline(report: dict) -> None:
 
 
 def main() -> int:
+    write_report = "--report" in sys.argv
+
     print("=" * 60)
     print("  FinSynapse Phase 1 — Market Temperature Validation")
     print("=" * 60)
@@ -849,14 +851,17 @@ def main() -> int:
         ),
     }
 
-    # Write report
-    _write_champion_baseline(report)
-    out_path = SCRIPTS_DIR / "validation_report.json"
-    with out_path.open("w") as f:
-        json.dump(report, f, indent=2, ensure_ascii=False, default=str)
-    print()
-    print(f"[report] written -> {out_path}")
-    print(f"[report] {out_path.stat().st_size:,} bytes")
+    # Write report (only when --report flag is passed)
+    if write_report:
+        out_path = SCRIPTS_DIR / "validation_report.json"
+        with out_path.open("w") as f:
+            json.dump(report, f, indent=2, ensure_ascii=False, default=str)
+        print()
+        print(f"[report] written -> {out_path}")
+        print(f"[report] {out_path.stat().st_size:,} bytes")
+    else:
+        print()
+        print("[report] skipped (use --report to write validation_report.json)")
 
     if not gate["passed"]:
         print()

@@ -9,6 +9,7 @@ requires-python = ">=3.11"
 dependencies = [
     "akshare>=1.18.59",
     "beautifulsoup4>=4.14.3",
+    "empyrical-reloaded>=0.5.12",
     "jinja2>=3.1.6",
     "lxml>=6.1.0",
     "markdown>=3.10.2",
@@ -33,10 +34,17 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "diff-cover>=10.2.0",
+    "hypothesis>=6.152.4",
+    "jsonschema>=4.26.0",
+    "mutmut>=3.5.0",
     "pytest>=9.0.3",
+    "pytest-benchmark>=5.2.3",
+    "pytest-cov>=7.1.0",
     "pytest-vcr>=1.0.2",
     "ruff>=0.15.12",
     "scipy>=1.17.1",
+    "syrupy>=5.1.0",
     "vcrpy>=8.1.1",
 ]
 
