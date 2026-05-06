@@ -6,9 +6,7 @@ that key invariants hold across the percentile / temperature computation.
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
-import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
@@ -24,6 +22,7 @@ INDICATOR_NAMES = ["sp500", "vix", "csi300", "hsi", "dxy", "hk_vhsi"]
 
 
 # ── invariant 1: percentile bounds ───────────────────────────────────────────
+
 
 @given(
     st.lists(
@@ -59,6 +58,7 @@ def test_percentile_bounds(rows):
 
 
 # ── invariant 2: temperature bounds ──────────────────────────────────────────
+
 
 @given(
     st.lists(
@@ -106,6 +106,7 @@ def test_temperature_bounds(rows):
 
 # ── invariant 3: missing-indicator renormalization ───────────────────────────
 
+
 def _minimal_weights() -> WeightsConfig:
     raw = {
         "sub_weights": {"cn": {"valuation": 1.0, "sentiment": 0.0, "liquidity": 0.0}},
@@ -125,14 +126,16 @@ def test_missing_indicator_renormalization():
     cfg = _minimal_weights()
     dates = pd.date_range("2020-01-01", periods=30, freq="B")
 
-    pct_df = pd.DataFrame({
-        "date": list(dates) * 2,
-        "indicator": ["csi300_pe_ttm"] * 30 + ["csi300_pb"] * 30,
-        "value": [50.0] * 60,
-        "pct_1y": [50.0] * 60,
-        "pct_5y": [50.0] * 60,
-        "pct_10y": [50.0] * 60,
-    })
+    pct_df = pd.DataFrame(
+        {
+            "date": list(dates) * 2,
+            "indicator": ["csi300_pe_ttm"] * 30 + ["csi300_pb"] * 30,
+            "value": [50.0] * 60,
+            "pct_1y": [50.0] * 60,
+            "pct_5y": [50.0] * 60,
+            "pct_10y": [50.0] * 60,
+        }
+    )
 
     pct_wide = _build_pct_wide(pct_df, cfg)
     full_temp = _sub_temperature(pct_wide, "cn", "valuation", cfg, with_confidence=False)
@@ -144,11 +147,13 @@ def test_missing_indicator_renormalization():
     pct_wide_single = _build_pct_wide(pct_single, cfg)
     single_temp = _sub_temperature(pct_wide_single, "cn", "valuation", cfg, with_confidence=False)
     assert not single_temp.dropna().empty
-    assert abs(single_temp.dropna().iloc[0] - 50.0) < 0.01, \
+    assert abs(single_temp.dropna().iloc[0] - 50.0) < 0.01, (
         f"Expected 50 after renormalization, got {single_temp.dropna().iloc[0]:.2f}"
+    )
 
 
 # ── invariant 4: direction='-' boundary ──────────────────────────────────────
+
 
 def test_direction_minus_boundary():
     """For direction='-' indicators: pct=0 → 100℃; pct=100 → 0℃."""
@@ -161,22 +166,24 @@ def test_direction_minus_boundary():
     dates = pd.date_range("2020-01-01", periods=60, freq="B")
 
     for pct_val, expected in [(0.0, 100.0), (100.0, 0.0), (50.0, 50.0)]:
-        pct_df = pd.DataFrame({
-            "date": list(dates),
-            "indicator": ["vix"] * 60,
-            "value": [20.0] * 60,
-            "pct_1y": [pct_val] * 60,
-            "pct_5y": [pct_val] * 60,
-            "pct_10y": [pct_val] * 60,
-        })
+        pct_df = pd.DataFrame(
+            {
+                "date": list(dates),
+                "indicator": ["vix"] * 60,
+                "value": [20.0] * 60,
+                "pct_1y": [pct_val] * 60,
+                "pct_5y": [pct_val] * 60,
+                "pct_10y": [pct_val] * 60,
+            }
+        )
         pct_wide = _build_pct_wide(pct_df, cfg)
         temp = _sub_temperature(pct_wide, "us", "sentiment", cfg, with_confidence=False)
         actual = temp.dropna().iloc[0]
-        assert abs(actual - expected) < 0.01, \
-            f"direction='-', pct={pct_val}: expected {expected}℃, got {actual:.2f}℃"
+        assert abs(actual - expected) < 0.01, f"direction='-', pct={pct_val}: expected {expected}℃, got {actual:.2f}℃"
 
 
 # ── invariant 5: dispersion-weighted monotonicity ────────────────────────────
+
 
 def test_dispersion_weighted_monotonicity():
     """Higher sub_temp dispersion → lower confidence."""
@@ -196,8 +203,26 @@ def test_dispersion_weighted_monotonicity():
     for label, pe_val, pb_val in [("low_dispersion", 50.0, 52.0), ("high_dispersion", 10.0, 90.0)]:
         rows = []
         for d in dates:
-            rows.append({"date": d, "indicator": "csi300_pe_ttm", "value": pe_val, "pct_1y": pe_val, "pct_5y": pe_val, "pct_10y": pe_val})
-            rows.append({"date": d, "indicator": "csi300_pb", "value": pb_val, "pct_1y": pb_val, "pct_5y": pb_val, "pct_10y": pb_val})
+            rows.append(
+                {
+                    "date": d,
+                    "indicator": "csi300_pe_ttm",
+                    "value": pe_val,
+                    "pct_1y": pe_val,
+                    "pct_5y": pe_val,
+                    "pct_10y": pe_val,
+                }
+            )
+            rows.append(
+                {
+                    "date": d,
+                    "indicator": "csi300_pb",
+                    "value": pb_val,
+                    "pct_1y": pb_val,
+                    "pct_5y": pb_val,
+                    "pct_10y": pb_val,
+                }
+            )
         pct_df = pd.DataFrame(rows)
         pct_wide = _build_pct_wide(pct_df, cfg)
         _, confidence = _sub_temperature(pct_wide, "cn", "valuation", cfg, with_confidence=True)
@@ -206,4 +231,6 @@ def test_dispersion_weighted_monotonicity():
         if label == "low_dispersion":
             assert conf_val > 0.5, f"Low dispersion should have high confidence, got {conf_val:.2f}"
         else:
-            assert conf_val < 0.8, f"High dispersion ({abs(pe_val - pb_val)}pp apart) should have low confidence, got {conf_val:.2f}"
+            assert conf_val < 0.8, (
+                f"High dispersion ({abs(pe_val - pb_val)}pp apart) should have low confidence, got {conf_val:.2f}"
+            )

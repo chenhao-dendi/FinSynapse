@@ -18,7 +18,7 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import date, datetime, timezone
+from datetime import date
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -88,6 +88,7 @@ def _count_existing() -> int:
     if not CHAMPION_MD_PATH.exists():
         return 0
     import re
+
     content = CHAMPION_MD_PATH.read_text()
     count = 0
     for line in content.splitlines():
@@ -103,9 +104,7 @@ def main() -> int:
     parser.add_argument("--commit-sha", type=str, required=True, help="Commit SHA of the change being promoted")
     parser.add_argument("--pr", type=str, required=True, help="PR URL or number")
     parser.add_argument("--reason", type=str, required=True, help="Reason for promotion")
-    parser.add_argument(
-        "--force", action="store_true", help="Allow promotion on non-main branch (for testing)"
-    )
+    parser.add_argument("--force", action="store_true", help="Allow promotion on non-main branch (for testing)")
     args = parser.parse_args()
 
     branch = _current_branch()

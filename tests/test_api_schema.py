@@ -58,7 +58,17 @@ def test_temperature_history_schema():
 def test_schema_deletion_detected():
     """Removing a required field should fail validation."""
     schema = _load_schema("manifest.schema.json")
-    data = json.loads((API_DIR / "manifest.json").read_text())
+
+    manifest_path = API_DIR / "manifest.json"
+    if manifest_path.exists():
+        data = json.loads(manifest_path.read_text())
+    else:
+        # Synthetic baseline so the test runs without a built dist/ artifact
+        data = {
+            "schema_version": "2.0.0",
+            "asof": "2026-01-01",
+            "endpoints": {"manifest": {"path": "manifest.json", "description": "manifest"}},
+        }
 
     # Valid baseline
     validate(data, schema, cls=Draft202012Validator)

@@ -17,7 +17,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from finsynapse.report.facts import FactPack, _zone, _zone_emoji, assemble_facts
+from finsynapse.report.facts import FactPack, _zone
 from finsynapse.report.llm import LLMResult
 from finsynapse.report.markdown import _template_narrative, render_markdown
 
@@ -133,20 +133,15 @@ def test_brief_template_snapshot(snapshot, fixture_temp_df, fixture_macro_df):
             "valuation": None if pd.isna(row.get("valuation")) else float(row["valuation"]),
             "sentiment": None if pd.isna(row.get("sentiment")) else float(row["sentiment"]),
             "liquidity": None if pd.isna(row.get("liquidity")) else float(row["liquidity"]),
-            "overall_change_1w": (
-                None if pd.isna(row.get("overall_change_1w")) else float(row["overall_change_1w"])
-            ),
+            "overall_change_1w": (None if pd.isna(row.get("overall_change_1w")) else float(row["overall_change_1w"])),
             "valuation_contribution_1w": (
-                None if pd.isna(row.get("valuation_contribution_1w"))
-                else float(row["valuation_contribution_1w"])
+                None if pd.isna(row.get("valuation_contribution_1w")) else float(row["valuation_contribution_1w"])
             ),
             "sentiment_contribution_1w": (
-                None if pd.isna(row.get("sentiment_contribution_1w"))
-                else float(row["sentiment_contribution_1w"])
+                None if pd.isna(row.get("sentiment_contribution_1w")) else float(row["sentiment_contribution_1w"])
             ),
             "liquidity_contribution_1w": (
-                None if pd.isna(row.get("liquidity_contribution_1w"))
-                else float(row["liquidity_contribution_1w"])
+                None if pd.isna(row.get("liquidity_contribution_1w")) else float(row["liquidity_contribution_1w"])
             ),
             "data_quality": str(row.get("data_quality", "ok")),
         }

@@ -25,6 +25,7 @@ try:
 
     SCIPY_AVAILABLE = True
 except ImportError:
+    # scipy is optional; fall back to numpy-only implementations downstream
     pass
 
 
@@ -386,9 +387,7 @@ def _build_metrics_dict(
 # ── regime classification ───────────────────────────────────────────────────
 
 
-def _classify_regimes(
-    prices: pd.Series, ma_window: int = 200, drawdown_threshold: float = 0.20
-) -> pd.Series:
+def _classify_regimes(prices: pd.Series, ma_window: int = 200, drawdown_threshold: float = 0.20) -> pd.Series:
     """Classify each date as bull / bear / sideways.
 
     - bull:  price >= 200d MA AND not in >20% drawdown

@@ -12,9 +12,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from finsynapse.transform.normalize import collect_bronze, derive_indicators
 from finsynapse.transform.percentile import compute_percentiles
-from finsynapse.transform.temperature import WeightsConfig, compute_temperature, write_silver_temperature
+from finsynapse.transform.temperature import WeightsConfig, compute_temperature
 
 FIXTURE_DIR = Path("tests/fixtures/eval_silver_2026Q1")
 
@@ -47,6 +46,7 @@ def test_temperature_benchmark(benchmark, fixture_macro, fixture_weights):
 
 def test_full_pipeline_benchmark(benchmark, fixture_macro, fixture_weights):
     """Full bronze→temperature pipeline should complete in < 30s."""
+
     def pipeline():
         macro = fixture_macro.copy()
         pct = compute_percentiles(macro)
