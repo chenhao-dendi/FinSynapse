@@ -248,7 +248,9 @@ def test_subtemp_ffill_carries_forward_within_limit():
             rows.append({"date": d, "indicator": ind, "value": 50.0, "pct_1y": 50.0, "pct_5y": 50.0, "pct_10y": 50.0})
     # cn_south_5d only present on 04-27 and 04-28; missing on 04-29
     for d in [date(2026, 4, 27), date(2026, 4, 28)]:
-        rows.append({"date": d, "indicator": "cn_south_5d", "value": 100.0, "pct_1y": 80.0, "pct_5y": 80.0, "pct_10y": 80.0})
+        rows.append(
+            {"date": d, "indicator": "cn_south_5d", "value": 100.0, "pct_1y": 80.0, "pct_5y": 80.0, "pct_10y": 80.0}
+        )
     pct = pd.DataFrame(rows)
 
     temp = compute_temperature(pct, cfg)
@@ -289,7 +291,9 @@ def test_subtemp_ffill_stops_after_limit():
         for ind in ["hk_ewh_yield_ttm", "hk_hibor_1m"]:
             rows.append({"date": d, "indicator": ind, "value": 50.0, "pct_1y": 50.0, "pct_5y": 50.0, "pct_10y": 50.0})
     # cn_south_5d only on day 0 — missing on days 1..4 (4 trading days), > limit of 3.
-    rows.append({"date": dates[0], "indicator": "cn_south_5d", "value": 100.0, "pct_1y": 80.0, "pct_5y": 80.0, "pct_10y": 80.0})
+    rows.append(
+        {"date": dates[0], "indicator": "cn_south_5d", "value": 100.0, "pct_1y": 80.0, "pct_5y": 80.0, "pct_10y": 80.0}
+    )
     pct = pd.DataFrame(rows)
     temp = compute_temperature(pct, cfg)
     hk = temp[temp["market"] == "hk"].set_index("date")
@@ -338,7 +342,9 @@ def test_sub_coverage_guard_triggers_ffill_when_minority_indicator_alone():
         ("us_hy_oas", 30.0),
         ("us_umich_sentiment", 5.0),
     ]:
-        rows.append({"date": dates[0], "indicator": ind, "value": vals, "pct_1y": vals, "pct_5y": vals, "pct_10y": vals})
+        rows.append(
+            {"date": dates[0], "indicator": ind, "value": vals, "pct_1y": vals, "pct_5y": vals, "pct_10y": vals}
+        )
     # Day 1: only umich live in sentiment (mimics market-closed day). VIX +
     # HY drop out → coverage = 0.25, must trigger guard.
     for ind, vals in [
@@ -346,7 +352,9 @@ def test_sub_coverage_guard_triggers_ffill_when_minority_indicator_alone():
         ("us_nfci", 50.0),
         ("us_umich_sentiment", 5.0),
     ]:
-        rows.append({"date": dates[1], "indicator": ind, "value": vals, "pct_1y": vals, "pct_5y": vals, "pct_10y": vals})
+        rows.append(
+            {"date": dates[1], "indicator": ind, "value": vals, "pct_1y": vals, "pct_5y": vals, "pct_10y": vals}
+        )
     # Day 2: full recovery.
     for ind, vals in [
         ("us_pe_ttm", 50.0),
@@ -355,7 +363,9 @@ def test_sub_coverage_guard_triggers_ffill_when_minority_indicator_alone():
         ("us_hy_oas", 30.0),
         ("us_umich_sentiment", 5.0),
     ]:
-        rows.append({"date": dates[2], "indicator": ind, "value": vals, "pct_1y": vals, "pct_5y": vals, "pct_10y": vals})
+        rows.append(
+            {"date": dates[2], "indicator": ind, "value": vals, "pct_1y": vals, "pct_5y": vals, "pct_10y": vals}
+        )
 
     pct = pd.DataFrame(rows)
     temp = compute_temperature(pct, cfg)
