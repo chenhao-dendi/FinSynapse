@@ -215,6 +215,19 @@ def time_series(
     df["date"] = pd.to_datetime(df["date"])
     df = df.sort_values("date")
 
+    # Break the long-history overall line on dates where the row isn't
+    # publishable (sub-temp missing beyond ffill grace AND not structurally
+    # stale). Keeping the re-normalized value here would draw a continuous
+    # line that visually masks a real data gap. Sub-temp lines below already
+    # break naturally on raw NaN.
+    if "is_publishable" in df.columns:
+        unpub = ~df["is_publishable"].astype(bool)
+        if unpub.any():
+            df.loc[unpub, "overall"] = float("nan")
+            for aux in ("overall_short", "overall_long"):
+                if aux in df.columns:
+                    df.loc[unpub, aux] = float("nan")
+
     has_short = "overall_short" in df.columns and df["overall_short"].notna().any()
     has_long = "overall_long" in df.columns and df["overall_long"].notna().any()
     has_div = has_short and has_long

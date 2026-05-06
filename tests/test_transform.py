@@ -227,6 +227,196 @@ def test_hk_not_publishable_when_sentiment_missing_outside_cn_holiday():
     assert int(hk["effective_completeness"]) == 2
 
 
+def test_subtemp_ffill_carries_forward_within_limit():
+    """A 1-day sentiment gap should be bridged by ffill: overall uses the
+    prior day's sentiment, raw sub column stays NaN, *_ffilled flag flips on,
+    is_publishable becomes True via the ffill excuse (not via structural-stale).
+    Use 2026-04-29 (Wed, CN open) so cn-mainland-closed doesn't apply."""
+    cfg = WeightsConfig(
+        sub_weights={"hk": {"valuation": 0.6, "sentiment": 0.25, "liquidity": 0.15}},
+        indicator_weights={
+            "hk_valuation": {"hk_ewh_yield_ttm": {"weight": 1.0, "direction": "-"}},
+            "hk_sentiment": {"cn_south_5d": {"weight": 1.0, "direction": "+"}},
+            "hk_liquidity": {"hk_hibor_1m": {"weight": 1.0, "direction": "-"}},
+        },
+        percentile_window="pct_10y",
+    )
+    dates = [date(2026, 4, 27), date(2026, 4, 28), date(2026, 4, 29)]
+    rows = []
+    for d in dates:
+        for ind in ["hk_ewh_yield_ttm", "hk_hibor_1m"]:
+            rows.append({"date": d, "indicator": ind, "value": 50.0, "pct_1y": 50.0, "pct_5y": 50.0, "pct_10y": 50.0})
+    # cn_south_5d only present on 04-27 and 04-28; missing on 04-29
+    for d in [date(2026, 4, 27), date(2026, 4, 28)]:
+        rows.append(
+            {"date": d, "indicator": "cn_south_5d", "value": 100.0, "pct_1y": 80.0, "pct_5y": 80.0, "pct_10y": 80.0}
+        )
+    pct = pd.DataFrame(rows)
+
+    temp = compute_temperature(pct, cfg)
+    hk = temp[temp["market"] == "hk"].set_index("date")
+    apr29 = hk.loc[pd.Timestamp("2026-04-29")]
+
+    # Raw sentiment column stays NaN — we don't lie about which days had data.
+    assert pd.isna(apr29["sentiment"])
+    # But the ffill flag flips on, and overall was computed using carried value.
+    assert bool(apr29["sentiment_ffilled"]) is True
+    assert int(apr29["subtemp_ffilled"]) == 1
+    assert bool(apr29["is_publishable"]) is True
+    assert int(apr29["effective_completeness"]) == 3
+    # Overall must reflect that sentiment=80 (carried) entered the weighted avg.
+    # Sub temps: val = 100-50 = 50, sent = 80 (ffilled), liq = 100-50 = 50.
+    # overall = 50*0.6 + 80*0.25 + 50*0.15 = 30 + 20 + 7.5 = 57.5
+    assert abs(float(apr29["overall"]) - 57.5) < 1e-6
+
+
+def test_subtemp_ffill_stops_after_limit():
+    """When a sub is missing for more than SUBTEMP_FFILL_LIMIT_BDAYS trading
+    days, the ffill grace expires: the row falls back to within-row
+    re-normalization and is_publishable flips to False (outside structural-
+    stale rule)."""
+    cfg = WeightsConfig(
+        sub_weights={"hk": {"valuation": 0.6, "sentiment": 0.25, "liquidity": 0.15}},
+        indicator_weights={
+            "hk_valuation": {"hk_ewh_yield_ttm": {"weight": 1.0, "direction": "-"}},
+            "hk_sentiment": {"cn_south_5d": {"weight": 1.0, "direction": "+"}},
+            "hk_liquidity": {"hk_hibor_1m": {"weight": 1.0, "direction": "-"}},
+        },
+        percentile_window="pct_10y",
+    )
+    # 5 consecutive non-holiday business days starting from a Monday.
+    dates = list(pd.bdate_range("2026-04-13", periods=5).date)
+    rows = []
+    for d in dates:
+        for ind in ["hk_ewh_yield_ttm", "hk_hibor_1m"]:
+            rows.append({"date": d, "indicator": ind, "value": 50.0, "pct_1y": 50.0, "pct_5y": 50.0, "pct_10y": 50.0})
+    # cn_south_5d only on day 0 — missing on days 1..4 (4 trading days), > limit of 3.
+    rows.append(
+        {"date": dates[0], "indicator": "cn_south_5d", "value": 100.0, "pct_1y": 80.0, "pct_5y": 80.0, "pct_10y": 80.0}
+    )
+    pct = pd.DataFrame(rows)
+    temp = compute_temperature(pct, cfg)
+    hk = temp[temp["market"] == "hk"].set_index("date")
+
+    # Days 1-3 (within ffill window): publishable via ffill excuse.
+    for i in (1, 2, 3):
+        row = hk.loc[pd.Timestamp(dates[i])]
+        assert bool(row["sentiment_ffilled"]) is True, f"day {i} should be ffilled"
+        assert bool(row["is_publishable"]) is True, f"day {i} should be publishable"
+
+    # Day 4 (beyond limit): ffill stops, sentiment stays NaN, not publishable.
+    day4 = hk.loc[pd.Timestamp(dates[4])]
+    assert pd.isna(day4["sentiment"])
+    assert bool(day4["sentiment_ffilled"]) is False
+    assert bool(day4["is_publishable"]) is False
+    assert int(day4["effective_completeness"]) == 2
+
+
+def test_sub_coverage_guard_triggers_ffill_when_minority_indicator_alone():
+    """Reproduces the 2025-12-25 US-sentiment artifact: when only a minority-
+    weight indicator (<50% of sub weight) is live, the sub must NOT report a
+    re-normalized minority-only value — the coverage guard kicks it to NaN so
+    sub-temp ffill carries the prior day's broader-based value forward."""
+    cfg = WeightsConfig(
+        sub_weights={"us": {"valuation": 0.4, "sentiment": 0.5, "liquidity": 0.1}},
+        indicator_weights={
+            "us_valuation": {"us_pe_ttm": {"weight": 1.0, "direction": "+"}},
+            # 0.40 + 0.35 + 0.25 = 1.0; umich alone = 0.25 = below 0.5 guard.
+            "us_sentiment": {
+                "vix": {"weight": 0.40, "direction": "-"},
+                "us_hy_oas": {"weight": 0.35, "direction": "-"},
+                "us_umich_sentiment": {"weight": 0.25, "direction": "+"},
+            },
+            "us_liquidity": {"us_nfci": {"weight": 1.0, "direction": "-"}},
+        },
+        percentile_window="pct_10y",
+    )
+    dates = list(pd.bdate_range("2026-04-13", periods=3).date)
+    rows = []
+    # Day 0: all three sentiment indicators live (vix cold, hy_oas cold, umich
+    # extreme cold) → sentiment ~ mid-30s.
+    for ind, vals in [
+        ("us_pe_ttm", 50.0),
+        ("us_nfci", 50.0),
+        ("vix", 30.0),
+        ("us_hy_oas", 30.0),
+        ("us_umich_sentiment", 5.0),
+    ]:
+        rows.append(
+            {"date": dates[0], "indicator": ind, "value": vals, "pct_1y": vals, "pct_5y": vals, "pct_10y": vals}
+        )
+    # Day 1: only umich live in sentiment (mimics market-closed day). VIX +
+    # HY drop out → coverage = 0.25, must trigger guard.
+    for ind, vals in [
+        ("us_pe_ttm", 50.0),
+        ("us_nfci", 50.0),
+        ("us_umich_sentiment", 5.0),
+    ]:
+        rows.append(
+            {"date": dates[1], "indicator": ind, "value": vals, "pct_1y": vals, "pct_5y": vals, "pct_10y": vals}
+        )
+    # Day 2: full recovery.
+    for ind, vals in [
+        ("us_pe_ttm", 50.0),
+        ("us_nfci", 50.0),
+        ("vix", 30.0),
+        ("us_hy_oas", 30.0),
+        ("us_umich_sentiment", 5.0),
+    ]:
+        rows.append(
+            {"date": dates[2], "indicator": ind, "value": vals, "pct_1y": vals, "pct_5y": vals, "pct_10y": vals}
+        )
+
+    pct = pd.DataFrame(rows)
+    temp = compute_temperature(pct, cfg)
+    us = temp[temp["market"] == "us"].set_index("date")
+
+    day0 = us.loc[pd.Timestamp(dates[0])]
+    day1 = us.loc[pd.Timestamp(dates[1])]
+    day2 = us.loc[pd.Timestamp(dates[2])]
+
+    # Day 0 sentiment computed from all three: vix(70) + hy_oas(70) + umich(5)
+    # weighted 0.4/0.35/0.25 = 28 + 24.5 + 1.25 = 53.75
+    assert abs(float(day0["sentiment"]) - 53.75) < 1e-6
+    # Day 1: raw sentiment NaN (coverage guard), but ffilled value = day 0's.
+    # We keep the raw column NaN so data-quality stays honest.
+    assert pd.isna(day1["sentiment"])
+    assert bool(day1["sentiment_ffilled"]) is True
+    # Day 2: back to full coverage.
+    assert abs(float(day2["sentiment"]) - 53.75) < 1e-6
+    assert bool(day2["sentiment_ffilled"]) is False
+
+
+def test_sub_coverage_guard_does_not_fire_for_hk_single_indicator():
+    """HK sentiment runs with cn_south_5d alone (weight 1.0 after hk_vhsi was
+    excluded from the live config). Coverage = 1.0 every day → guard must
+    NOT fire. This pins the rule that the guard is about minority-weight
+    fallback, not about absolute indicator count."""
+    cfg = WeightsConfig(
+        sub_weights={"hk": {"valuation": 0.6, "sentiment": 0.25, "liquidity": 0.15}},
+        indicator_weights={
+            "hk_valuation": {"hk_ewh_yield_ttm": {"weight": 1.0, "direction": "-"}},
+            "hk_sentiment": {"cn_south_5d": {"weight": 1.0, "direction": "+"}},
+            "hk_liquidity": {"hk_hibor_1m": {"weight": 1.0, "direction": "-"}},
+        },
+        percentile_window="pct_10y",
+    )
+    dates = list(pd.bdate_range("2026-04-13", periods=2).date)
+    rows = []
+    for d in dates:
+        for ind, val in [("hk_ewh_yield_ttm", 50.0), ("cn_south_5d", 80.0), ("hk_hibor_1m", 50.0)]:
+            rows.append({"date": d, "indicator": ind, "value": val, "pct_1y": val, "pct_5y": val, "pct_10y": val})
+    pct = pd.DataFrame(rows)
+    temp = compute_temperature(pct, cfg)
+    hk = temp[temp["market"] == "hk"].set_index("date")
+    for d in dates:
+        row = hk.loc[pd.Timestamp(d)]
+        # Sentiment must be the real cn_south_5d value, not NaN.
+        assert not pd.isna(row["sentiment"]), f"{d}: sentiment unexpectedly NaN"
+        assert abs(float(row["sentiment"]) - 80.0) < 1e-6
+        assert bool(row["sentiment_ffilled"]) is False
+
+
 def test_derive_indicators_computes_us_erp_with_monthly_pe_ffill():
     """ERP = 100/PE − real_yield. PE published only first-of-month (mimicking
     multpl's actual monthly cadence); real_yield daily. Verifies the ffill
