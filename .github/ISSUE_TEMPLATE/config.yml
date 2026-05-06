@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: 项目计划与架构
-    url: https://github.com/hgDendi/FinSynapse/blob/main/docs
+    url: https://github.com/chenhao-dendi/FinSynapse/blob/main/docs
     about: 改动 phase 计划、架构、信号设计前请先看 docs/
