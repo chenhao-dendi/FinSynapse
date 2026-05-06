@@ -54,7 +54,17 @@
 
 完全复用 [`report-frontmatter.md`](./report-frontmatter.md)。本文件**不重复**字段定义，避免双轨维护。
 
-新报告的 `template_version` 必须填写本文件顶部的版本号（当前 `0.1`）。
+新报告的 `template_version` 必须填写本文件顶部的版本号（当前 `0.2`）。
+
+### 3.1 Depth 使用边界
+
+| depth | 交付内容 | 启用状态 |
+|-------|----------|----------|
+| `brief` | TL;DR、业务一句话、核心财务表、Bull/Bear、研究结论、数据缺口 | v0.2 启用，用于快速筛选 |
+| `standard` | 当前完整 7 章 + Meta + checklist | v0.2 启用，默认模式 |
+| `deep` | 分阶段研究 / 建模 / 估值 / 报告，每阶段可暂停复核 | v0.3 再启用，v0.2 不强制 |
+
+`brief` 不要求完整 7 章，但必须满足 checklist 中标注为 `brief` 的 `hard_fail` 项；`standard` 必须覆盖本文第 4 节正文骨架。`deep` 在 v0.2 中只作为保留值，不应生成伪 DCF 或复杂建模。
 
 ---
 
@@ -118,6 +128,7 @@
 7.4 **削弱事件**（什么发生会让 thesis 受损）：3-5 条
 7.5 **证伪事件**（什么发生会推翻 thesis）：1-3 条
 7.6 适用期限 + 重审日期
+7.7 **Thesis Meta**（可选）：`thesis_horizon`（T+3M / T+6M / LT）+ `thesis_confidence`（high / medium / low）
 
 ## 附录 A. 跨市场对照（可选；仅 markets 含 ≥2 市场时填写）
 A.1 双市场报价对照（同一交易日）
@@ -251,6 +262,14 @@ A.5 跨市场风险敞口
 
 ⚠️ **标签不构成投资建议**。每份报告 frontmatter 已声明 `not_investment_advice: true`。结论必须配套写"thesis + 强化/削弱/证伪事件"（见第 7 章）。
 
+每篇报告底部必须包含固定免责声明 footer：
+
+```markdown
+---
+
+免责声明：本报告为机器辅助生成的研究笔记，仅用于信息整理与研究讨论，不构成任何投资建议、交易建议或收益承诺。
+```
+
 ---
 
 ## 7. 数据与质量
@@ -265,5 +284,5 @@ A.5 跨市场风险敞口
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| 0.2  | 2026-05-05 | 合并 SMIC 试跑产生的 5 条 proposals：(1) §7.0 6 维评级矩阵；(2) §4.2 管理层激励数据填写规则；(3) §1 使用规则加跨市场标的条款；(4) 新增 references/cross-market-policy.md（AH/ADR 双股的主从报告 + 内容引用 + 差异化指标 + 附录 A）；(5) 主模板末尾增加可选附录 A。已发布的 v0.1 报告不强制升版 |
+| 0.2  | 2026-05-05 | 合并 SMIC 试跑产生的 5 条 proposals：(1) §7.0 6 维评级矩阵；(2) §4.2 管理层激励数据填写规则；(3) §1 使用规则加跨市场标的条款；(4) 新增 references/cross-market-policy.md（AH/ADR 双股的主从报告 + 内容引用 + 差异化指标 + 附录 A）；(5) 主模板末尾增加可选附录 A；(6) 明确 brief/standard/deep 启用边界与固定免责声明 footer。已发布的 v0.1 报告不强制升版 |
 | 0.1  | 2026-05-05 | 初版：薄骨架 + references/data-source-policy + assets/report-quality-checklist + industry-metrics 占位 + _proposals 流程 |
