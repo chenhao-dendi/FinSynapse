@@ -177,16 +177,21 @@ def test_hk_publishable_during_cn_holiday_when_only_sentiment_missing():
     # indicator ffill expires before 05-04 (CN Labour Day closed).
     # 04-29, 04-30, 05-01 are "bridge" days with hk_ewh_yield_ttm data
     # to ensure the index has enough rows for ffill to run out.
-    dates = [date(2026, 4, 28), date(2026, 4, 29), date(2026, 4, 30),
-             date(2026, 5, 1), date(2026, 5, 4)]
+    dates = [date(2026, 4, 28), date(2026, 4, 29), date(2026, 4, 30), date(2026, 5, 1), date(2026, 5, 4)]
     rows = []
     for d in dates:
         for ind in ["hk_ewh_yield_ttm", "hk_hibor_1m"]:
             rows.append({"date": d, "indicator": ind, "value": 50.0, "pct_1y": 50.0, "pct_5y": 50.0, "pct_10y": 50.0})
     # cn_south_5d only present on 04-28.
     rows.append(
-        {"date": date(2026, 4, 28), "indicator": "cn_south_5d",
-         "value": 100.0, "pct_1y": 60.0, "pct_5y": 60.0, "pct_10y": 60.0}
+        {
+            "date": date(2026, 4, 28),
+            "indicator": "cn_south_5d",
+            "value": 100.0,
+            "pct_1y": 60.0,
+            "pct_5y": 60.0,
+            "pct_10y": 60.0,
+        }
     )
     pct = pd.DataFrame(rows)
 
