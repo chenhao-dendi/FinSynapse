@@ -14,13 +14,17 @@ CONFIG_PATH = Path("config/weights.yaml")
 MARKETS = ("cn", "hk", "us")
 SUB_NAMES = ("valuation", "sentiment", "liquidity")
 
-# How many trailing trading days a sub-temperature may be carried forward when
-# its inputs are briefly missing. Picked at 3 to bridge weekend-adjacent vendor
-# lag (e.g. cn_south_5d posting late, hk_ewh_yield_ttm Yahoo hiccup) without
-# letting a stale value persist into a real multi-day data outage. Beyond the
-# limit the row falls back to within-row weight re-normalization and is flagged
-# is_publishable=False (unless the missing sub is structurally stale).
-SUBTEMP_FFILL_LIMIT_BDAYS = 3
+# How many trailing rows an individual indicator percentile may be carried
+# forward when it is temporarily missing (e.g. hk_hibor_1m during a holiday,
+# cn_south_5d posting late).  Set at 3 so short data gaps don't cause the
+# sub-temperature to slingshot from within-row weight re-normalization.
+INDICATOR_FFILL_LIMIT_BDAYS = 3
+
+# How many trailing rows a sub-temperature may be carried forward when ALL of
+# its indicators are NaN (i.e. indicator ffill could not bridge the gap).
+# Picked at 1 to provide a brief safety net after indicator ffill expires,
+# without letting a stale sub-temperature persist into a real outage.
+SUBTEMP_FFILL_LIMIT_BDAYS = 1
 
 # Minimum fraction of a sub's indicator weight that must be present on a date
 # before we trust the sub-temperature computed from the surviving indicators.
@@ -119,7 +123,7 @@ def _sub_temperature(
     for indicator, spec in block.items():
         if indicator not in pct_wide.columns:
             continue
-        col = pct_wide[indicator]
+        col = pct_wide[indicator].ffill(limit=INDICATOR_FFILL_LIMIT_BDAYS)
         if spec["direction"] == "-":
             col = 100.0 - col
         contributions[indicator] = col

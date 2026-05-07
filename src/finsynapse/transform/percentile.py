@@ -29,17 +29,62 @@ LOWFREQ_INDICATORS = {
     "us_walcl",
 }
 
+# Max business days to forward-fill a low-frequency indicator after its last
+# source observation.  Beyond this, the value drops to NaN, letting the
+# temperature layer's indicator ffill + coverage guard handle the gap.
+#   monthly (US/global):   23 BDay ≈ 1 calendar month
+#   monthly (CN macro):    60 BDay ≈ 3 calendar months (publication lag)
+#   weekly:                 7 BDay ≈ 1.4 calendar weeks
+# cn_social_financing_12m is kept at 23 BDay because the data source has been
+# silent since Dec 2025; using 5-month-old data is worse than NaN.
+LOWFREQ_FFILL_LIMITS: dict[str, int] = {
+    "us_cape": 23,
+    "us_pe_ttm": 23,
+    "cn_m2_yoy": 60,
+    "cn_social_financing_12m": 23,
+    "us_umich_sentiment": 23,
+    "us_nfci": 7,
+    "us_walcl": 7,
+}
 
-def _to_daily(series: pd.Series, end: pd.Timestamp | None = None) -> pd.Series:
+
+def _to_daily(series: pd.Series, end: pd.Timestamp | None = None, limit: int | None = None) -> pd.Series:
     """Reindex a non-daily series onto a business-day grid via forward-fill.
     Series must be indexed by date (ascending). When `end` is provided (use the
     global silver max date), ffill carries the last known value forward — this
-    matters for monthly indicators (M2, CAPE) that publish with lag."""
+    matters for monthly indicators (M2, CAPE) that publish with lag.
+
+    When `limit` is set, values more than `limit` business days past their
+    nearest source observation are set to NaN. This prevents stale values from
+    persisting across a missed publication cycle.
+    """
     if series.empty:
         return series
     end_dt = end if end is not None else series.index.max()
     idx = pd.date_range(series.index.min(), end_dt, freq="B")
-    return series.reindex(idx, method="ffill")
+    # Always use method="ffill" to carry month-start values (often weekends)
+    # onto the business-day grid.
+    result = series.reindex(series.index.union(idx)).ffill().reindex(idx)
+    if limit is not None:
+        # Count consecutive BDay since last source observation.  Source dates
+        # that fall on weekends/non-BDay are tracked via the union index.
+        is_source = pd.Series(False, index=result.index)
+        for sd in sorted(series.index):
+            # Snap weekend source dates to the next BDay for staleness tracking
+            bday_after = result.index[result.index >= sd]
+            if len(bday_after) > 0:
+                is_source.loc[bday_after[0]] = True
+        # Build a cumulative counter that resets at each source
+        stale = pd.Series(0, index=result.index, dtype=int)
+        cnt = 0
+        for i in range(len(result)):
+            if is_source.iloc[i]:
+                cnt = 0
+            else:
+                cnt += 1
+            stale.iloc[i] = cnt
+        result = result.where(stale <= limit)
+    return result
 
 
 def compute_percentiles(macro_long: pd.DataFrame) -> pd.DataFrame:
@@ -61,7 +106,8 @@ def compute_percentiles(macro_long: pd.DataFrame) -> pd.DataFrame:
         # Drop duplicate timestamps if any (e.g. same date from multiple sources after dedup)
         s = s[~s.index.duplicated(keep="last")]
         if indicator in LOWFREQ_INDICATORS:
-            s = _to_daily(s, end=global_max)
+            limit = LOWFREQ_FFILL_LIMITS.get(indicator)
+            s = _to_daily(s, end=global_max, limit=limit)
 
         result = pd.DataFrame({"value": s})
         for label, window in WINDOWS.items():
