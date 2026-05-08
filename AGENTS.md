@@ -19,7 +19,7 @@
 
 按顺序读取以下文件：
 
-1. `research/templates/company-analysis.md` （主 spec，当前 v0.2）
+1. `research/templates/company-analysis.md` （主 spec，当前 v0.3）
 2. `research/templates/report-frontmatter.md` （frontmatter 字段定义）
 3. `research/templates/references/data-source-policy.md` （数据来源优先级 + 三必标审计线索）
 4. `research/templates/references/industry-metrics.md` （行业 packs；按公司行业引用对应章节）
