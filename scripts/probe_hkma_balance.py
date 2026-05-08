@@ -42,13 +42,15 @@ def _probe_akshare_hkma() -> bool:
 
 
 def _probe_hkma_csv() -> bool:
-    """HKMA exposes JSON/CSV at https://api.hkma.gov.hk/public/market-data-and-statistics/...
-    Try the documented endpoint for monetary base."""
+    """HKMA exposes the documented daily monetary base Open API."""
     try:
         import requests
 
-        url = "https://api.hkma.gov.hk/public/market-data-and-statistics/monthly-statistical-bulletin/monetary-statistics/monetary-base-and-dependent-on-mb"
-        resp = requests.get(url, params={"pagesize": 200}, timeout=20)
+        url = (
+            "https://api.hkma.gov.hk/public/market-data-and-statistics/"
+            "daily-monetary-statistics/daily-figures-monetary-base"
+        )
+        resp = requests.get(url, params={"pagesize": 10000}, timeout=20)
         print(f"[probe] HKMA monetary base API: status={resp.status_code}")
         if resp.status_code != 200:
             print(f"  body[:300] = {resp.text[:300]}")
@@ -59,7 +61,8 @@ def _probe_hkma_csv() -> bool:
         if records:
             print(f"  sample keys: {list(records[0].keys())}")
             print(f"  first 3: {records[:3]}")
-        return len(records) >= 12
+            print(f"  range: {records[-1].get('end_of_date')} .. {records[0].get('end_of_date')}")
+        return len(records) >= 365 * 5
     except Exception as e:
         print(f"  FAIL: {e}")
         traceback.print_exc()

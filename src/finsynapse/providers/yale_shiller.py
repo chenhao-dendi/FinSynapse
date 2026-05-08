@@ -1,0 +1,133 @@
+"""Robert Shiller public market data from the online data workbook.
+
+The production `us_cape` indicator currently comes from multpl because that
+HTML table is simple and frequently updated.  This provider keeps Shiller's
+own workbook as a collected-only audit series so CAPE research can compare the
+vendor scrape against the underlying academic dataset without changing
+temperature weights.
+"""
+
+from __future__ import annotations
+
+import io
+import re
+from dataclasses import dataclass
+from datetime import date
+from urllib.parse import urljoin
+
+import pandas as pd
+from bs4 import BeautifulSoup
+
+from finsynapse.providers.base import FetchRange, Provider
+from finsynapse.providers.retry import requests_session
+
+LANDING_URL = "https://shillerdata.com/"
+LEGACY_XLS_URL = "http://www.econ.yale.edu/~shiller/data/ie_data.xls"
+UA = {"User-Agent": "Mozilla/5.0 (FinSynapse data fetch)"}
+
+
+@dataclass(frozen=True)
+class ShillerWorkbookMetric:
+    column: str
+    indicator: str
+    source_symbol: str
+
+
+METRICS: tuple[ShillerWorkbookMetric, ...] = (
+    ShillerWorkbookMetric("Price", "us_shiller_real_price", "ie_data.xls/RealPrice"),
+    ShillerWorkbookMetric("Dividend", "us_shiller_real_dividend", "ie_data.xls/RealDividend"),
+    ShillerWorkbookMetric("Earnings", "us_shiller_real_earnings", "ie_data.xls/RealEarnings"),
+    ShillerWorkbookMetric("CAPE", "us_cape_shiller", "ie_data.xls/CAPE"),
+    ShillerWorkbookMetric("TR CAPE", "us_tr_cape_shiller", "ie_data.xls/TR_CAPE"),
+)
+
+
+def discover_shiller_workbook_url(html: str, *, base_url: str = LANDING_URL) -> str:
+    soup = BeautifulSoup(html, "lxml")
+    for anchor in soup.find_all("a", href=True):
+        href = str(anchor["href"])
+        if "ie_data.xls" in href.lower():
+            return urljoin(base_url, href)
+    raise RuntimeError("could not locate ie_data.xls link on Shiller data landing page")
+
+
+def fetch_shiller_workbook_url() -> str:
+    try:
+        resp = requests_session().get(LANDING_URL, headers=UA, timeout=(10, 20))
+        resp.raise_for_status()
+        return discover_shiller_workbook_url(resp.text)
+    except Exception:
+        return LEGACY_XLS_URL
+
+
+def parse_shiller_workbook(xls_bytes: bytes, source_url: str) -> pd.DataFrame:
+    workbook = pd.read_excel(io.BytesIO(xls_bytes), sheet_name="Data", header=7)
+    required_columns = {"Date", *(metric.column for metric in METRICS)}
+    missing_columns = sorted(required_columns - set(workbook.columns))
+    if missing_columns:
+        raise RuntimeError(f"Shiller workbook missing required columns: {missing_columns}")
+
+    rows: list[dict[str, object]] = []
+    for _, row in workbook[["Date", *(metric.column for metric in METRICS)]].iterrows():
+        month_start = _shiller_month_start(row["Date"])
+        if month_start is None:
+            continue
+        for metric in METRICS:
+            value = pd.to_numeric(row[metric.column], errors="coerce")
+            if pd.isna(value):
+                continue
+            rows.append(
+                {
+                    "date": month_start,
+                    "indicator": metric.indicator,
+                    "value": float(value),
+                    "source_symbol": metric.source_symbol,
+                }
+            )
+
+    if not rows:
+        raise RuntimeError(f"Shiller workbook parsed 0 metric rows from {source_url}")
+
+    return pd.DataFrame(rows).sort_values(["indicator", "date"]).reset_index(drop=True)
+
+
+class YaleShillerProvider(Provider):
+    name = "yale_shiller"
+    layer = "valuation"
+
+    def fetch(self, fetch_range: FetchRange) -> pd.DataFrame:
+        workbook_url = fetch_shiller_workbook_url()
+        resp = requests_session().get(workbook_url, headers=UA, timeout=(10, 30))
+        resp.raise_for_status()
+        df = parse_shiller_workbook(resp.content, workbook_url)
+        mask = (df["date"] >= fetch_range.start) & (df["date"] <= fetch_range.end)
+        out = df[mask].reset_index(drop=True)
+        if out.empty:
+            raise RuntimeError(f"yale_shiller returned 0 rows in range {fetch_range.start}..{fetch_range.end}")
+        return out
+
+
+def _shiller_month_start(raw: object) -> date | None:
+    if pd.isna(raw):
+        return None
+    if isinstance(raw, (int, float)):
+        year = int(raw)
+        month = round((float(raw) - year) * 100)
+    else:
+        text = str(raw).strip()
+        match = re.fullmatch(r"(?P<year>\d{4})\.(?P<month>\d{1,2})", text)
+        if not match:
+            return None
+        year = int(match.group("year"))
+        month = int(match.group("month"))
+
+    if month < 1 or month > 12:
+        return None
+    return date(year, month, 1)
+
+
+def run(fetch_range: FetchRange, fetch_date: date | None = None) -> tuple[pd.DataFrame, str]:
+    provider = YaleShillerProvider()
+    df = provider.fetch(fetch_range)
+    path = provider.write_bronze(df, fetch_date or date.today())
+    return df, str(path)

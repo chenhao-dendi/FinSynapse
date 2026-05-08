@@ -34,12 +34,37 @@ class FredSeries:
 #   daily by transform/percentile.LOWFREQ_INDICATORS. Liquidity block.
 #   Full 1971→present history available (Chicago Fed is the original source,
 #   no third-party license issue).
+# T10Y3M: 10-year Treasury constant maturity minus 3-month Treasury bill.
+#   Collected-only for now. It is a useful recession/yield-curve stress
+#   candidate, but it needs a non-monotonic transform before it can be safely
+#   weighted into a "+" / "-" percentile model.
+# BAA10Y: Moody's Seasoned Baa corporate yield minus 10-year Treasury yield.
+#   Collected-only long-history credit-spread candidate. It is not a direct HY
+#   OAS replacement because it is investment-grade Baa and duration/yield based,
+#   but it can help research pre-2023 credit-stress history after ICE OAS
+#   licensing trimmed FRED history. Live CSV check on 2026-05-07 found BAA10Y
+#   starts at 1986-01-02, while BAMLH0A0HYM2 starts at 2023-05-08.
+# RRPONTSYD: overnight reverse repo Treasury securities sold by the Fed.
+#   Collected-only liquidity-drain candidate. It is published in billions USD
+#   and can be exactly zero, so it needs its own transform before weighting.
+# WRESBAL: reserve balances with Federal Reserve Banks, week average.
+#   Collected-only banking-system liquidity stock candidate. It complements
+#   TGA and ON RRP when researching future net-liquidity transforms.
+# EFFR/SOFR: official overnight funding rates. Collected-only for now because
+#   policy-rate level and funding stress need a spread/cycle-aware transform
+#   before they can be safely interpreted as hot/cold.
 SERIES: tuple[FredSeries, ...] = (
     FredSeries(series_id="DFII10", indicator="us10y_real_yield"),
     FredSeries(series_id="BAMLH0A0HYM2", indicator="us_hy_oas"),
     FredSeries(series_id="NFCI", indicator="us_nfci"),
     FredSeries(series_id="WALCL", indicator="us_walcl"),
     FredSeries(series_id="UMCSENT", indicator="us_umich_sentiment"),
+    FredSeries(series_id="T10Y3M", indicator="us_t10y3m"),
+    FredSeries(series_id="BAA10Y", indicator="us_baa10y_spread"),
+    FredSeries(series_id="RRPONTSYD", indicator="us_on_rrp"),
+    FredSeries(series_id="WRESBAL", indicator="us_reserve_balances"),
+    FredSeries(series_id="EFFR", indicator="us_effr"),
+    FredSeries(series_id="SOFR", indicator="us_sofr"),
 )
 
 API_BASE = "https://api.stlouisfed.org/fred/series/observations"

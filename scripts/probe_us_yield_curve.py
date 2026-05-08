@@ -1,4 +1,4 @@
-"""Probe FRED T10Y3M (10-year Treasury minus 3-month) for US yield-curve regime.
+"""Probe US 10Y-3M yield-curve sources for recession/regime research.
 
 Why this is non-trivial: yield curve doesn't map cleanly to "+ / -" direction:
   - Steep positive slope (e.g. +250bp): often cyclical recovery — looser -> hot
@@ -7,7 +7,7 @@ Why this is non-trivial: yield curve doesn't map cleanly to "+ / -" direction:
   - Re-steepening from inversion:      pre-recession warning, NOT bullish
 
 Direct percentile-rank -> temperature is misleading here. This probe:
-  1. Verifies the series is fetchable
+  1. Verifies keyless Treasury and optional FRED sources are fetchable
   2. Computes summary stats and a "stress score" candidate transform
   3. Plots % of time in each regime
 
@@ -28,6 +28,32 @@ sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.par
 
 from finsynapse.providers.base import FetchRange
 from finsynapse.providers.fred import FredProvider
+from finsynapse.providers.treasury_yield_curve import TreasuryYieldCurveProvider
+
+
+def _probe_treasury_t10y3m() -> bool:
+    try:
+        provider = TreasuryYieldCurveProvider()
+        end = date.today()
+        start = end - timedelta(days=5500)
+        df = provider.fetch(FetchRange(start=start, end=end))
+
+        print(f"[probe] Treasury returned indicators: {sorted(df['indicator'].unique())}")
+        print(f"  total rows: {len(df)}")
+        sub = df[df["indicator"] == "us_t10y3m"].sort_values("date")
+        if sub.empty:
+            print("[probe] us_t10y3m missing from Treasury provider output")
+            return False
+        s = sub["value"]
+        print(f"[probe] us_t10y3m via TreasuryYieldCurveProvider: {len(sub)} observations")
+        print(f"  date range: {sub['date'].iloc[0]} .. {sub['date'].iloc[-1]}")
+        print(f"  stats: min={s.min():.2f}  max={s.max():.2f}  mean={s.mean():.2f}  std={s.std():.2f}")
+        _print_regime_breakdown(s)
+        return True
+    except Exception as e:
+        print(f"  FAIL: {e}")
+        traceback.print_exc()
+        return False
 
 
 def _probe_fred_t10y3m() -> bool:
@@ -47,15 +73,21 @@ def _probe_fred_t10y3m() -> bool:
         start = end - timedelta(days=5500)
         df = provider.fetch(FetchRange(start=start, end=end))
 
-        # T10Y3M isn't mapped in SERIES. Let me check what indicators FRED has.
         print(f"[probe] FRED returned indicators: {sorted(df['indicator'].unique())}")
         print(f"  total rows: {len(df)}")
         if df.empty:
             return False
 
-        # FRED doesn't have T10Y3M in the standard SERIES list. Try fetching it directly.
-        print("[probe] T10Y3M is not in the standard FredProvider SERIES list.")
-        print("[probe] Attempting direct FRED API call for T10Y3M...")
+        if "us_t10y3m" in set(df["indicator"]):
+            sub = df[df["indicator"] == "us_t10y3m"].sort_values("date")
+            s = sub["value"]
+            print(f"[probe] us_t10y3m via FredProvider: {len(sub)} observations")
+            print(f"  date range: {sub['date'].iloc[0]} .. {sub['date'].iloc[-1]}")
+            print(f"  stats: min={s.min():.2f}  max={s.max():.2f}  mean={s.mean():.2f}  std={s.std():.2f}")
+            _print_regime_breakdown(s)
+            return True
+
+        print("[probe] us_t10y3m missing from FredProvider output; trying direct FRED API call...")
         _probe_direct_t10y3m(api_key)
         return True
     except Exception as e:
@@ -101,17 +133,7 @@ def _probe_direct_t10y3m(api_key: str) -> bool:
         print(f"  date range: {observations[0]['date']} .. {observations[-1]['date']}")
         s = pd.Series(values)
         print(f"  stats: min={s.min():.2f}  max={s.max():.2f}  mean={s.mean():.2f}  std={s.std():.2f}")
-
-        inverted = (s < 0).sum()
-        flat_ = ((s >= 0) & (s < 0.5)).sum()
-        normal = ((s >= 0.5) & (s < 2.0)).sum()
-        steep = (s >= 2.0).sum()
-        total = len(s)
-        print("  regime breakdown:")
-        print(f"    inverted (< 0bp):    {inverted:>5} ({inverted/total:.1%})")
-        print(f"    flat ([0, 50bp)):    {flat_:>5} ({flat_/total:.1%})")
-        print(f"    normal ([50, 200bp)):{normal:>5} ({normal/total:.1%})")
-        print(f"    steep (>= 200bp):    {steep:>5} ({steep/total:.1%})")
+        _print_regime_breakdown(s)
         return True
     except Exception as e:
         print(f"  FAIL: {e}")
@@ -119,15 +141,31 @@ def _probe_direct_t10y3m(api_key: str) -> bool:
         return False
 
 
+def _print_regime_breakdown(s: pd.Series) -> None:
+    inverted = (s < 0).sum()
+    flat_ = ((s >= 0) & (s < 0.5)).sum()
+    normal = ((s >= 0.5) & (s < 2.0)).sum()
+    steep = (s >= 2.0).sum()
+    total = len(s)
+    print("  regime breakdown:")
+    print(f"    inverted (< 0bp):    {inverted:>5} ({inverted / total:.1%})")
+    print(f"    flat ([0, 50bp)):    {flat_:>5} ({flat_ / total:.1%})")
+    print(f"    normal ([50, 200bp)):{normal:>5} ({normal / total:.1%})")
+    print(f"    steep (>= 200bp):    {steep:>5} ({steep / total:.1%})")
+
+
 def main() -> int:
     print("=" * 60)
     print("  US Yield Curve (T10Y3M) Probe")
     print("=" * 60)
     print()
-    ok = _probe_fred_t10y3m()
+    treasury_ok = _probe_treasury_t10y3m()
+    print()
+    fred_ok = _probe_fred_t10y3m()
+    ok = treasury_ok or fred_ok
     print()
     print("=" * 60)
-    print(f"  T10Y3M fetchable: {'OK' if ok else 'FAIL'}")
+    print(f"  T10Y3M fetchable from at least one source: {'OK' if ok else 'FAIL'}")
     print("=" * 60)
     print()
     print("Next step (NOT in this probe):")

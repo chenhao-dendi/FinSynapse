@@ -20,9 +20,16 @@ WINDOWS = {
 LOWFREQ_INDICATORS = {
     # monthly
     "us_cape",
+    "us_cape_shiller",
+    "us_tr_cape_shiller",
+    "us_shiller_real_price",
+    "us_shiller_real_dividend",
+    "us_shiller_real_earnings",
     "us_pe_ttm",
     "cn_m2_yoy",
     "cn_social_financing_12m",
+    "hk_hsi_pe",
+    "hk_hsi_dividend_yield",
     "us_umich_sentiment",
     # weekly (FRED publishes Wed)
     "us_nfci",
@@ -39,9 +46,16 @@ LOWFREQ_INDICATORS = {
 # silent since Dec 2025; using 5-month-old data is worse than NaN.
 LOWFREQ_FFILL_LIMITS: dict[str, int] = {
     "us_cape": 23,
+    "us_cape_shiller": 23,
+    "us_tr_cape_shiller": 23,
+    "us_shiller_real_price": 23,
+    "us_shiller_real_dividend": 23,
+    "us_shiller_real_earnings": 23,
     "us_pe_ttm": 23,
     "cn_m2_yoy": 60,
     "cn_social_financing_12m": 23,
+    "hk_hsi_pe": 23,
+    "hk_hsi_dividend_yield": 23,
     "us_umich_sentiment": 23,
     "us_nfci": 7,
     "us_walcl": 7,

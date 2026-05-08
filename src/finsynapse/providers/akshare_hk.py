@@ -1,7 +1,9 @@
-"""AkShare HK macro provider — HKD funding conditions.
+"""AkShare HK macro provider — HKD funding conditions and volatility.
 
 Validated by scripts/probe_phase_b.py 2026-04-29:
     - macro_china_hk_market_info()  — HIBOR all tenors daily (2,236 rows from 2017-03)
+Validated by live probe 2026-05-07:
+    - stock_hk_index_daily_em(symbol="VHSI") — VHSI daily history from 2001-01
 
 Why HIBOR (vs just borrowing US real yield + DXY for HK liquidity):
     HK pegs HKD to USD (7.75-7.85 corridor) so US conditions matter, BUT the
@@ -29,6 +31,16 @@ def _hibor_all() -> pd.DataFrame:
     return ak.macro_china_hk_market_info()
 
 
+def _vhsi_daily() -> pd.DataFrame:
+    """HSI Volatility Index daily OHLC.
+
+    AkShare's Eastmoney endpoint has longer VHSI history than Sina and
+    yfinance `^VHSI` currently returns quote-not-found. We keep the canonical
+    indicator as `hk_vhsi` so the temperature layer does not change.
+    """
+    return ak.stock_hk_index_daily_em(symbol="VHSI")
+
+
 def _slice_dates(df: pd.DataFrame, start: date, end: date) -> pd.DataFrame:
     df = df.copy()
     df["date"] = pd.to_datetime(df["date"]).dt.date
@@ -54,10 +66,26 @@ class AkShareHkProvider(Provider):
                 "source_symbol": f"macro_china_hk_market_info/{hibor_1m_col}",
             }
         ).dropna(subset=["value"])
-        out = _slice_dates(hibor_long, fetch_range.start, fetch_range.end)
+        vhsi = _vhsi_daily().copy()
+        close_col = _pick_col(vhsi, ("latest", "close", "收盘", "最新价"), "stock_hk_index_daily_em/VHSI")
+        vhsi_long = pd.DataFrame(
+            {
+                "date": pd.to_datetime(vhsi["date"]).dt.date,
+                "value": pd.to_numeric(vhsi[close_col], errors="coerce"),
+                "indicator": "hk_vhsi",
+                "source_symbol": f"stock_hk_index_daily_em/VHSI/{close_col}",
+            }
+        ).dropna(subset=["value"])
+        out = pd.concat(
+            [
+                _slice_dates(hibor_long, fetch_range.start, fetch_range.end),
+                _slice_dates(vhsi_long, fetch_range.start, fetch_range.end),
+            ],
+            ignore_index=True,
+        )
         if out.empty:
             raise RuntimeError(f"akshare_hk returned 0 rows in range {fetch_range.start}..{fetch_range.end}")
-        return out.sort_values("date").reset_index(drop=True)
+        return out.sort_values(["indicator", "date"]).reset_index(drop=True)
 
 
 def run(fetch_range: FetchRange, fetch_date: date | None = None) -> tuple[pd.DataFrame, str]:

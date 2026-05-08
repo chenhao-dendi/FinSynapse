@@ -95,7 +95,7 @@ FinSynapse/
 ├── src/finsynapse/
 │   ├── config.py          pydantic-settings reads .env
 │   ├── cli.py             Typer entry point (ingest / transform / dashboard / notify / report)
-│   ├── providers/         Data source abstractions: akshare / yfinance / fred / multpl / treasury
+│   ├── providers/         Data source abstractions: akshare / yfinance / fred / multpl / treasury / hkma / hsi
 │   ├── ingest/            bronze writes (thin shell)
 │   ├── transform/         normalize → percentile → health_check → temperature → divergence
 │   ├── dashboard/         Streamlit app + bilingual static HTML (i18n + plotly)
@@ -224,7 +224,35 @@ Each market's three sub-temperatures are weighted combinations of base indicator
 | liq | `dxy` | 0.20 | − | 5y | yfinance | borrowed via USD peg |
 | liq | `hk_hibor_1m` | 0.50 | − | 5y | AkShare | HKD-side funding cost |
 
-> **HK native valuation not yet available**: AkShare `stock_hk_index_value_em` does not exist in the current version; `stock_hk_index_daily_em` returns only price data. HSI PE/PB would require scraping HSI factsheet PDFs (same fragility tier as the abandoned HSI PCR attempt). EWH dividend yield serves as the valuation proxy for now. See `scripts/probe_hk_valuation.py`.
+> **HK native valuation not yet weighted**: AkShare `stock_hk_index_value_em` does not exist in the current version; `stock_hk_index_daily_em` returns only price data. The latest probe found that official Hang Seng Indexes Monthly Roundup PDFs include HSI PE Ratio / Dividend Yield rows, and `hsi_monthly_valuation` can now collect month-start PDFs as a manual collected-only source, so `hk_native_valuation` has moved to source_ready. A 2019-07-03..2026-05-07 live backfill parsed 76 monthly observations, but current archive discovery missed 7 publication months; EWH dividend yield remains the proxy until complete archive coverage, parser hardening, fixture backfill, and gate review pass.
+
+#### Collected But Not Yet Weighted Authoritative Candidates
+
+These series are written into bronze / silver for future backtests and factor design. They are not included in temperature weights until a transform design and champion gate check pass.
+
+| Indicator | Source | Definition | Next use |
+|---|---|---|---|
+| `us3m_yield` | U.S. Treasury Daily Treasury Rates | 3M nominal Treasury yield, percentage points | US front-end rate / cash-yield anchor |
+| `us2y_yield` | U.S. Treasury Daily Treasury Rates | 2Y nominal Treasury yield, percentage points | US policy-expectation / short-intermediate rate anchor |
+| `us_t10y3m` | FRED `T10Y3M` + U.S. Treasury Daily Treasury Rates | 10Y Treasury yield minus 3M Treasury bill rate, percentage points | US yield-curve / recession-stress candidate; needs a non-monotonic stress transform |
+| `us_t10y2y` | U.S. Treasury Daily Treasury Rates | 10Y Treasury yield minus 2Y Treasury yield, percentage points | US yield-curve inversion candidate; needs a non-monotonic stress transform |
+| `us_baa10y_spread` | FRED `BAA10Y` | Moody's Baa corporate yield minus 10Y Treasury yield, percentage points | Long-history US credit-spread candidate; not a direct HY OAS replacement until transform / gate validation |
+| `us_on_rrp` | FRED `RRPONTSYD` | Fed overnight reverse repo Treasury securities sold, USD bn | US ON RRP / reserve-drain candidate; can be zero and needs its own transform |
+| `us_reserve_balances` | FRED `WRESBAL` | Reserve balances with Federal Reserve Banks, USD mn | US banking-system reserve candidate; useful with WALCL/TGA/ON RRP for net-liquidity research |
+| `us_effr` | FRED `EFFR` | Effective Federal Funds Rate, % | US unsecured overnight funding-rate candidate; needs spread / cycle-aware transform |
+| `us_sofr` | FRED `SOFR` | Secured Overnight Financing Rate, % | US secured overnight repo-rate candidate; 2018+ and needs spread / cycle-aware transform |
+| `us_shiller_real_price` | Robert Shiller online data workbook | Inflation-adjusted S&P Composite price | US valuation base series for long-run distribution checks |
+| `us_shiller_real_dividend` | Robert Shiller online data workbook | Inflation-adjusted S&P Composite dividend | US dividend/income base series for future yield and payout research |
+| `us_shiller_real_earnings` | Robert Shiller online data workbook | Inflation-adjusted S&P Composite earnings | US earnings base series for future cycle and valuation decomposition |
+| `us_cape_shiller` | Robert Shiller online data workbook | Original Shiller CAPE academic dataset | Authoritative cross-check for `us_cape`; does not override the current weighted multpl feed |
+| `us_tr_cape_shiller` | Robert Shiller online data workbook | Total-return CAPE | Total-return CAPE candidate; not weighted yet |
+| `us_tga_balance` | U.S. Treasury FiscalData DTS | Treasury General Account closing balance; legacy Table I uses summed operating-cash components, USD mn | US Treasury cash-balance / liquidity-drain candidate; live check retrieves 2007+ |
+| `us_tga_deposits` | U.S. Treasury FiscalData DTS | Daily total TGA deposits, USD mn | US fiscal cash-inflow candidate; current API 2022+ |
+| `us_tga_withdrawals` | U.S. Treasury FiscalData DTS | Daily total TGA withdrawals, USD mn | US fiscal cash-outflow candidate; current API 2022+ |
+| `hk_aggregate_balance` | HKMA Open API | Aggregate Balance after Discount Window, HK$ mn | HKD banking-system liquidity candidate |
+| `hk_monetary_base` | HKMA Open API | Total Monetary Base before Discount Window, HK$ mn | Long-term HK monetary-base anchor |
+| `hk_hsi_pe` | Hang Seng Indexes Monthly Roundup PDF | Hang Seng Index PE Ratio (Times) | HK native valuation candidate; PDF archive source needing manual backfill and gate validation |
+| `hk_hsi_dividend_yield` | Hang Seng Indexes Monthly Roundup PDF | Hang Seng Index Dividend Yield (%) | HK native dividend-yield candidate; does not replace the EWH proxy yet |
 
 ### 5.3 Data freshness and completeness
 
@@ -291,7 +319,7 @@ CI defaults to `deepseek-v4-pro` (priced like v4-flash through 2026-05-31; rever
 | [`daily.yml`](./.github/workflows/daily.yml) | cron `0 22 * * *` UTC (06:00 BJT) + manual | ingest → transform → brief → render → push brief back to main + push dist to gh-pages + notify + upload silver artifact | `contents:write` + `issues:write` |
 | [`codeql.yml`](./.github/workflows/codeql.yml) | push / PR / Mon 03:00 UTC | Python static security & quality (`security-and-quality`) | `security-events:write` |
 
-`daily.yml` **opens an issue automatically on failure** (label `ci-failure`) listing common culprits and the rerun entry — upstream API breakages (AkShare / multpl / yfinance) almost always surface here first.
+`daily.yml` **opens an issue automatically on failure** (label `ci-failure`) listing common culprits and the rerun entry — upstream API breakages (AkShare / multpl / yfinance / U.S. Treasury / HKMA) almost always surface here first.
 
 ### 6.2 Branch responsibilities
 
@@ -311,7 +339,7 @@ CI defaults to `deepseek-v4-pro` (priced like v4-flash through 2026-05-31; rever
 
 | Secret | Required? | Purpose |
 |---|---|---|
-| `FRED_API_KEY` | recommended | US real yield (DFII10) + HY credit spread (BAMLH0A0HYM2, FRED returns 3Y rolling only) + financial conditions (NFCI, full history) |
+| `FRED_API_KEY` | recommended | US real yield (DFII10) + HY credit spread (BAMLH0A0HYM2, FRED returns 3Y rolling only) + financial conditions (NFCI, full history) + yield curve (T10Y3M, not weighted yet; also keyless Treasury cross-check) + Baa/10Y credit-spread candidate (BAA10Y, not weighted yet) + ON RRP / reserve-balances / overnight-rate liquidity candidates (RRPONTSYD / WRESBAL / EFFR / SOFR, not weighted yet) |
 | `DEEPSEEK_API_KEY` | optional | Daily brief in CI; falls back to template if absent |
 | `BARK_DEVICE_KEY` | optional | iOS push |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | optional | Telegram push |
@@ -336,6 +364,13 @@ uv run pytest -q
 # Run before every commit
 uv run ruff check src tests
 uv run ruff format --check src tests
+uv run python scripts/check_data_source_catalog.py
+uv run python scripts/build_eval_fixture_manifest.py --verify
+uv run python scripts/summarize_data_audit.py
+# Optional: compare a candidate fixture against the current baseline for PR conclusions
+uv run python scripts/compare_eval_fixtures.py --candidate /tmp/finsynapse_candidate_fixture
+# Optional: manually backfill official HSI monthly valuation PDFs (requires pdftotext / poppler-utils)
+uv run finsynapse ingest run --source hsi_monthly_valuation --lookback-days 730
 
 # Interactive dashboard locally
 uv run finsynapse dashboard serve --port 8501
@@ -377,14 +412,15 @@ chore(deps): bump pandas to 3.0.3
 ### 8.4 Code style
 
 - ruff line-length 120, configured in [`pyproject.toml`](./pyproject.toml); enable format-on-save in your editor
-- **New provider**: implement the [`providers/base.py`](./src/finsynapse/providers/base.py) interface, write to bronze, `return (df, path)`; ship a VCR cassette or pickle fixture
+- **New provider**: implement the [`providers/base.py`](./src/finsynapse/providers/base.py) interface, write to bronze, `return (df, path)`; update [`config/data_sources.yaml`](./config/data_sources.yaml), then run `uv run python scripts/check_data_source_catalog.py`
 - **New silver transform**: wire it into [`cli.py`](./src/finsynapse/cli.py) `transform run` and add a corresponding pytest
 - **New thermometer indicator**:
   1. Add weights in [`config/weights.yaml`](./config/weights.yaml) (sub-block must sum to 1.0; optional `window: pct_5y` overrides the default — recommend 5y for fast-regime indicators)
   2. Add bounds in [`health_check.PLAUSIBLE_BOUNDS`](./src/finsynapse/transform/health_check.py) (catches unit drift)
-  3. Run [`scripts/backtest_temperature.py`](./scripts/backtest_temperature.py) to confirm direction holds at known checkpoints
-  4. Derived indicators (computed from other indicators, e.g. `us_erp`) live in [`transform/normalize.py:derive_indicators()`](./src/finsynapse/transform/normalize.py)
-  5. Indicators with uncertain upstream APIs: write a `scripts/probe_*.py` first to validate the call before implementing the provider (see `probe_phase_b.py`)
+  3. Record source, authority tier, and usage (`weighted` / `collected_only`, etc.) in [`config/data_sources.yaml`](./config/data_sources.yaml)
+  4. Run [`scripts/backtest_temperature.py`](./scripts/backtest_temperature.py) to confirm direction holds at known checkpoints
+  5. Derived indicators (computed from other indicators, e.g. `us_erp`) live in [`transform/normalize.py:derive_indicators()`](./src/finsynapse/transform/normalize.py)
+  6. Indicators with uncertain upstream APIs: write a `scripts/probe_*.py` first to validate the call before implementing the provider (see `probe_phase_b.py`)
 
 ### 8.5 Test requirements
 
@@ -410,6 +446,8 @@ Data and ecosystem credits:
 - **AkShare** — A-share / HK / macro data
 - **yfinance** — US and cross-market quotes
 - **FRED** — US macro time series
+- **U.S. Treasury / HKMA / Hang Seng Indexes** — official yield-curve, Daily Treasury Statement, Hong Kong monetary-base, and HSI Monthly Roundup data
+- **Robert Shiller online data** — academic Shiller CAPE data used to cross-check multpl CAPE
 - **multpl.com** — Shiller CAPE history
 - **DeepSeek / Anthropic / Ollama** — LLM narrative generation
 - **uv / ruff / pytest** — astral-sh toolchain

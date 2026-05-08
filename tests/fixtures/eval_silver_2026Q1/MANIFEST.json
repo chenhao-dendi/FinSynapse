@@ -1,0 +1,716 @@
+{
+  "fixture_id": "eval_silver_2026Q1",
+  "created": "2026-05-07",
+  "source_commit": "4bbbb1b",
+  "source_data": "data/silver baseline plus collected-only official bronze overlay: fred/2026-05-08, treasury_yield_curve/2026-05-08, treasury_dts/2026-05-07, hkma_monetary_base/2026-05-07; academic_public overlay: yale_shiller/2026-05-08",
+  "date_window": {
+    "start": "2010-01-01",
+    "end": "2024-12-31"
+  },
+  "files": {
+    "macro_daily.parquet": {
+      "sha256": "1cb1d36d74ada7e72fa3a37f070b6d5a244205ce1f4fff2b2dce6aa77df90ccc",
+      "rows": 110523,
+      "date_min": "2010-01-01",
+      "date_max": "2024-12-31",
+      "n_dates": 4016,
+      "columns": [
+        "date",
+        "indicator",
+        "value",
+        "source"
+      ],
+      "indicators": [
+        "cn_a_turnover_5d",
+        "cn_credit_impulse",
+        "cn_dr007",
+        "cn_m2_yoy",
+        "cn_margin_balance",
+        "cn_north_5d",
+        "cn_social_financing_12m",
+        "cn_south_5d",
+        "cn_usdcny_pressure",
+        "csi300",
+        "csi300_pb",
+        "csi300_pe_ttm",
+        "dxy",
+        "gold_futures",
+        "hk_aggregate_balance",
+        "hk_ewh_yield_ttm",
+        "hk_hibor_1m",
+        "hk_monetary_base",
+        "hkdcny",
+        "hsi",
+        "sp500",
+        "us10y_real_yield",
+        "us10y_yield",
+        "us2y_yield",
+        "us3m_yield",
+        "us_baa10y_spread",
+        "us_cape",
+        "us_cape_shiller",
+        "us_effr",
+        "us_erp",
+        "us_hy_oas",
+        "us_nfci",
+        "us_on_rrp",
+        "us_pe_ttm",
+        "us_reserve_balances",
+        "us_shiller_real_dividend",
+        "us_shiller_real_earnings",
+        "us_shiller_real_price",
+        "us_sofr",
+        "us_t10y2y",
+        "us_t10y3m",
+        "us_tga_balance",
+        "us_tga_deposits",
+        "us_tga_withdrawals",
+        "us_tr_cape_shiller",
+        "us_umich_sentiment",
+        "us_walcl",
+        "usdcny",
+        "vix"
+      ]
+    },
+    "percentile_daily.parquet": {
+      "sha256": "87d089f8c87ca43ceecccf585b852c0a14897dfb18be527db92c4e2cf5abd44b",
+      "rows": 151468,
+      "date_min": "2010-01-01",
+      "date_max": "2024-12-31",
+      "n_dates": 3968,
+      "columns": [
+        "date",
+        "indicator",
+        "value",
+        "pct_1y",
+        "pct_5y",
+        "pct_10y"
+      ],
+      "indicators": [
+        "cn_a_turnover_5d",
+        "cn_credit_impulse",
+        "cn_dr007",
+        "cn_m2_yoy",
+        "cn_margin_balance",
+        "cn_north_5d",
+        "cn_social_financing_12m",
+        "cn_south_5d",
+        "cn_usdcny_pressure",
+        "csi300",
+        "csi300_pb",
+        "csi300_pe_ttm",
+        "dxy",
+        "gold_futures",
+        "hk_aggregate_balance",
+        "hk_ewh_yield_ttm",
+        "hk_hibor_1m",
+        "hk_monetary_base",
+        "hkdcny",
+        "hsi",
+        "sp500",
+        "us10y_real_yield",
+        "us10y_yield",
+        "us2y_yield",
+        "us3m_yield",
+        "us_baa10y_spread",
+        "us_cape",
+        "us_cape_shiller",
+        "us_effr",
+        "us_erp",
+        "us_hy_oas",
+        "us_nfci",
+        "us_on_rrp",
+        "us_pe_ttm",
+        "us_reserve_balances",
+        "us_shiller_real_dividend",
+        "us_shiller_real_earnings",
+        "us_shiller_real_price",
+        "us_sofr",
+        "us_t10y2y",
+        "us_t10y3m",
+        "us_tga_balance",
+        "us_tga_deposits",
+        "us_tga_withdrawals",
+        "us_tr_cape_shiller",
+        "us_umich_sentiment",
+        "us_walcl",
+        "usdcny",
+        "vix"
+      ]
+    },
+    "temperature_daily.parquet": {
+      "sha256": "0449665a9dfaa08b9ec2cc876bad92b7b18167bdc48fea3127297668582e5574",
+      "rows": 10318,
+      "date_min": "2010-05-31",
+      "date_max": "2024-12-31",
+      "n_dates": 3850,
+      "columns": [
+        "date",
+        "market",
+        "overall",
+        "valuation",
+        "sentiment",
+        "liquidity",
+        "data_quality",
+        "subtemp_completeness",
+        "is_complete",
+        "effective_completeness",
+        "is_publishable",
+        "overall_short",
+        "overall_long",
+        "divergence",
+        "conf_ok",
+        "valuation_contribution_1w",
+        "sentiment_contribution_1w",
+        "liquidity_contribution_1w",
+        "overall_change_1w",
+        "algo_version"
+      ],
+      "markets": [
+        "cn",
+        "hk",
+        "us"
+      ]
+    }
+  },
+  "pivot_coverage": {
+    "pivots_path": "scripts/backtest_pivots.yaml",
+    "total": 25,
+    "covered": 25,
+    "missing": 0,
+    "by_market": {
+      "us": 9,
+      "cn": 8,
+      "hk": 8
+    }
+  },
+  "indicator_pivot_coverage": {
+    "weights_path": "config/weights.yaml",
+    "pivots_path": "scripts/backtest_pivots.yaml",
+    "total_checks": 218,
+    "available_checks": 184,
+    "missing_checks": 34,
+    "by_market": {
+      "us": {
+        "available": 76,
+        "total": 90
+      },
+      "cn": {
+        "available": 72,
+        "total": 80
+      },
+      "hk": {
+        "available": 36,
+        "total": 48
+      }
+    },
+    "by_indicator": {
+      "dxy": {
+        "available": 16,
+        "total": 17
+      },
+      "us10y_real_yield": {
+        "available": 16,
+        "total": 17
+      },
+      "us_cape": {
+        "available": 9,
+        "total": 9
+      },
+      "us_erp": {
+        "available": 8,
+        "total": 9
+      },
+      "us_hy_oas": {
+        "available": 2,
+        "total": 9
+      },
+      "us_nfci": {
+        "available": 8,
+        "total": 9
+      },
+      "us_pe_ttm": {
+        "available": 9,
+        "total": 9
+      },
+      "us_umich_sentiment": {
+        "available": 8,
+        "total": 9
+      },
+      "us_walcl": {
+        "available": 8,
+        "total": 9
+      },
+      "vix": {
+        "available": 8,
+        "total": 9
+      },
+      "cn_a_turnover_5d": {
+        "available": 8,
+        "total": 8
+      },
+      "cn_credit_impulse": {
+        "available": 6,
+        "total": 8
+      },
+      "cn_dr007": {
+        "available": 6,
+        "total": 8
+      },
+      "cn_m2_yoy": {
+        "available": 8,
+        "total": 8
+      },
+      "cn_margin_balance": {
+        "available": 8,
+        "total": 8
+      },
+      "cn_north_5d": {
+        "available": 6,
+        "total": 8
+      },
+      "cn_social_financing_12m": {
+        "available": 6,
+        "total": 8
+      },
+      "cn_usdcny_pressure": {
+        "available": 8,
+        "total": 8
+      },
+      "csi300_pb": {
+        "available": 8,
+        "total": 8
+      },
+      "csi300_pe_ttm": {
+        "available": 8,
+        "total": 8
+      },
+      "cn_south_5d": {
+        "available": 6,
+        "total": 8
+      },
+      "hk_ewh_yield_ttm": {
+        "available": 8,
+        "total": 8
+      },
+      "hk_hibor_1m": {
+        "available": 6,
+        "total": 8
+      },
+      "hk_vhsi": {
+        "available": 0,
+        "total": 8
+      }
+    },
+    "missing_required_percentiles": [
+      {
+        "pivot_label": "2011 US debt downgrade / Eurozone crisis low",
+        "pivot_date": "2011-10-03",
+        "market": "us",
+        "indicator": "dxy",
+        "required_window": "pct_5y",
+        "raw_latest_date": "2011-10-03",
+        "raw_lag_days": 0,
+        "pct_latest_date": "2011-10-03",
+        "pct_lag_days": 0,
+        "reason": "pct_5y_is_null"
+      },
+      {
+        "pivot_label": "2011 US debt downgrade / Eurozone crisis low",
+        "pivot_date": "2011-10-03",
+        "market": "us",
+        "indicator": "us10y_real_yield",
+        "required_window": "pct_10y",
+        "raw_latest_date": "2011-10-03",
+        "raw_lag_days": 0,
+        "pct_latest_date": "2011-10-03",
+        "pct_lag_days": 0,
+        "reason": "pct_10y_is_null"
+      },
+      {
+        "pivot_label": "2011 US debt downgrade / Eurozone crisis low",
+        "pivot_date": "2011-10-03",
+        "market": "us",
+        "indicator": "us_erp",
+        "required_window": "pct_10y",
+        "raw_latest_date": "2011-10-03",
+        "raw_lag_days": 0,
+        "pct_latest_date": "2011-10-03",
+        "pct_lag_days": 0,
+        "reason": "pct_10y_is_null"
+      },
+      {
+        "pivot_label": "2011 US debt downgrade / Eurozone crisis low",
+        "pivot_date": "2011-10-03",
+        "market": "us",
+        "indicator": "us_hy_oas",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2011 US debt downgrade / Eurozone crisis low",
+        "pivot_date": "2011-10-03",
+        "market": "us",
+        "indicator": "us_nfci",
+        "required_window": "pct_5y",
+        "raw_latest_date": "2011-09-30",
+        "raw_lag_days": 3,
+        "pct_latest_date": "2011-10-03",
+        "pct_lag_days": 0,
+        "reason": "pct_5y_is_null"
+      },
+      {
+        "pivot_label": "2011 US debt downgrade / Eurozone crisis low",
+        "pivot_date": "2011-10-03",
+        "market": "us",
+        "indicator": "us_umich_sentiment",
+        "required_window": "pct_10y",
+        "raw_latest_date": "2011-10-01",
+        "raw_lag_days": 2,
+        "pct_latest_date": "2011-10-03",
+        "pct_lag_days": 0,
+        "reason": "pct_10y_is_null"
+      },
+      {
+        "pivot_label": "2011 US debt downgrade / Eurozone crisis low",
+        "pivot_date": "2011-10-03",
+        "market": "us",
+        "indicator": "us_walcl",
+        "required_window": "pct_5y",
+        "raw_latest_date": "2011-09-28",
+        "raw_lag_days": 5,
+        "pct_latest_date": "2011-10-03",
+        "pct_lag_days": 0,
+        "reason": "pct_5y_is_null"
+      },
+      {
+        "pivot_label": "2011 US debt downgrade / Eurozone crisis low",
+        "pivot_date": "2011-10-03",
+        "market": "us",
+        "indicator": "vix",
+        "required_window": "pct_5y",
+        "raw_latest_date": "2011-10-03",
+        "raw_lag_days": 0,
+        "pct_latest_date": "2011-10-03",
+        "pct_lag_days": 0,
+        "reason": "pct_5y_is_null"
+      },
+      {
+        "pivot_label": "2015–16 China-growth-scare correction (US was not cold — PE still elevated)",
+        "pivot_date": "2016-02-11",
+        "market": "us",
+        "indicator": "us_hy_oas",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2018 Christmas crash bottom",
+        "pivot_date": "2018-12-24",
+        "market": "us",
+        "indicator": "us_hy_oas",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "COVID liquidity crash bottom",
+        "pivot_date": "2020-03-23",
+        "market": "us",
+        "indicator": "us_hy_oas",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "ARK / SPAC / stimmy retail peak",
+        "pivot_date": "2021-02-12",
+        "market": "us",
+        "indicator": "us_hy_oas",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2022 Fed hiking-cycle trough (pre-pivot)",
+        "pivot_date": "2022-10-12",
+        "market": "us",
+        "indicator": "us_hy_oas",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2023 regional-bank crisis low (SVB)",
+        "pivot_date": "2023-10-27",
+        "market": "us",
+        "indicator": "us_hy_oas",
+        "required_window": "pct_5y",
+        "raw_latest_date": "2023-10-27",
+        "raw_lag_days": 0,
+        "pct_latest_date": "2023-10-27",
+        "pct_lag_days": 0,
+        "reason": "pct_5y_is_null"
+      },
+      {
+        "pivot_label": "A-shares 2015 leveraged-bull peak",
+        "pivot_date": "2015-06-12",
+        "market": "cn",
+        "indicator": "cn_credit_impulse",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "A-shares 2015 leveraged-bull peak",
+        "pivot_date": "2015-06-12",
+        "market": "cn",
+        "indicator": "cn_dr007",
+        "required_window": "pct_5y",
+        "raw_latest_date": "2015-05-08",
+        "raw_lag_days": 35,
+        "pct_latest_date": "2015-05-08",
+        "pct_lag_days": 35,
+        "reason": "pct_5y_is_null"
+      },
+      {
+        "pivot_label": "A-shares 2015 leveraged-bull peak",
+        "pivot_date": "2015-06-12",
+        "market": "cn",
+        "indicator": "cn_north_5d",
+        "required_window": "pct_5y",
+        "raw_latest_date": "2015-06-12",
+        "raw_lag_days": 0,
+        "pct_latest_date": "2015-06-12",
+        "pct_lag_days": 0,
+        "reason": "pct_5y_is_null"
+      },
+      {
+        "pivot_label": "A-shares 2015 leveraged-bull peak",
+        "pivot_date": "2015-06-12",
+        "market": "cn",
+        "indicator": "cn_social_financing_12m",
+        "required_window": "pct_10y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2016 circuit-breaker / RMB devaluation crash",
+        "pivot_date": "2016-01-28",
+        "market": "cn",
+        "indicator": "cn_credit_impulse",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2016 circuit-breaker / RMB devaluation crash",
+        "pivot_date": "2016-01-28",
+        "market": "cn",
+        "indicator": "cn_dr007",
+        "required_window": "pct_5y",
+        "raw_latest_date": "2015-05-08",
+        "raw_lag_days": 265,
+        "pct_latest_date": "2015-05-08",
+        "pct_lag_days": 265,
+        "reason": "pct_5y_is_null"
+      },
+      {
+        "pivot_label": "2016 circuit-breaker / RMB devaluation crash",
+        "pivot_date": "2016-01-28",
+        "market": "cn",
+        "indicator": "cn_north_5d",
+        "required_window": "pct_5y",
+        "raw_latest_date": "2016-01-28",
+        "raw_lag_days": 0,
+        "pct_latest_date": "2016-01-28",
+        "pct_lag_days": 0,
+        "reason": "pct_5y_is_null"
+      },
+      {
+        "pivot_label": "2016 circuit-breaker / RMB devaluation crash",
+        "pivot_date": "2016-01-28",
+        "market": "cn",
+        "indicator": "cn_social_financing_12m",
+        "required_window": "pct_10y",
+        "raw_latest_date": "2016-01-01",
+        "raw_lag_days": 27,
+        "pct_latest_date": "2016-01-28",
+        "pct_lag_days": 0,
+        "reason": "pct_10y_is_null"
+      },
+      {
+        "pivot_label": "2015 connect-driven bull peak",
+        "pivot_date": "2015-04-27",
+        "market": "hk",
+        "indicator": "cn_south_5d",
+        "required_window": "pct_5y",
+        "raw_latest_date": "2015-04-27",
+        "raw_lag_days": 0,
+        "pct_latest_date": "2015-04-27",
+        "pct_lag_days": 0,
+        "reason": "pct_5y_is_null"
+      },
+      {
+        "pivot_label": "2015 connect-driven bull peak",
+        "pivot_date": "2015-04-27",
+        "market": "hk",
+        "indicator": "hk_hibor_1m",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2015 connect-driven bull peak",
+        "pivot_date": "2015-04-27",
+        "market": "hk",
+        "indicator": "hk_vhsi",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2016 HK crash bottom (A-share meltdown spillover)",
+        "pivot_date": "2016-01-20",
+        "market": "hk",
+        "indicator": "cn_south_5d",
+        "required_window": "pct_5y",
+        "raw_latest_date": "2016-01-20",
+        "raw_lag_days": 0,
+        "pct_latest_date": "2016-01-20",
+        "pct_lag_days": 0,
+        "reason": "pct_5y_is_null"
+      },
+      {
+        "pivot_label": "2016 HK crash bottom (A-share meltdown spillover)",
+        "pivot_date": "2016-01-20",
+        "market": "hk",
+        "indicator": "hk_hibor_1m",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2016 HK crash bottom (A-share meltdown spillover)",
+        "pivot_date": "2016-01-20",
+        "market": "hk",
+        "indicator": "hk_vhsi",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2018 trade-war / HKD peg defence low",
+        "pivot_date": "2018-10-30",
+        "market": "hk",
+        "indicator": "hk_vhsi",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2020 COVID HK bottom",
+        "pivot_date": "2020-03-23",
+        "market": "hk",
+        "indicator": "hk_vhsi",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2021 southbound surge / tech mania peak",
+        "pivot_date": "2021-02-17",
+        "market": "hk",
+        "indicator": "hk_vhsi",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2022 HSI 25-year low (property + liquidity crisis)",
+        "pivot_date": "2022-10-31",
+        "market": "hk",
+        "indicator": "hk_vhsi",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2024 pre-recovery HK low",
+        "pivot_date": "2024-01-22",
+        "market": "hk",
+        "indicator": "hk_vhsi",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      },
+      {
+        "pivot_label": "2024 9.24 policy-pivot surge",
+        "pivot_date": "2024-10-10",
+        "market": "hk",
+        "indicator": "hk_vhsi",
+        "required_window": "pct_5y",
+        "raw_latest_date": null,
+        "raw_lag_days": null,
+        "pct_latest_date": null,
+        "pct_lag_days": null,
+        "reason": "no_percentile_row"
+      }
+    ]
+  }
+}

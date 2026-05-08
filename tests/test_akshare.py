@@ -104,6 +104,19 @@ def _make_hibor():
     )
 
 
+def _make_vhsi():
+    dates = pd.date_range("2025-01-02", "2026-04-15", freq="B")
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "open": [20.0 + 0.01 * i for i in range(len(dates))],
+            "high": [21.0 + 0.01 * i for i in range(len(dates))],
+            "low": [19.0 + 0.01 * i for i in range(len(dates))],
+            "latest": [20.5 + 0.01 * i for i in range(len(dates))],
+        }
+    )
+
+
 def _make_flow(direction: str):
     dates = pd.date_range("2025-01-02", "2026-04-15", freq="B")
     net_values = [10.0 if i % 2 == 0 else -5.0 for i in range(len(dates))]
@@ -207,15 +220,21 @@ class TestAkShareCn:
 
 class TestAkShareHk:
     def test_hibor_parsing(self, tmp_data_dir):
-        with patch("finsynapse.providers.akshare_hk._hibor_all", return_value=_make_hibor()):
+        with (
+            patch("finsynapse.providers.akshare_hk._hibor_all", return_value=_make_hibor()),
+            patch("finsynapse.providers.akshare_hk._vhsi_daily", return_value=_make_vhsi()),
+        ):
             provider = AkShareHkProvider()
             df = provider.fetch(FetchRange(start=date(2026, 4, 1), end=date(2026, 4, 15)))
         assert set(df.columns) == {"date", "indicator", "value", "source_symbol"}
-        assert (df["indicator"] == "hk_hibor_1m").all()
+        assert set(df["indicator"]) == {"hk_hibor_1m", "hk_vhsi"}
         assert df["value"].notna().all()
 
     def test_bronze_write_idempotent(self, tmp_data_dir):
-        with patch("finsynapse.providers.akshare_hk._hibor_all", return_value=_make_hibor()):
+        with (
+            patch("finsynapse.providers.akshare_hk._hibor_all", return_value=_make_hibor()),
+            patch("finsynapse.providers.akshare_hk._vhsi_daily", return_value=_make_vhsi()),
+        ):
             provider = AkShareHkProvider()
             df = provider.fetch(FetchRange(start=date(2026, 4, 1), end=date(2026, 4, 5)))
         p1 = provider.write_bronze(df, date(2026, 4, 5))

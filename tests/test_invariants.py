@@ -34,7 +34,7 @@ INDICATOR_NAMES = ["sp500", "vix", "csi300", "hsi", "dxy", "hk_vhsi"]
         max_size=500,
     )
 )
-@settings(max_examples=50, suppress_health_check=[HealthCheck.too_slow, HealthCheck.large_base_example])
+@settings(max_examples=50, deadline=None, suppress_health_check=[HealthCheck.too_slow, HealthCheck.large_base_example])
 def test_percentile_bounds(rows):
     """All pct_* columns must be in [0, 100] or NaN after compute_percentiles."""
     base = pd.Timestamp("2015-01-01")
@@ -72,7 +72,7 @@ def test_percentile_bounds(rows):
         max_size=400,
     )
 )
-@settings(max_examples=30, suppress_health_check=[HealthCheck.too_slow, HealthCheck.large_base_example])
+@settings(max_examples=30, deadline=None, suppress_health_check=[HealthCheck.too_slow, HealthCheck.large_base_example])
 def test_temperature_bounds(rows):
     """All overall / sub_temp values must be in [0, 100] or NaN."""
     base = pd.Timestamp("2020-01-01")

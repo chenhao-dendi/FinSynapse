@@ -13,6 +13,8 @@ from finsynapse import config as _cfg
 PLAUSIBLE_BOUNDS: dict[str, tuple[float, float]] = {
     "vix": (5.0, 200.0),
     "us10y_yield": (0.1, 25.0),
+    "us3m_yield": (0.0, 25.0),
+    "us2y_yield": (0.0, 25.0),
     "us10y_real_yield": (-5.0, 15.0),
     "dxy": (50.0, 200.0),
     "usdcny": (4.0, 10.0),
@@ -23,6 +25,11 @@ PLAUSIBLE_BOUNDS: dict[str, tuple[float, float]] = {
     "gold_futures": (300.0, 10000.0),
     "us_pe_ttm": (3.0, 200.0),
     "us_cape": (5.0, 100.0),
+    "us_cape_shiller": (5.0, 100.0),
+    "us_tr_cape_shiller": (5.0, 150.0),
+    "us_shiller_real_price": (10.0, 20000.0),
+    "us_shiller_real_dividend": (0.1, 500.0),
+    "us_shiller_real_earnings": (-500.0, 1000.0),
     # --- Phase 1b additions ---
     "csi300_pe_ttm": (3.0, 100.0),
     "csi300_pb": (0.5, 10.0),
@@ -37,6 +44,8 @@ PLAUSIBLE_BOUNDS: dict[str, tuple[float, float]] = {
     "us_hy_oas": (1.0, 25.0),  # BAML HY OAS, %; historical 2.4-22 (2008 peak)
     "us_nfci": (-2.0, 5.0),  # Chicago Fed NFCI, z-like (negative=loose)
     "us_erp": (-3.0, 12.0),  # real ERP, %; can briefly go negative when rates spike
+    "cn_credit_impulse": (-1.0, 2.0),  # YoY change rate of 12M social financing; fixture range ~[-0.15, 0.44]
+    "cn_usdcny_pressure": (4.0, 10.0),  # derived from usdcny; same unit and bounds
     "cn_margin_balance": (10.0, 6e4),  # SH+SZ 融资融券余额, 亿元; 2010 launch ~10亿, 2025 peak ~30000+亿
     "cn_dr007": (0.5, 15.0),  # SHIBOR-1W, %; 0.8-12 historical incl. 2013 钱荒
     "hk_hibor_1m": (0.01, 12.0),  # HIBOR-1M, %; 0.05-7 historical
@@ -44,6 +53,21 @@ PLAUSIBLE_BOUNDS: dict[str, tuple[float, float]] = {
     "hk_vhsi": (5.0, 150.0),  # HSI Volatility Index; similar range to VIX
     "us_walcl": (5e5, 1.5e7),  # Fed balance sheet, millions USD; ~900K pre-2008, ~9M peak
     "us_umich_sentiment": (40.0, 120.0),  # UMich consumer sentiment index; 50-110 typical
+    # --- Collected-only authoritative candidates ---
+    "us_t10y3m": (-5.0, 6.0),  # FRED T10Y3M, percentage points; can be negative or zero
+    "us_t10y2y": (-5.0, 6.0),  # U.S. Treasury 10Y-2Y spread, percentage points
+    "us_baa10y_spread": (0.0, 12.0),  # FRED BAA10Y, percentage points; long-history credit spread
+    "us_on_rrp": (0.0, 5000.0),  # FRED RRPONTSYD, billions USD; can be exactly zero
+    "us_reserve_balances": (0.0, 1.0e7),  # FRED WRESBAL, millions USD
+    "us_effr": (0.0, 25.0),  # FRED EFFR, %
+    "us_sofr": (0.0, 25.0),  # FRED SOFR, %
+    "us_tga_balance": (0.0, 3e6),  # FiscalData DTS, $ million
+    "us_tga_deposits": (0.0, 3e6),  # FiscalData DTS daily deposits, $ million
+    "us_tga_withdrawals": (0.0, 3e6),  # FiscalData DTS daily withdrawals, $ million
+    "hk_aggregate_balance": (0.0, 1e6),  # HKMA Aggregate Balance, HK$ million; 2002+ max ~462K
+    "hk_monetary_base": (1e5, 5e6),  # HKMA total monetary base, HK$ million
+    "hk_hsi_pe": (3.0, 100.0),  # Hang Seng Index PE ratio, official Monthly Roundup
+    "hk_hsi_dividend_yield": (0.1, 15.0),  # Hang Seng Index dividend yield, official Monthly Roundup
 }
 
 # How many trailing-window stdevs constitutes a "jump". 5σ is intentionally
@@ -88,7 +112,20 @@ def check(macro_long: pd.DataFrame) -> tuple[pd.DataFrame, list[HealthIssue]]:
 
         # Rule 2: Zero (suspect for prices/rates that should never be 0)
         # Real rate, north/south flows can legitimately be 0 or negative.
-        if indicator not in {"us10y_real_yield", "cn_north_5d", "cn_south_5d", "us_nfci", "us_erp"}:
+        if indicator not in {
+            "us3m_yield",
+            "us2y_yield",
+            "us10y_real_yield",
+            "cn_north_5d",
+            "cn_south_5d",
+            "us_nfci",
+            "us_erp",
+            "us_t10y3m",
+            "us_t10y2y",
+            "us_on_rrp",
+            "us_tga_deposits",
+            "us_tga_withdrawals",
+        }:
             zero_mask = g["value"] == 0
             for _, row in g[zero_mask].iterrows():
                 issues.append(HealthIssue(row["_dt"], indicator, "zero", "value is exactly 0", "fail"))

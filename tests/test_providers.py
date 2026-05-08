@@ -15,8 +15,17 @@ import pytest
 from finsynapse.providers.base import FetchRange
 from finsynapse.providers.fred import SERIES as FRED_SERIES
 from finsynapse.providers.fred import FredProvider
+from finsynapse.providers.hkma import HkmaMonetaryBaseProvider
+from finsynapse.providers.hsi_monthly_valuation import HsiMonthlyValuation, HsiMonthlyValuationProvider
 from finsynapse.providers.multpl import MultplProvider
+from finsynapse.providers.treasury_dts import TreasuryDtsProvider
 from finsynapse.providers.treasury_real_yield import TreasuryRealYieldProvider
+from finsynapse.providers.treasury_yield_curve import TreasuryYieldCurveProvider
+from finsynapse.providers.yale_shiller import (
+    YaleShillerProvider,
+    discover_shiller_workbook_url,
+    parse_shiller_workbook,
+)
 from finsynapse.providers.yfinance_hk import YFinanceHkValuationProvider
 
 # ---------------------------------------------------------------------------
@@ -97,6 +106,26 @@ class TestFred:
             assert s.indicator
             assert isinstance(s.indicator, str)
 
+    def test_collects_yield_curve_spread_candidate(self, fred_env):
+        df = _fred_df()
+        assert "us_t10y3m" in set(df["indicator"])
+
+    def test_collects_long_history_credit_spread_candidate(self, fred_env):
+        df = _fred_df()
+        assert "us_baa10y_spread" in set(df["indicator"])
+
+    def test_collects_reverse_repo_liquidity_candidate(self, fred_env):
+        df = _fred_df()
+        assert "us_on_rrp" in set(df["indicator"])
+
+    def test_collects_reserve_balance_liquidity_candidate(self, fred_env):
+        df = _fred_df()
+        assert "us_reserve_balances" in set(df["indicator"])
+
+    def test_collects_official_overnight_funding_candidates(self, fred_env):
+        df = _fred_df()
+        assert {"us_effr", "us_sofr"}.issubset(set(df["indicator"]))
+
 
 # ---------------------------------------------------------------------------
 # multpl
@@ -151,6 +180,67 @@ class TestMultpl:
 
 
 # ---------------------------------------------------------------------------
+# Yale/Shiller workbook
+# ---------------------------------------------------------------------------
+
+
+SHILLER_WORKBOOK_FIXTURE = pd.DataFrame(
+    {
+        "Date": [2024.12, "2025.01", "May price is May 5th close"],
+        "Price": [6100.1, 6200.2, None],
+        "Dividend": [78.1, 79.2, None],
+        "Earnings": [218.3, 221.4, None],
+        "CAPE": [37.8, "38.2", None],
+        "TR CAPE": [40.1, "40.5", None],
+    }
+)
+
+
+class TestYaleShiller:
+    def test_discovers_current_workbook_link_from_landing_page(self):
+        html = '<html><body><a href="/downloads/ie_data.xls?ver=1">Online Data</a></body></html>'
+
+        url = discover_shiller_workbook_url(html, base_url="https://shillerdata.com/")
+
+        assert url == "https://shillerdata.com/downloads/ie_data.xls?ver=1"
+
+    def test_parses_workbook_into_collected_only_cape_indicator(self):
+        with patch("finsynapse.providers.yale_shiller.pd.read_excel", return_value=SHILLER_WORKBOOK_FIXTURE):
+            df = parse_shiller_workbook(b"ignored", "https://shillerdata.com/ie_data.xls")
+
+        assert set(df.columns) == {"date", "indicator", "value", "source_symbol"}
+        assert len(df) == 10
+        assert set(df["date"]) == {date(2024, 12, 1), date(2025, 1, 1)}
+        assert set(df["indicator"]) == {
+            "us_shiller_real_price",
+            "us_shiller_real_dividend",
+            "us_shiller_real_earnings",
+            "us_cape_shiller",
+            "us_tr_cape_shiller",
+        }
+        cape = df[df["indicator"] == "us_cape_shiller"].sort_values("date")
+        assert cape["value"].tolist() == [37.8, 38.2]
+
+    def test_fetch_filters_to_requested_range(self, tmp_data_dir):
+        with (
+            patch(
+                "finsynapse.providers.yale_shiller.fetch_shiller_workbook_url",
+                return_value="https://example.test/ie_data.xls",
+            ),
+            patch("finsynapse.providers.yale_shiller.requests_session") as mock_session,
+            patch("finsynapse.providers.yale_shiller.pd.read_excel", return_value=SHILLER_WORKBOOK_FIXTURE),
+        ):
+            mock_session.return_value.get.return_value = _mock_response(text="", status_code=200)
+            mock_session.return_value.get.return_value.content = b"ignored"
+            provider = YaleShillerProvider()
+            df = provider.fetch(FetchRange(start=date(2025, 1, 1), end=date(2025, 12, 31)))
+
+        assert len(df) == 5
+        assert set(df["date"]) == {date(2025, 1, 1)}
+        assert "us_cape_shiller" in set(df["indicator"])
+
+
+# ---------------------------------------------------------------------------
 # treasury_real_yield
 # ---------------------------------------------------------------------------
 
@@ -182,6 +272,295 @@ class TestTreasuryRealYield:
             df = provider.fetch(FetchRange(start=date(2026, 4, 27), end=date(2026, 4, 29)))
         p1 = provider.write_bronze(df, date(2026, 4, 29))
         p2 = provider.write_bronze(df, date(2026, 4, 29))
+        assert p1 == p2
+        assert p1.exists()
+
+
+# ---------------------------------------------------------------------------
+# treasury_yield_curve
+# ---------------------------------------------------------------------------
+
+TREASURY_YIELD_CURVE_CSV = """Date,"1 Mo","3 Mo","2 Yr","10 Yr","30 Yr"
+04/29/2026,3.90,3.95,4.05,4.40,4.85
+04/28/2026,3.91,3.96,4.06,4.38,4.83
+04/27/2026,3.92,3.97,4.07,4.35,4.80
+"""
+
+
+def _mock_treasury_yield_curve_get(url, params=None, headers=None, timeout=None):
+    return _mock_response(text=TREASURY_YIELD_CURVE_CSV)
+
+
+class TestTreasuryYieldCurve:
+    def test_parses_nominal_curve_and_spread(self, tmp_data_dir):
+        with patch("finsynapse.providers.treasury_yield_curve.requests_session") as mock_session:
+            mock_session.return_value.get.side_effect = _mock_treasury_yield_curve_get
+            provider = TreasuryYieldCurveProvider()
+            df = provider.fetch(FetchRange(start=date(2026, 4, 28), end=date(2026, 4, 29)))
+
+        assert set(df.columns) == {"date", "indicator", "value", "source_symbol"}
+        assert set(df["indicator"]) == {"us3m_yield", "us2y_yield", "us10y_yield", "us_t10y3m", "us_t10y2y"}
+        assert len(df) == 10
+        spread_3m = df[(df["date"] == date(2026, 4, 29)) & (df["indicator"] == "us_t10y3m")]["value"].iloc[0]
+        spread_2y = df[(df["date"] == date(2026, 4, 29)) & (df["indicator"] == "us_t10y2y")]["value"].iloc[0]
+        assert spread_3m == pytest.approx(0.45)
+        assert spread_2y == pytest.approx(0.35)
+
+    def test_bronze_write_idempotent(self, tmp_data_dir):
+        with patch("finsynapse.providers.treasury_yield_curve.requests_session") as mock_session:
+            mock_session.return_value.get.side_effect = _mock_treasury_yield_curve_get
+            provider = TreasuryYieldCurveProvider()
+            df = provider.fetch(FetchRange(start=date(2026, 4, 28), end=date(2026, 4, 29)))
+
+        p1 = provider.write_bronze(df, date(2026, 4, 29))
+        p2 = provider.write_bronze(df, date(2026, 4, 29))
+        assert p1 == p2
+        assert p1.exists()
+
+
+# ---------------------------------------------------------------------------
+# treasury DTS operating cash balance
+# ---------------------------------------------------------------------------
+
+TREASURY_DTS_FIXTURE = {
+    "data": [
+        {
+            "record_date": "2026-05-01",
+            "account_type": "Total TGA Deposits (Table II)",
+            "open_today_bal": "43050",
+        },
+        {
+            "record_date": "2026-05-01",
+            "account_type": "Total TGA Withdrawals (Table II) (-)",
+            "open_today_bal": "155122",
+        },
+        {
+            "record_date": "2026-05-01",
+            "account_type": "Treasury General Account (TGA) Closing Balance",
+            "open_today_bal": "857311",
+        },
+        {
+            "record_date": "2026-05-04",
+            "account_type": "Total TGA Deposits (Table II)",
+            "open_today_bal": "39449",
+        },
+        {
+            "record_date": "2026-05-04",
+            "account_type": "Total TGA Withdrawals (Table II) (-)",
+            "open_today_bal": "16792",
+        },
+        {
+            "record_date": "2026-05-04",
+            "account_type": "Treasury General Account (TGA) Closing Balance",
+            "open_today_bal": "879968",
+        },
+    ],
+    "meta": {"total-pages": 1},
+}
+
+
+TREASURY_DTS_LEGACY_FIXTURE = {
+    "data": [
+        {
+            "record_date": "2010-01-04",
+            "account_type": "Federal Reserve Account",
+            "open_today_bal": "186632",
+        },
+        {
+            "record_date": "2010-01-04",
+            "account_type": "Financial Institution Accoun",
+            "open_today_bal": "0",
+        },
+        {
+            "record_date": "2010-01-04",
+            "account_type": "Supplementary Financing Prog",
+            "open_today_bal": "5001",
+        },
+        {
+            "record_date": "2010-01-04",
+            "account_type": "Tax and Loan Note Accounts (Table V)",
+            "open_today_bal": "1962",
+        },
+    ],
+    "meta": {"total-pages": 1},
+}
+
+
+class TestTreasuryDts:
+    def test_parses_tga_operating_cash_rows(self, tmp_data_dir):
+        with patch("finsynapse.providers.treasury_dts.requests_session") as mock_session:
+            mock_session.return_value.get.return_value = _mock_response(json_data=TREASURY_DTS_FIXTURE)
+            provider = TreasuryDtsProvider()
+            df = provider.fetch(FetchRange(start=date(2026, 5, 1), end=date(2026, 5, 4)))
+
+        assert set(df.columns) == {"date", "indicator", "value", "source_symbol"}
+        assert set(df["indicator"]) == {"us_tga_balance", "us_tga_deposits", "us_tga_withdrawals"}
+        assert len(df) == 6
+        balance = df[(df["date"] == date(2026, 5, 1)) & (df["indicator"] == "us_tga_balance")]["value"].iloc[0]
+        assert balance == pytest.approx(857311)
+
+    def test_derives_legacy_operating_cash_balance(self, tmp_data_dir):
+        with patch("finsynapse.providers.treasury_dts.requests_session") as mock_session:
+            mock_session.return_value.get.return_value = _mock_response(json_data=TREASURY_DTS_LEGACY_FIXTURE)
+            provider = TreasuryDtsProvider()
+            df = provider.fetch(FetchRange(start=date(2010, 1, 4), end=date(2010, 1, 4)))
+
+        assert set(df["indicator"]) == {"us_tga_balance"}
+        assert df["value"].iloc[0] == pytest.approx(193595)
+        assert df["source_symbol"].iloc[0].endswith("/legacy_operating_cash_sum")
+
+    def test_paginates_fiscaldata_response(self, tmp_data_dir):
+        first_page = {
+            "data": TREASURY_DTS_FIXTURE["data"][:3],
+            "meta": {"total-pages": 2},
+        }
+        second_page = {
+            "data": TREASURY_DTS_FIXTURE["data"][3:],
+            "meta": {"total-pages": 2},
+        }
+        with patch("finsynapse.providers.treasury_dts.requests_session") as mock_session:
+            mock_session.return_value.get.side_effect = [
+                _mock_response(json_data=first_page),
+                _mock_response(json_data=second_page),
+            ]
+            provider = TreasuryDtsProvider()
+            df = provider.fetch(FetchRange(start=date(2026, 5, 1), end=date(2026, 5, 4)))
+
+        assert len(df) == 6
+        assert mock_session.return_value.get.call_count == 2
+
+    def test_bronze_write_idempotent(self, tmp_data_dir):
+        with patch("finsynapse.providers.treasury_dts.requests_session") as mock_session:
+            mock_session.return_value.get.return_value = _mock_response(json_data=TREASURY_DTS_FIXTURE)
+            provider = TreasuryDtsProvider()
+            df = provider.fetch(FetchRange(start=date(2026, 5, 1), end=date(2026, 5, 4)))
+
+        p1 = provider.write_bronze(df, date(2026, 5, 4))
+        p2 = provider.write_bronze(df, date(2026, 5, 4))
+        assert p1 == p2
+        assert p1.exists()
+
+
+# ---------------------------------------------------------------------------
+# hkma monetary base
+# ---------------------------------------------------------------------------
+
+HKMA_FIXTURE = {
+    "header": {"success": True, "err_code": "0000", "err_msg": "No error found"},
+    "result": {
+        "datasize": 3,
+        "records": [
+            {
+                "end_of_date": "2026-04-29",
+                "cert_of_indebt": 659305,
+                "gov_notes_coins_circulation": 13284,
+                "aggr_balance_bf_disc_win": 53862,
+                "aggr_balance_af_disc_win": 53862,
+                "outstanding_efbn": 1345858,
+                "ow_lb_bf_disc_win": 1174245,
+                "ow_lb_af_disc_win": 1174245,
+                "mb_bf_disc_win_total": 2072309,
+            },
+            {
+                "end_of_date": "2026-04-30",
+                "cert_of_indebt": 659105,
+                "gov_notes_coins_circulation": 13284,
+                "aggr_balance_bf_disc_win": 53862,
+                "aggr_balance_af_disc_win": 53862,
+                "outstanding_efbn": 1345858,
+                "ow_lb_bf_disc_win": 1174245,
+                "ow_lb_af_disc_win": 1174245,
+                "mb_bf_disc_win_total": 2072300,
+            },
+            {
+                "end_of_date": "2026-05-04",
+                "cert_of_indebt": 655095,
+                "gov_notes_coins_circulation": 13282,
+                "aggr_balance_bf_disc_win": 53862,
+                "aggr_balance_af_disc_win": 53862,
+                "outstanding_efbn": 1346167,
+                "ow_lb_bf_disc_win": 1173974,
+                "ow_lb_af_disc_win": 1173974,
+                "mb_bf_disc_win_total": 2068406,
+            },
+        ],
+    },
+}
+
+
+class TestHkmaMonetaryBase:
+    def test_parses_official_monetary_base_api(self, tmp_data_dir):
+        with patch("finsynapse.providers.hkma.requests_session") as mock_session:
+            mock_session.return_value.get.return_value = _mock_response(json_data=HKMA_FIXTURE)
+            provider = HkmaMonetaryBaseProvider()
+            df = provider.fetch(FetchRange(start=date(2026, 4, 30), end=date(2026, 5, 4)))
+
+        assert set(df.columns) == {"date", "indicator", "value", "source_symbol"}
+        assert set(df["indicator"]) == {"hk_aggregate_balance", "hk_monetary_base"}
+        assert len(df) == 4
+        assert df["value"].notna().all()
+
+    def test_hkma_api_error_raises(self, tmp_data_dir):
+        error_payload = {"header": {"success": False, "err_code": "E00001", "err_msg": "API not found"}}
+        with patch("finsynapse.providers.hkma.requests_session") as mock_session:
+            mock_session.return_value.get.return_value = _mock_response(json_data=error_payload)
+            provider = HkmaMonetaryBaseProvider()
+            with pytest.raises(RuntimeError, match="HKMA API error"):
+                provider.fetch(FetchRange(start=date(2026, 4, 30), end=date(2026, 5, 4)))
+
+    def test_bronze_write_idempotent(self, tmp_data_dir):
+        with patch("finsynapse.providers.hkma.requests_session") as mock_session:
+            mock_session.return_value.get.return_value = _mock_response(json_data=HKMA_FIXTURE)
+            provider = HkmaMonetaryBaseProvider()
+            df = provider.fetch(FetchRange(start=date(2026, 4, 30), end=date(2026, 5, 4)))
+        p1 = provider.write_bronze(df, date(2026, 5, 4))
+        p2 = provider.write_bronze(df, date(2026, 5, 4))
+        assert p1 == p2
+        assert p1.exists()
+
+
+# ---------------------------------------------------------------------------
+# HSI Monthly Roundup valuation
+# ---------------------------------------------------------------------------
+
+
+class TestHsiMonthlyValuation:
+    def test_fetches_official_monthly_roundup_valuation_rows(self, tmp_data_dir):
+        urls = [
+            "https://www.hsi.com.hk/static/uploads/contents/en/dl_centre/monthly_roundup/20241202T000000.pdf",
+            "https://www.hsi.com.hk/static/uploads/contents/en/dl_centre/monthly_roundup/20250102T000000.pdf",
+        ]
+        valuations = [
+            HsiMonthlyValuation("2024-12-02", 11.31, 3.78, urls[0]),
+            HsiMonthlyValuation("2025-01-02", 11.83, 3.62, urls[1]),
+        ]
+        with (
+            patch("finsynapse.providers.hsi_monthly_valuation.pdftotext_available", return_value=True),
+            patch("finsynapse.providers.hsi_monthly_valuation.discover_hsi_monthly_roundup_urls", return_value=urls),
+            patch("finsynapse.providers.hsi_monthly_valuation.fetch_hsi_monthly_roundup_valuation") as fetch_one,
+        ):
+            fetch_one.side_effect = valuations
+            provider = HsiMonthlyValuationProvider()
+            df = provider.fetch(FetchRange(start=date(2024, 12, 1), end=date(2025, 1, 31)))
+
+        assert set(df.columns) == {"date", "indicator", "value", "source_symbol"}
+        assert set(df["indicator"]) == {"hk_hsi_pe", "hk_hsi_dividend_yield"}
+        assert len(df) == 4
+        assert df[df["indicator"] == "hk_hsi_pe"]["value"].tolist() == [11.31, 11.83]
+        assert df[df["indicator"] == "hk_hsi_dividend_yield"]["value"].tolist() == [3.78, 3.62]
+
+    def test_bronze_write_idempotent(self, tmp_data_dir):
+        df = pd.DataFrame(
+            {
+                "date": [date(2025, 1, 2)],
+                "indicator": ["hk_hsi_pe"],
+                "value": [11.83],
+                "source_symbol": ["20250102T000000.pdf/PE"],
+            }
+        )
+        provider = HsiMonthlyValuationProvider()
+        p1 = provider.write_bronze(df, date(2025, 1, 2))
+        p2 = provider.write_bronze(df, date(2025, 1, 2))
         assert p1 == p2
         assert p1.exists()
 
