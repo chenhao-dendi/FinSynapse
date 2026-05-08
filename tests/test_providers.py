@@ -280,10 +280,10 @@ class TestTreasuryRealYield:
 # treasury_yield_curve
 # ---------------------------------------------------------------------------
 
-TREASURY_YIELD_CURVE_CSV = """Date,"1 Mo","3 Mo","10 Yr","30 Yr"
-04/29/2026,3.90,3.95,4.40,4.85
-04/28/2026,3.91,3.96,4.38,4.83
-04/27/2026,3.92,3.97,4.35,4.80
+TREASURY_YIELD_CURVE_CSV = """Date,"1 Mo","3 Mo","2 Yr","10 Yr","30 Yr"
+04/29/2026,3.90,3.95,4.05,4.40,4.85
+04/28/2026,3.91,3.96,4.06,4.38,4.83
+04/27/2026,3.92,3.97,4.07,4.35,4.80
 """
 
 
@@ -299,10 +299,12 @@ class TestTreasuryYieldCurve:
             df = provider.fetch(FetchRange(start=date(2026, 4, 28), end=date(2026, 4, 29)))
 
         assert set(df.columns) == {"date", "indicator", "value", "source_symbol"}
-        assert set(df["indicator"]) == {"us3m_yield", "us10y_yield", "us_t10y3m"}
-        assert len(df) == 6
-        spread = df[(df["date"] == date(2026, 4, 29)) & (df["indicator"] == "us_t10y3m")]["value"].iloc[0]
-        assert spread == pytest.approx(0.45)
+        assert set(df["indicator"]) == {"us3m_yield", "us2y_yield", "us10y_yield", "us_t10y3m", "us_t10y2y"}
+        assert len(df) == 10
+        spread_3m = df[(df["date"] == date(2026, 4, 29)) & (df["indicator"] == "us_t10y3m")]["value"].iloc[0]
+        spread_2y = df[(df["date"] == date(2026, 4, 29)) & (df["indicator"] == "us_t10y2y")]["value"].iloc[0]
+        assert spread_3m == pytest.approx(0.45)
+        assert spread_2y == pytest.approx(0.35)
 
     def test_bronze_write_idempotent(self, tmp_data_dir):
         with patch("finsynapse.providers.treasury_yield_curve.requests_session") as mock_session:

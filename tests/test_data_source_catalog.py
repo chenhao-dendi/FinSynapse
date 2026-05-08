@@ -29,7 +29,9 @@ def test_catalog_covers_weighted_and_collected_only_indicators():
     assert weighted_indicators(WEIGHTS_PATH).issubset(indicators)
     for indicator in {
         "us3m_yield",
+        "us2y_yield",
         "us_t10y3m",
+        "us_t10y2y",
         "us_baa10y_spread",
         "us_on_rrp",
         "us_reserve_balances",

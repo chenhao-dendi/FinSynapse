@@ -2,7 +2,7 @@
 
 - **Created**: 2026-05-07
 - **Source commit**: `4bbbb1b`
-- **Source data**: `data/silver` baseline plus collected-only official bronze overlay: FRED `2026-05-08`, Treasury yield curve `2026-05-07`, Treasury DTS `2026-05-07`, HKMA monetary base `2026-05-07`; academic-public overlay: Yale/Shiller `2026-05-08`
+- **Source data**: `data/silver` baseline plus collected-only official bronze overlay: FRED `2026-05-08`, Treasury yield curve `2026-05-08`, Treasury DTS `2026-05-07`, HKMA monetary base `2026-05-07`; academic-public overlay: Yale/Shiller `2026-05-08`
 - **Date window**: 2010-01-01 → 2024-12-31 (~15 years)
 - **Manifest**: `MANIFEST.json` stores file hashes, row counts, date ranges, indicator lists, pivot coverage, and pivot×indicator required-window coverage
 - **Manifest command**: `uv run python scripts/build_eval_fixture_manifest.py --verify`
@@ -23,7 +23,7 @@ Weighted indicator required-window coverage at those pivots:
 Collected-only official and academic-public overlays now included in `macro_daily.parquet` and
 `percentile_daily.parquet` without changing `temperature_daily.parquet`:
 - HKMA: `hk_aggregate_balance`, `hk_monetary_base`
-- U.S. Treasury / FRED: `us3m_yield`, `us_t10y3m`, `us_baa10y_spread`, `us_on_rrp`, `us_reserve_balances`, `us_effr`, `us_sofr`
+- U.S. Treasury / FRED: `us3m_yield`, `us2y_yield`, `us_t10y3m`, `us_t10y2y`, `us_baa10y_spread`, `us_on_rrp`, `us_reserve_balances`, `us_effr`, `us_sofr`
 - U.S. Treasury DTS: `us_tga_balance`, `us_tga_deposits`, `us_tga_withdrawals`
 - Yale/Shiller: `us_shiller_real_price`, `us_shiller_real_dividend`, `us_shiller_real_earnings`, `us_cape_shiller`, `us_tr_cape_shiller`
 
@@ -37,6 +37,12 @@ rows and +19,565 percentile rows for five collected-only indicators
 `us_shiller_real_earnings`, `us_cape_shiller`, `us_tr_cape_shiller`). Weighted
 pivot coverage stayed 184/218, gate metrics were unchanged, and no pivot
 classifications changed.
+
+Adding the U.S. Treasury 2Y curve overlay on 2026-05-08 added +7,504 macro rows
+and +7,504 percentile rows for two collected-only indicators (`us2y_yield`,
+`us_t10y2y`). Existing `us10y_yield` and `us_t10y3m` fixture sources were left
+unchanged to avoid source-priority churn. Weighted pivot coverage stayed
+184/218, gate metrics were unchanged, and no pivot classifications changed.
 
 ## Tested But Not Promoted
 

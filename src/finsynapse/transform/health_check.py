@@ -14,6 +14,7 @@ PLAUSIBLE_BOUNDS: dict[str, tuple[float, float]] = {
     "vix": (5.0, 200.0),
     "us10y_yield": (0.1, 25.0),
     "us3m_yield": (0.0, 25.0),
+    "us2y_yield": (0.0, 25.0),
     "us10y_real_yield": (-5.0, 15.0),
     "dxy": (50.0, 200.0),
     "usdcny": (4.0, 10.0),
@@ -54,6 +55,7 @@ PLAUSIBLE_BOUNDS: dict[str, tuple[float, float]] = {
     "us_umich_sentiment": (40.0, 120.0),  # UMich consumer sentiment index; 50-110 typical
     # --- Collected-only authoritative candidates ---
     "us_t10y3m": (-5.0, 6.0),  # FRED T10Y3M, percentage points; can be negative or zero
+    "us_t10y2y": (-5.0, 6.0),  # U.S. Treasury 10Y-2Y spread, percentage points
     "us_baa10y_spread": (0.0, 12.0),  # FRED BAA10Y, percentage points; long-history credit spread
     "us_on_rrp": (0.0, 5000.0),  # FRED RRPONTSYD, billions USD; can be exactly zero
     "us_reserve_balances": (0.0, 1.0e7),  # FRED WRESBAL, millions USD
@@ -112,12 +114,14 @@ def check(macro_long: pd.DataFrame) -> tuple[pd.DataFrame, list[HealthIssue]]:
         # Real rate, north/south flows can legitimately be 0 or negative.
         if indicator not in {
             "us3m_yield",
+            "us2y_yield",
             "us10y_real_yield",
             "cn_north_5d",
             "cn_south_5d",
             "us_nfci",
             "us_erp",
             "us_t10y3m",
+            "us_t10y2y",
             "us_on_rrp",
             "us_tga_deposits",
             "us_tga_withdrawals",

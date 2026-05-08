@@ -235,7 +235,9 @@ gold/    叙事：人类/LLM 读得懂的结论
 | Indicator | 来源 | 口径 | 后续用途 |
 |---|---|---|---|
 | `us3m_yield` | U.S. Treasury Daily Treasury Rates | 3M 名义国债收益率（百分点） | 美国短端利率 / 现金收益率锚 |
+| `us2y_yield` | U.S. Treasury Daily Treasury Rates | 2Y 名义国债收益率（百分点） | 美国政策预期 / 中短端利率锚 |
 | `us_t10y3m` | FRED `T10Y3M` + U.S. Treasury Daily Treasury Rates | 10Y 美债收益率 − 3M 国库券利率（百分点） | 美国收益率曲线 / 衰退压力候选；需非单调 stress transform |
+| `us_t10y2y` | U.S. Treasury Daily Treasury Rates | 10Y 美债收益率 − 2Y 美债收益率（百分点） | 美国收益率曲线倒挂候选；需非单调 stress transform |
 | `us_baa10y_spread` | FRED `BAA10Y` | Moody's Baa 公司债收益率 − 10Y 美债收益率（百分点） | 美国长期信用利差候选；不直接替代 HY OAS，需 transform / gate 验证 |
 | `us_on_rrp` | FRED `RRPONTSYD` | Fed overnight reverse repo Treasury securities sold（USD bn） | 美国隔夜逆回购 / 准备金抽水候选；可为 0，需独立 transform |
 | `us_reserve_balances` | FRED `WRESBAL` | Reserve balances with Federal Reserve Banks（USD mn） | 美国银行体系准备金候选；可与 WALCL/TGA/ON RRP 研究 net liquidity |

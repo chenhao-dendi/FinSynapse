@@ -2,15 +2,15 @@
   "fixture_id": "eval_silver_2026Q1",
   "created": "2026-05-07",
   "source_commit": "4bbbb1b",
-  "source_data": "data/silver baseline plus collected-only official bronze overlay: fred/2026-05-08, treasury_yield_curve/2026-05-07, treasury_dts/2026-05-07, hkma_monetary_base/2026-05-07; academic_public overlay: yale_shiller/2026-05-08",
+  "source_data": "data/silver baseline plus collected-only official bronze overlay: fred/2026-05-08, treasury_yield_curve/2026-05-08, treasury_dts/2026-05-07, hkma_monetary_base/2026-05-07; academic_public overlay: yale_shiller/2026-05-08",
   "date_window": {
     "start": "2010-01-01",
     "end": "2024-12-31"
   },
   "files": {
     "macro_daily.parquet": {
-      "sha256": "f608a0081e38dfd9b11da3d3222e6b7e249f015cbc0346058cff4a4f1f438595",
-      "rows": 103019,
+      "sha256": "1cb1d36d74ada7e72fa3a37f070b6d5a244205ce1f4fff2b2dce6aa77df90ccc",
+      "rows": 110523,
       "date_min": "2010-01-01",
       "date_max": "2024-12-31",
       "n_dates": 4016,
@@ -44,6 +44,7 @@
         "sp500",
         "us10y_real_yield",
         "us10y_yield",
+        "us2y_yield",
         "us3m_yield",
         "us_baa10y_spread",
         "us_cape",
@@ -59,6 +60,7 @@
         "us_shiller_real_earnings",
         "us_shiller_real_price",
         "us_sofr",
+        "us_t10y2y",
         "us_t10y3m",
         "us_tga_balance",
         "us_tga_deposits",
@@ -71,8 +73,8 @@
       ]
     },
     "percentile_daily.parquet": {
-      "sha256": "2a75a4ee264a636cdd5f0802950f9790b7d61d19596ee2926f8428a74fc7b6ef",
-      "rows": 143964,
+      "sha256": "87d089f8c87ca43ceecccf585b852c0a14897dfb18be527db92c4e2cf5abd44b",
+      "rows": 151468,
       "date_min": "2010-01-01",
       "date_max": "2024-12-31",
       "n_dates": 3968,
@@ -108,6 +110,7 @@
         "sp500",
         "us10y_real_yield",
         "us10y_yield",
+        "us2y_yield",
         "us3m_yield",
         "us_baa10y_spread",
         "us_cape",
@@ -123,6 +126,7 @@
         "us_shiller_real_earnings",
         "us_shiller_real_price",
         "us_sofr",
+        "us_t10y2y",
         "us_t10y3m",
         "us_tga_balance",
         "us_tga_deposits",

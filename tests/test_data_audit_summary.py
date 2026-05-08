@@ -18,6 +18,8 @@ def test_data_audit_summary_includes_pr_relevant_evidence():
     assert "treasury_dts" in summary
     assert "hkma_monetary_base" in summary
     assert "hsi_monthly_valuation" in summary
+    assert "us2y_yield" in summary
+    assert "us_t10y2y" in summary
     assert "us_t10y3m" in summary
     assert "us_baa10y_spread" in summary
     assert "us_on_rrp" in summary
@@ -37,8 +39,8 @@ def test_data_audit_summary_includes_pr_relevant_evidence():
     assert "Indicator pivot checks: 184/218" in summary
     assert "Missing required indicator-window checks: 34" in summary
     assert "Top fixture data gaps: hk_vhsi=8, us_hy_oas=7" in summary
-    assert "Macro rows: 103,019 across 47 indicators" in summary
-    assert "Percentile rows: 143,964" in summary
+    assert "Macro rows: 110,523 across 49 indicators" in summary
+    assert "Percentile rows: 151,468" in summary
     assert "hk_native_valuation" in summary
     assert "hk_vhsi_fixture_history" in summary
     assert "us_hy_oas_full_history" in summary

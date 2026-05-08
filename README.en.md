@@ -233,7 +233,9 @@ These series are written into bronze / silver for future backtests and factor de
 | Indicator | Source | Definition | Next use |
 |---|---|---|---|
 | `us3m_yield` | U.S. Treasury Daily Treasury Rates | 3M nominal Treasury yield, percentage points | US front-end rate / cash-yield anchor |
+| `us2y_yield` | U.S. Treasury Daily Treasury Rates | 2Y nominal Treasury yield, percentage points | US policy-expectation / short-intermediate rate anchor |
 | `us_t10y3m` | FRED `T10Y3M` + U.S. Treasury Daily Treasury Rates | 10Y Treasury yield minus 3M Treasury bill rate, percentage points | US yield-curve / recession-stress candidate; needs a non-monotonic stress transform |
+| `us_t10y2y` | U.S. Treasury Daily Treasury Rates | 10Y Treasury yield minus 2Y Treasury yield, percentage points | US yield-curve inversion candidate; needs a non-monotonic stress transform |
 | `us_baa10y_spread` | FRED `BAA10Y` | Moody's Baa corporate yield minus 10Y Treasury yield, percentage points | Long-history US credit-spread candidate; not a direct HY OAS replacement until transform / gate validation |
 | `us_on_rrp` | FRED `RRPONTSYD` | Fed overnight reverse repo Treasury securities sold, USD bn | US ON RRP / reserve-drain candidate; can be zero and needs its own transform |
 | `us_reserve_balances` | FRED `WRESBAL` | Reserve balances with Federal Reserve Banks, USD mn | US banking-system reserve candidate; useful with WALCL/TGA/ON RRP for net-liquidity research |

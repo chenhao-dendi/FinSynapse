@@ -99,7 +99,9 @@ sources:
     indicators:
       us10y_yield: { usage: context, market: us, description: US Treasury nominal par yield curve 10Y }
       us3m_yield: { usage: collected_only, market: us, description: US Treasury nominal par yield curve 3M }
+      us2y_yield: { usage: collected_only, market: us, description: US Treasury nominal par yield curve 2Y }
       us_t10y3m: { usage: collected_only, market: us, description: US Treasury 10Y minus 3M nominal yield spread }
+      us_t10y2y: { usage: collected_only, market: us, description: US Treasury 10Y minus 2Y nominal yield spread }
 
   treasury_dts:
     tier: official_public

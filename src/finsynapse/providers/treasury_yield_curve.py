@@ -1,8 +1,8 @@
 """US Treasury daily nominal yield curve.
 
-This official, keyless source collects the nominal 3M and 10Y par yield
-curve, plus the derived 10Y-3M spread. It provides a Treasury-native
-cross-check/fallback for yfinance `^TNX` and FRED `T10Y3M`.
+This official, keyless source collects nominal 3M/2Y/10Y par yield curve
+points, plus derived 10Y-3M and 10Y-2Y spreads. It provides a Treasury-native
+cross-check/fallback for yfinance `^TNX` and FRED yield-curve spreads.
 
 Source:
     https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve
@@ -32,6 +32,7 @@ class _Series:
 
 SERIES: tuple[_Series, ...] = (
     _Series(csv_column="3 Mo", indicator="us3m_yield"),
+    _Series(csv_column="2 Yr", indicator="us2y_yield"),
     _Series(csv_column="10 Yr", indicator="us10y_yield"),
 )
 
@@ -97,6 +98,19 @@ class TreasuryYieldCurveProvider(Provider):
                         "indicator": "us_t10y3m",
                         "value": spread,
                         "source_symbol": "USTREAS:10Yr-3Mo",
+                    }
+                ).dropna(subset=["date", "value"])
+            )
+
+        if {"us10y_yield", "us2y_yield"}.issubset(by_indicator):
+            spread = by_indicator["us10y_yield"] - by_indicator["us2y_yield"]
+            rows.append(
+                pd.DataFrame(
+                    {
+                        "date": raw["date"],
+                        "indicator": "us_t10y2y",
+                        "value": spread,
+                        "source_symbol": "USTREAS:10Yr-2Yr",
                     }
                 ).dropna(subset=["date", "value"])
             )
