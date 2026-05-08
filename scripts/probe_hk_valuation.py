@@ -12,9 +12,80 @@ from __future__ import annotations
 
 import sys
 import traceback
+from datetime import date
 
 import akshare as ak
 import pandas as pd
+import requests
+
+from finsynapse.providers.hsi_monthly_valuation import (
+    HsiMonthlyValuation,
+    discover_hsi_monthly_roundup_archive,
+    discover_hsi_monthly_roundup_urls,
+    fetch_hsi_monthly_roundup_valuation,
+    pdftotext_available,
+    publication_months,
+)
+
+OFFICIAL_HSI_MONTHLY_SAMPLE_MONTHS = (
+    # Publication months used as a small live discovery sample. Monthly Roundup
+    # files are usually published in the first few calendar days of the month.
+    (2026, 1),
+    (2025, 12),
+    (2024, 12),
+)
+OFFICIAL_HSI_ARCHIVE_SAMPLE_START = (2019, 7)
+OFFICIAL_HSI_ARCHIVE_SAMPLE_END = (2026, 5)
+
+
+def _probe_official_hsi_monthly_roundup(url: str) -> HsiMonthlyValuation | None:
+    print(f"\n>>> official HSI Monthly Roundup PDF: {url}")
+    if not pdftotext_available():
+        print("    ✗ pdftotext not installed; cannot parse PDF locally")
+        return None
+    try:
+        result = fetch_hsi_monthly_roundup_valuation(url)
+        print(
+            "    ✓ parsed HSI monthly valuation: "
+            f"publication_date={result.publication_date} "
+            f"pe={result.pe_ratio:.2f} dividend_yield={result.dividend_yield:.2f}%"
+        )
+        return result
+    except Exception:
+        print("    ✗ FAILED")
+        traceback.print_exc(limit=3)
+        return None
+
+
+def _probe_index360_shell() -> bool:
+    print("\n>>> official Index360 fundamentals page shell")
+    try:
+        resp = requests.get("https://www.hsi.com.hk/index360/eng/indexes?id=00001.00", timeout=(10, 30))
+        resp.raise_for_status()
+        html = resp.text
+        has_shell = all(token in html for token in ("Index Fundamentals", "Dividend Yield (%)", "PE Ratio (Times)"))
+        if has_shell:
+            print("    ✓ fundamentals shell present")
+            print("    ⚠ values are JS-populated; no stable static JSON endpoint identified in this probe")
+            return True
+        print("    ✗ fundamentals shell not found")
+        return False
+    except Exception:
+        print("    ✗ FAILED")
+        traceback.print_exc(limit=3)
+        return False
+
+
+def _probe_official_hsi_archive_coverage() -> None:
+    print("\n>>> official HSI Monthly Roundup archive discovery coverage")
+    start_year, start_month = OFFICIAL_HSI_ARCHIVE_SAMPLE_START
+    end_year, end_month = OFFICIAL_HSI_ARCHIVE_SAMPLE_END
+    months = publication_months(date(start_year, start_month, 1), date(end_year, end_month, 1))
+    discovery = discover_hsi_monthly_roundup_archive(months)
+    print(f"    discovered {len(discovery.urls)}/{len(discovery.requested_months)} publication months")
+    if discovery.missing_months:
+        missing = ", ".join(f"{year}-{month:02d}" for year, month in discovery.missing_months)
+        print(f"    missing months: {missing}")
 
 
 def probe(name: str, fn, *, expect_min_rows: int = 100):
@@ -93,6 +164,16 @@ def hk_spot_em():
 
 def main() -> int:
     print(f"akshare {ak.__version__}")
+
+    print(f"\n{'=' * 12} Official HSI PE / dividend yield candidates {'=' * 12}")
+    official_urls = discover_hsi_monthly_roundup_urls(OFFICIAL_HSI_MONTHLY_SAMPLE_MONTHS)
+    print(f"    discovered {len(official_urls)}/{len(OFFICIAL_HSI_MONTHLY_SAMPLE_MONTHS)} sample Monthly Roundup PDFs")
+    official_results = [_probe_official_hsi_monthly_roundup(url) for url in official_urls]
+    official_ok = any(official_results)
+    _probe_index360_shell()
+    if official_ok:
+        print("    → official Monthly Roundup PDF is viable for manual collected-only ingestion")
+    _probe_official_hsi_archive_coverage()
 
     sections = {
         "HSI Valuation (PE/PB/DY)": [

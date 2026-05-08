@@ -40,6 +40,9 @@ jobs:
       - name: ruff check validation scripts
         run: uv run ruff check scripts/validation_lib.py scripts/run_validation.py scripts/oos_backtest.py scripts/grid_search_weights.py
 
+      - name: ruff check audit scripts
+        run: uv run ruff check scripts/build_eval_fixture_manifest.py scripts/check_data_source_catalog.py scripts/compare_eval_fixtures.py scripts/probe_hk_valuation.py scripts/summarize_data_audit.py
+
       - name: ruff format --check
         # Fails CI when committed code drifts from the formatter — keeps
         # diffs clean without anyone having to remember to run it locally.
@@ -47,6 +50,9 @@ jobs:
 
       - name: ruff format --check validation scripts
         run: uv run ruff format --check scripts/validation_lib.py scripts/run_validation.py scripts/oos_backtest.py scripts/grid_search_weights.py
+
+      - name: ruff format --check audit scripts
+        run: uv run ruff format --check scripts/build_eval_fixture_manifest.py scripts/check_data_source_catalog.py scripts/compare_eval_fixtures.py scripts/probe_hk_valuation.py scripts/summarize_data_audit.py
 
   test:
     name: Tests (py${{ matrix.python-version }})
@@ -78,6 +84,12 @@ jobs:
         # --benchmark-disable: still runs benchmark tests once for correctness,
         # but skips the multi-round timing loop that pushes CI past the 10-min cap.
         run: uv run pytest -q --benchmark-disable --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Verify data-source catalog
+        run: uv run python scripts/check_data_source_catalog.py
+
+      - name: Verify eval fixture manifest
+        run: uv run python scripts/build_eval_fixture_manifest.py --verify
 
       - name: Upload coverage artifact (py${{ matrix.python-version }})
         uses: actions/upload-artifact@v4
@@ -138,6 +150,8 @@ jobs:
               - 'src/finsynapse/transform/**'
               - 'src/finsynapse/eval/**'
               - 'scripts/validation_lib.py'
+              - 'scripts/build_eval_fixture_manifest.py'
+              - 'tests/fixtures/eval_silver_2026Q1/**'
 
       - name: Install uv
         if: steps.paths.outputs.eval-trigger == 'true'

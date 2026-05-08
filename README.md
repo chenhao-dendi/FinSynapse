@@ -95,7 +95,7 @@ FinSynapse/
 ├── src/finsynapse/
 │   ├── config.py          pydantic-settings 读 .env
 │   ├── cli.py             Typer 入口（ingest / transform / dashboard / notify / report）
-│   ├── providers/         数据源抽象：akshare / yfinance / fred / multpl / treasury
+│   ├── providers/         数据源抽象：akshare / yfinance / fred / multpl / treasury / hkma / hsi
 │   ├── ingest/            bronze 落盘（薄壳）
 │   ├── transform/         normalize → percentile → health_check → temperature → divergence
 │   ├── dashboard/         Streamlit app + 双语静态 HTML 渲染（i18n + plotly）
@@ -224,9 +224,30 @@ gold/    叙事：人类/LLM 读得懂的结论
 | liq | `dxy` | 0.20 | − | 5y | yfinance | 联系汇率借用 USD 强弱 |
 | liq | `hk_hibor_1m` | 0.50 | − | 5y | AkShare | HKD 端实际融资成本 |
 
-> **HK 原生估值因子暂未接入**：AkShare `stock_hk_index_value_em` 接口在当前版本中不存在，`stock_hk_index_daily_em` 仅返回价格。HSI PE/PB 需抓恒指公司月度 factsheet（需 Playwright），与已放弃的 PCR 同等工程复杂度。目前以 EWH 股息率作为估值代理，详见 `scripts/probe_hk_valuation.py`。
+> **HK 原生估值因子暂未接入权重**：AkShare `stock_hk_index_value_em` 接口在当前版本中不存在，`stock_hk_index_daily_em` 仅返回价格。最新 probe 发现恒生指数公司官方 Monthly Roundup PDF 含 HSI PE Ratio / Dividend Yield 行，`hsi_monthly_valuation` 已能作为手动 collected-only source 采集月初发布的 PDF，因此 `hk_native_valuation` 已推进为 source_ready；2019-07-03..2026-05-07 live backfill 已解析 76 个月样本，但当前 archive discovery 漏 7 个发布月，生产权重暂继续使用 EWH 股息率代理，待全量 archive 覆盖、parser hardening、fixture backfill 和 gate review 通过后再切换。
 > - **AH 溢价指数**：历史时间序列接口全部 404，仅 spot 接口可用（无历史回填，需自行积累月级才有信号）
 > - **HSI 期权 PCR**：HKEX 不开放免费日频；详见 plan §11.6 v0.6 决策
+
+#### 已采集但暂不加权的权威候选序列
+
+这些序列会进入 bronze / silver，供后续回测和因子设计使用；在完成 transform 设计和 champion gate 验证前，不纳入温度计权重。
+
+| Indicator | 来源 | 口径 | 后续用途 |
+|---|---|---|---|
+| `us3m_yield` | U.S. Treasury Daily Treasury Rates | 3M 名义国债收益率（百分点） | 美国短端利率 / 现金收益率锚 |
+| `us_t10y3m` | FRED `T10Y3M` + U.S. Treasury Daily Treasury Rates | 10Y 美债收益率 − 3M 国库券利率（百分点） | 美国收益率曲线 / 衰退压力候选；需非单调 stress transform |
+| `us_baa10y_spread` | FRED `BAA10Y` | Moody's Baa 公司债收益率 − 10Y 美债收益率（百分点） | 美国长期信用利差候选；不直接替代 HY OAS，需 transform / gate 验证 |
+| `us_on_rrp` | FRED `RRPONTSYD` | Fed overnight reverse repo Treasury securities sold（USD bn） | 美国隔夜逆回购 / 准备金抽水候选；可为 0，需独立 transform |
+| `us_reserve_balances` | FRED `WRESBAL` | Reserve balances with Federal Reserve Banks（USD mn） | 美国银行体系准备金候选；可与 WALCL/TGA/ON RRP 研究 net liquidity |
+| `us_effr` | FRED `EFFR` | Effective Federal Funds Rate（%） | 美国无担保隔夜资金利率候选；需 spread / cycle-aware transform |
+| `us_sofr` | FRED `SOFR` | Secured Overnight Financing Rate（%） | 美国担保隔夜 repo 利率候选；2018+，需 spread / cycle-aware transform |
+| `us_tga_balance` | U.S. Treasury FiscalData DTS | Treasury General Account closing balance；旧版 Table I 用 operating-cash components 合计（USD mn） | 美国财政部现金余额 / 流动性抽水候选；live check 可取回 2007+ |
+| `us_tga_deposits` | U.S. Treasury FiscalData DTS | Daily total TGA deposits（USD mn） | 美国财政现金流入候选；当前 API 2022+ |
+| `us_tga_withdrawals` | U.S. Treasury FiscalData DTS | Daily total TGA withdrawals（USD mn） | 美国财政现金流出候选；当前 API 2022+ |
+| `hk_aggregate_balance` | HKMA Open API | Aggregate Balance after Discount Window，HK$ mn | HKD 银行体系流动性候选 |
+| `hk_monetary_base` | HKMA Open API | Total Monetary Base before Discount Window，HK$ mn | HK 货币基础长期锚 |
+| `hk_hsi_pe` | Hang Seng Indexes Monthly Roundup PDF | 恒生指数 PE Ratio（Times） | HK 原生估值候选；PDF archive source，需手动 backfill 与 gate 验证 |
+| `hk_hsi_dividend_yield` | Hang Seng Indexes Monthly Roundup PDF | 恒生指数 Dividend Yield（%） | HK 原生股息率候选；暂不替换 EWH proxy |
 
 ### 5.3 数据新鲜度与完整性
 
@@ -328,7 +349,7 @@ uv run python scripts/promote_champion.py \
 | [`daily.yml`](./.github/workflows/daily.yml) | cron `30 9 * * 1-5` UTC（北京工作日 17:30，中港收盘后）+ `0 22 * * *` UTC（北京 06:00，美股收盘后）+ 手动 | ingest → transform → brief → render → 推 brief 回 main + 推 dist 到 gh-pages + notify + 上传 silver artifact | `contents:write` + `issues:write` |
 | [`codeql.yml`](./.github/workflows/codeql.yml) | push / PR / 周一 03:00 UTC | Python 静态安全 / 质量分析（`security-and-quality`） | `security-events:write` |
 
-`daily.yml` 失败会**自动开 issue**（label `ci-failure`），列出常见 culprit 与重跑入口；任何上游 API 改动（AkShare / multpl / yfinance）通常都先在这里浮现。
+`daily.yml` 失败会**自动开 issue**（label `ci-failure`），列出常见 culprit 与重跑入口；任何上游 API 改动（AkShare / multpl / yfinance / U.S. Treasury / HKMA）通常都先在这里浮现。
 
 ### 6.2 分支职责
 
@@ -348,7 +369,7 @@ uv run python scripts/promote_champion.py \
 
 | Secret | 必需？ | 用途 |
 |---|---|---|
-| `FRED_API_KEY` | 推荐 | US 实际利率（DFII10）+ HY 信用利差（BAMLH0A0HYM2，FRED 仅 3Y 滚动）+ 金融条件指数（NFCI 全历史） |
+| `FRED_API_KEY` | 推荐 | US 实际利率（DFII10）+ HY 信用利差（BAMLH0A0HYM2，FRED 仅 3Y 滚动）+ 金融条件指数（NFCI 全历史）+ 收益率曲线（T10Y3M，暂不加权；同时有 keyless Treasury 交叉校验）+ Baa/10Y 信用利差候选（BAA10Y，暂不加权）+ ON RRP / reserve balances / overnight rates 流动性候选（RRPONTSYD / WRESBAL / EFFR / SOFR，暂不加权） |
 | `DEEPSEEK_API_KEY` | 可选 | CI 里跑日报；不填用模板兜底 |
 | `BARK_DEVICE_KEY` | 可选 | iOS 推送 |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | 可选 | TG 推送 |
@@ -373,6 +394,13 @@ uv run pytest -q
 # 提交前必跑
 uv run ruff check src tests
 uv run ruff format --check src tests
+uv run python scripts/check_data_source_catalog.py
+uv run python scripts/build_eval_fixture_manifest.py --verify
+uv run python scripts/summarize_data_audit.py
+# 可选：比较候选 fixture 与当前基线，生成 PR 结论
+uv run python scripts/compare_eval_fixtures.py --candidate /tmp/finsynapse_candidate_fixture
+# 可选：手动回填官方 HSI 月度估值 PDF（需要 pdftotext / poppler-utils）
+uv run finsynapse ingest run --source hsi_monthly_valuation --lookback-days 730
 
 # 本地交互式看板
 uv run finsynapse dashboard serve --port 8501
@@ -414,14 +442,15 @@ chore(deps): bump pandas to 3.0.3
 ### 8.4 代码规范
 
 - ruff line-length 120，配置在 [`pyproject.toml`](./pyproject.toml)，编辑器请打开 format on save
-- **新增 provider**：实现 [`providers/base.py`](./src/finsynapse/providers/base.py) 的统一接口，落 bronze、`return (df, path)`；带 VCR cassette 或 pickle fixture
+- **新增 provider**：实现 [`providers/base.py`](./src/finsynapse/providers/base.py) 的统一接口，落 bronze、`return (df, path)`；同步更新 [`config/data_sources.yaml`](./config/data_sources.yaml)，并跑 `uv run python scripts/check_data_source_catalog.py`
 - **新增 silver transform**：在 [`cli.py`](./src/finsynapse/cli.py) `transform run` 中显式串入 + 写一条对应 pytest
 - **新增温度计 indicator**：
   1. 在 [`config/weights.yaml`](./config/weights.yaml) 加权重（子项权重和为 1.0；可选 `window: pct_5y` 覆盖默认窗口，快变量推荐 5y）
   2. 在 [`health_check.PLAUSIBLE_BOUNDS`](./src/finsynapse/transform/health_check.py) 加上下界（防 unit drift）
-  3. 跑 [`scripts/backtest_temperature.py`](./scripts/backtest_temperature.py) 验证关键时点方向不翻车
-  4. 派生指标（用其他 indicator 算出来的，如 `us_erp`）写在 [`transform/normalize.py:derive_indicators()`](./src/finsynapse/transform/normalize.py)
-  5. 上游 API 不确定的指标先写 `scripts/probe_*.py` 探针验证再实现（参考 `probe_phase_b.py`）
+  3. 在 [`config/data_sources.yaml`](./config/data_sources.yaml) 标注来源、权威层级、usage（`weighted` / `collected_only` 等）
+  4. 跑 [`scripts/backtest_temperature.py`](./scripts/backtest_temperature.py) 验证关键时点方向不翻车
+  5. 派生指标（用其他 indicator 算出来的，如 `us_erp`）写在 [`transform/normalize.py:derive_indicators()`](./src/finsynapse/transform/normalize.py)
+  6. 上游 API 不确定的指标先写 `scripts/probe_*.py` 探针验证再实现（参考 `probe_phase_b.py`）
 
 ### 8.5 测试要求
 
@@ -447,6 +476,7 @@ chore(deps): bump pandas to 3.0.3
 - **AkShare** — A 股 / HK / 宏观数据
 - **yfinance** — 美股与跨市场行情
 - **FRED** — 美国宏观时间序列
+- **U.S. Treasury / HKMA / Hang Seng Indexes** — 官方利率曲线、Daily Treasury Statement、香港货币基础与 HSI Monthly Roundup 数据
 - **multpl.com** — Shiller CAPE 历史回溯
 - **DeepSeek / Anthropic / Ollama** — LLM 叙事生成
 - **uv / ruff / pytest** — astral-sh 系工具链

@@ -23,6 +23,8 @@ LOWFREQ_INDICATORS = {
     "us_pe_ttm",
     "cn_m2_yoy",
     "cn_social_financing_12m",
+    "hk_hsi_pe",
+    "hk_hsi_dividend_yield",
     "us_umich_sentiment",
     # weekly (FRED publishes Wed)
     "us_nfci",
@@ -42,6 +44,8 @@ LOWFREQ_FFILL_LIMITS: dict[str, int] = {
     "us_pe_ttm": 23,
     "cn_m2_yoy": 60,
     "cn_social_financing_12m": 23,
+    "hk_hsi_pe": 23,
+    "hk_hsi_dividend_yield": 23,
     "us_umich_sentiment": 23,
     "us_nfci": 7,
     "us_walcl": 7,

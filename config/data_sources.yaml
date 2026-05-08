@@ -1,0 +1,191 @@
+version: 1
+
+# Source tiers:
+#   official_public: official central bank / government / exchange-style public API
+#   public_vendor: free public market-data vendor or library-backed endpoint
+#   derived: computed inside FinSynapse from cataloged upstream indicators
+#
+# Usage:
+#   weighted: active production temperature input
+#   collected_only: ingested into bronze/silver for future research, not weighted yet
+#   forward_return_index: index price used for validation forward returns
+#   context: collected context series used by dashboard/divergence/research
+
+sources:
+  yfinance_macro:
+    tier: public_vendor
+    access: keyless_free
+    provider: src/finsynapse/providers/yfinance_macro.py
+    status: active
+    notes: Cross-market daily prices and FX proxies. Useful, but not official.
+    indicators:
+      us10y_yield: { usage: context, market: us, description: 10Y Treasury nominal yield proxy }
+      dxy: { usage: weighted, market: us, description: US Dollar Index }
+      vix: { usage: weighted, market: us, description: CBOE VIX close }
+      usdcny: { usage: context, market: cn, description: USD/CNY FX rate }
+      hkdcny: { usage: context, market: hk, description: HKD/CNY FX rate }
+      sp500: { usage: forward_return_index, market: us, description: S&P 500 index close }
+      hsi: { usage: forward_return_index, market: hk, description: Hang Seng Index close }
+      csi300: { usage: forward_return_index, market: cn, description: CSI 300 index close }
+      gold_futures: { usage: context, market: global, description: COMEX gold futures }
+
+  yfinance_hk:
+    tier: public_vendor
+    access: keyless_free
+    provider: src/finsynapse/providers/yfinance_hk.py
+    status: active
+    notes: EWH TTM dividend yield is an HK valuation proxy until a stable native HSI valuation source exists.
+    indicators:
+      hk_ewh_yield_ttm: { usage: weighted, market: hk, description: EWH trailing-12-month dividend yield }
+
+  multpl:
+    tier: public_vendor
+    access: keyless_free
+    provider: src/finsynapse/providers/multpl.py
+    status: active
+    notes: Long US valuation history; website scrape, so provider tests must pin parser behavior.
+    indicators:
+      us_cape: { usage: weighted, market: us, description: Shiller CAPE }
+      us_pe_ttm: { usage: weighted, market: us, description: S&P 500 TTM PE }
+
+  fred:
+    tier: official_public
+    access: free_api_key
+    provider: src/finsynapse/providers/fred.py
+    status: active
+    notes: FRED aggregation of official or institutional US macro series.
+    indicators:
+      us10y_real_yield: { usage: weighted, market: us, description: 10Y TIPS real yield, DFII10 }
+      us_hy_oas: { usage: weighted, market: us, description: ICE BofA US HY OAS, BAMLH0A0HYM2 }
+      us_nfci: { usage: weighted, market: us, description: Chicago Fed National Financial Conditions Index }
+      us_walcl: { usage: weighted, market: us, description: Federal Reserve balance sheet assets }
+      us_umich_sentiment: { usage: weighted, market: us, description: University of Michigan consumer sentiment }
+      us_t10y3m: { usage: collected_only, market: us, description: 10Y Treasury minus 3M Treasury spread }
+      us_baa10y_spread: { usage: collected_only, market: us, description: Moody's Baa corporate bond yield minus 10Y Treasury spread }
+      us_on_rrp: { usage: collected_only, market: us, description: Overnight reverse repo Treasury securities sold by the Federal Reserve, RRPONTSYD }
+      us_reserve_balances: { usage: collected_only, market: us, description: Reserve balances with Federal Reserve Banks, WRESBAL, USD millions }
+      us_effr: { usage: collected_only, market: us, description: Effective Federal Funds Rate, EFFR }
+      us_sofr: { usage: collected_only, market: us, description: Secured Overnight Financing Rate, SOFR }
+
+  treasury_real_yield:
+    tier: official_public
+    access: keyless_free
+    provider: src/finsynapse/providers/treasury_real_yield.py
+    status: fallback
+    notes: Keyless official fallback for us10y_real_yield when FRED is unavailable.
+    indicators:
+      us10y_real_yield: { usage: weighted, market: us, description: US Treasury daily real yield curve 10Y }
+
+  treasury_yield_curve:
+    tier: official_public
+    access: keyless_free
+    provider: src/finsynapse/providers/treasury_yield_curve.py
+    status: fallback
+    notes: Keyless official nominal curve source; cross-checks yfinance ^TNX and FRED T10Y3M.
+    indicators:
+      us10y_yield: { usage: context, market: us, description: US Treasury nominal par yield curve 10Y }
+      us3m_yield: { usage: collected_only, market: us, description: US Treasury nominal par yield curve 3M }
+      us_t10y3m: { usage: collected_only, market: us, description: US Treasury 10Y minus 3M nominal yield spread }
+
+  treasury_dts:
+    tier: official_public
+    access: keyless_free
+    provider: src/finsynapse/providers/treasury_dts.py
+    status: collected_only
+    notes: Official FiscalData Daily Treasury Statement operating cash balance rows collected for future US liquidity research. Provider uses the modern TGA closing row when present and sums legacy operating-cash components for older dates.
+    indicators:
+      us_tga_balance: { usage: collected_only, market: us, description: Treasury General Account closing balance, USD millions }
+      us_tga_deposits: { usage: collected_only, market: us, description: Daily total TGA deposits, USD millions }
+      us_tga_withdrawals: { usage: collected_only, market: us, description: Daily total TGA withdrawals, USD millions }
+
+  hkma_monetary_base:
+    tier: official_public
+    access: keyless_free
+    provider: src/finsynapse/providers/hkma.py
+    status: collected_only
+    notes: Official HKMA daily monetary base data collected for future HK liquidity research.
+    indicators:
+      hk_aggregate_balance: { usage: collected_only, market: hk, description: Aggregate Balance after Discount Window }
+      hk_monetary_base: { usage: collected_only, market: hk, description: Total Monetary Base before Discount Window }
+
+  hsi_monthly_valuation:
+    tier: official_public
+    access: keyless_free
+    provider: src/finsynapse/providers/hsi_monthly_valuation.py
+    status: collected_only
+    notes: Official Hang Seng Indexes Monthly Roundup PDF archive source for monthly HSI PE ratio and dividend yield. The provider is manual-only in ingest all because PDF archive crawling is slower and more fragile than API sources. Live 2019-07-03..2026-05-07 backfill found 76/83 publication months; missing months need archive-discovery review before fixture promotion.
+    indicators:
+      hk_hsi_pe: { usage: collected_only, market: hk, description: Hang Seng Index PE ratio from official Monthly Roundup }
+      hk_hsi_dividend_yield: { usage: collected_only, market: hk, description: Hang Seng Index dividend yield from official Monthly Roundup }
+
+  akshare_cn:
+    tier: public_vendor
+    access: keyless_free
+    provider: src/finsynapse/providers/akshare_cn.py
+    status: active
+    notes: AkShare wrappers over public China market and macro endpoints; upstream column names drift.
+    indicators:
+      csi300_pe_ttm: { usage: weighted, market: cn, description: CSI 300 TTM PE }
+      csi300_pb: { usage: weighted, market: cn, description: CSI 300 PB }
+      cn_m2_yoy: { usage: weighted, market: cn, description: China M2 YoY growth }
+      cn_a_turnover_5d: { usage: weighted, market: cn, description: SSE plus SZSE index volume 5d mean }
+      cn_social_financing_12m: { usage: weighted, market: cn, description: Social financing 12-month rolling sum }
+      cn_margin_balance: { usage: weighted, market: cn, description: SH plus SZ margin balance }
+      cn_dr007: { usage: weighted, market: cn, description: SHIBOR-1W used as DR007 proxy }
+
+  akshare_hk:
+    tier: public_vendor
+    access: keyless_free
+    provider: src/finsynapse/providers/akshare_hk.py
+    status: active
+    notes: HKD funding conditions and HK volatility index history from AkShare endpoints.
+    indicators:
+      hk_hibor_1m: { usage: weighted, market: hk, description: HIBOR 1M fixing }
+      hk_vhsi: { usage: weighted, market: hk, description: HSI Volatility Index }
+
+  akshare_flow:
+    tier: public_vendor
+    access: keyless_free
+    provider: src/finsynapse/providers/akshare_flow.py
+    status: active
+    notes: Stock Connect flow data; northbound daily detail is known stale after 2024-08.
+    indicators:
+      cn_north_5d: { usage: weighted, market: cn, description: Northbound 5d net buy }
+      cn_south_5d: { usage: weighted, market: hk, description: Southbound 5d net buy }
+
+  derived:
+    tier: derived
+    access: internal
+    provider: src/finsynapse/transform/normalize.py
+    status: active
+    notes: Derived indicators are computed from cataloged upstream series and should stay auditable.
+    indicators:
+      us_erp: { usage: weighted, market: us, description: 100 / us_pe_ttm minus us10y_real_yield }
+      cn_credit_impulse: { usage: weighted, market: cn, description: YoY acceleration of cn_social_financing_12m }
+      cn_usdcny_pressure: { usage: weighted, market: cn, description: USD/CNY pressure proxy }
+
+known_gaps:
+  hk_native_valuation:
+    market: hk
+    status: source_ready
+    notes: hsi_monthly_valuation now provides manual collected-only official Monthly Roundup PDF ingestion for HSI PE ratio and dividend yield. A 2019-07-03..2026-05-07 live backfill parsed 76 monthly observations per indicator (PE 8.26..17.64, dividend yield 2.26..4.53) but missed 7 publication months, so it is not production-weighted until archive-discovery review, full fixture backfill, parser hardening, and gate review pass; EWH dividend yield remains the current weighted proxy.
+  hsi_options_pcr:
+    market: hk
+    status: unresolved
+    notes: No stable free daily HKEX HSI options PCR endpoint identified.
+  ah_premium_history:
+    market: hk
+    status: unresolved
+    notes: Historical AH premium series unavailable in current free endpoints; spot-only data is not enough for backtest.
+  hk_vhsi_fixture_history:
+    market: hk
+    status: source_ready
+    notes: AkShare daily_em/VHSI now fetches 2001+ history and closes 8 HK indicator-pivot gaps in a candidate fixture; candidate gate review is needed because 2024-10-10 flips from mid to cold.
+  us_hy_oas_full_history:
+    market: us
+    status: unresolved
+    notes: FRED BAMLH0A0HYM2 current download starts at 2023-05-08, while the fixture still leaves 7 US pivot checks without HY OAS history. FRED BAA10Y is now collected as a long-history credit-spread candidate back to 1986, but it is not a direct HY OAS substitute and needs transform/gate validation before any weighting change.
+  eval_fixture_warmup_history:
+    market: global
+    status: requires_fixture_rebuild
+    notes: Several early 2011-2016 pivots have raw data but missing required 5Y/10Y percentiles because the fixture starts at 2010-01-01. A 2026-05-08 yfinance/FRED 9000-day warmup candidate resolved 7 US checks but failed the HK mean-reversion gate through the 2016 HK liquidity pivot, so it was documented in BUILD.md but not promoted.

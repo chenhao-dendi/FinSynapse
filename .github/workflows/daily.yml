@@ -46,8 +46,8 @@ jobs:
 
       - name: Ingest all sources (bronze)
         env:
-          # FRED key is the only ingest secret. AkShare/yfinance/multpl
-          # need no auth. LLM keys NEVER live in CI per plan §0.
+          # FRED key is the only ingest secret. AkShare, yfinance, multpl,
+          # Treasury rates/FiscalData, and HKMA need no auth. LLM keys NEVER live in CI per plan §0.
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: uv run finsynapse ingest all --lookback-days 5500
 

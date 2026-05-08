@@ -9,8 +9,12 @@ from finsynapse.providers.akshare_flow import run as run_akshare_flow
 from finsynapse.providers.akshare_hk import run as run_akshare_hk
 from finsynapse.providers.base import FetchRange
 from finsynapse.providers.fred import run as run_fred
+from finsynapse.providers.hkma import run as run_hkma_monetary_base
+from finsynapse.providers.hsi_monthly_valuation import run as run_hsi_monthly_valuation
 from finsynapse.providers.multpl import run as run_multpl
+from finsynapse.providers.treasury_dts import run as run_treasury_dts
 from finsynapse.providers.treasury_real_yield import run as run_treasury_real_yield
+from finsynapse.providers.treasury_yield_curve import run as run_treasury_yield_curve
 from finsynapse.providers.yfinance_hk import run as run_yfinance_hk
 from finsynapse.providers.yfinance_macro import run as run_yfinance_macro
 
@@ -33,9 +37,17 @@ SOURCES = {
     "multpl": run_multpl,
     "fred": run_fred,
     "treasury_real_yield": run_treasury_real_yield,
+    "treasury_yield_curve": run_treasury_yield_curve,
+    "treasury_dts": run_treasury_dts,
+    "hkma_monetary_base": run_hkma_monetary_base,
+    "hsi_monthly_valuation": run_hsi_monthly_valuation,
     "akshare_cn": run_akshare_cn,
     "akshare_hk": run_akshare_hk,
     "akshare_flow": run_akshare_flow,
+}
+
+MANUAL_INGEST_SOURCES = {
+    "hsi_monthly_valuation": "PDF archive source; run explicitly with `ingest run` for backfills",
 }
 
 
@@ -76,6 +88,10 @@ def ingest_all(
     for name, fn in SOURCES.items():
         if name == "fred" and not settings.fred_api_key:
             typer.secho(f"  - {name}: SKIPPED (FRED_API_KEY not set)", fg=typer.colors.YELLOW)
+            skipped += 1
+            continue
+        if name in MANUAL_INGEST_SOURCES:
+            typer.secho(f"  - {name}: SKIPPED ({MANUAL_INGEST_SOURCES[name]})", fg=typer.colors.YELLOW)
             skipped += 1
             continue
         try:
