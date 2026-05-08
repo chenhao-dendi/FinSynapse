@@ -12,7 +12,7 @@ def test_compare_eval_fixtures_baseline_to_itself_has_no_delta():
     report = render_markdown(comparison)
 
     assert "## Eval Fixture Candidate Comparison" in report
-    assert "Macro rows: 102,299 -> 102,299 (+0)" in report
+    assert "Macro rows: 103,019 -> 103,019 (+0)" in report
     assert "Indicator pivot checks: 184/218 -> 184/218 (+0)" in report
     assert "Missing required checks: 34 -> 34 (+0)" in report
     assert "`pivot_directional_rate`: 0.9200 -> 0.9200 (+0.0000, block, PASS)" in report

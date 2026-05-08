@@ -25,6 +25,10 @@ def test_data_audit_summary_includes_pr_relevant_evidence():
     assert "us_effr" in summary
     assert "us_sofr" in summary
     assert "us_cape_shiller" in summary
+    assert "us_tr_cape_shiller" in summary
+    assert "us_shiller_real_price" in summary
+    assert "us_shiller_real_dividend" in summary
+    assert "us_shiller_real_earnings" in summary
     assert "us_tga_balance" in summary
     assert "hk_aggregate_balance" in summary
     assert "hk_hsi_pe" in summary
@@ -33,8 +37,8 @@ def test_data_audit_summary_includes_pr_relevant_evidence():
     assert "Indicator pivot checks: 184/218" in summary
     assert "Missing required indicator-window checks: 34" in summary
     assert "Top fixture data gaps: hk_vhsi=8, us_hy_oas=7" in summary
-    assert "Macro rows: 102,299 across 43 indicators" in summary
-    assert "Percentile rows: 128,312" in summary
+    assert "Macro rows: 103,019 across 47 indicators" in summary
+    assert "Percentile rows: 143,964" in summary
     assert "hk_native_valuation" in summary
     assert "hk_vhsi_fixture_history" in summary
     assert "us_hy_oas_full_history" in summary

@@ -239,7 +239,11 @@ These series are written into bronze / silver for future backtests and factor de
 | `us_reserve_balances` | FRED `WRESBAL` | Reserve balances with Federal Reserve Banks, USD mn | US banking-system reserve candidate; useful with WALCL/TGA/ON RRP for net-liquidity research |
 | `us_effr` | FRED `EFFR` | Effective Federal Funds Rate, % | US unsecured overnight funding-rate candidate; needs spread / cycle-aware transform |
 | `us_sofr` | FRED `SOFR` | Secured Overnight Financing Rate, % | US secured overnight repo-rate candidate; 2018+ and needs spread / cycle-aware transform |
+| `us_shiller_real_price` | Robert Shiller online data workbook | Inflation-adjusted S&P Composite price | US valuation base series for long-run distribution checks |
+| `us_shiller_real_dividend` | Robert Shiller online data workbook | Inflation-adjusted S&P Composite dividend | US dividend/income base series for future yield and payout research |
+| `us_shiller_real_earnings` | Robert Shiller online data workbook | Inflation-adjusted S&P Composite earnings | US earnings base series for future cycle and valuation decomposition |
 | `us_cape_shiller` | Robert Shiller online data workbook | Original Shiller CAPE academic dataset | Authoritative cross-check for `us_cape`; does not override the current weighted multpl feed |
+| `us_tr_cape_shiller` | Robert Shiller online data workbook | Total-return CAPE | Total-return CAPE candidate; not weighted yet |
 | `us_tga_balance` | U.S. Treasury FiscalData DTS | Treasury General Account closing balance; legacy Table I uses summed operating-cash components, USD mn | US Treasury cash-balance / liquidity-drain candidate; live check retrieves 2007+ |
 | `us_tga_deposits` | U.S. Treasury FiscalData DTS | Daily total TGA deposits, USD mn | US fiscal cash-inflow candidate; current API 2022+ |
 | `us_tga_withdrawals` | U.S. Treasury FiscalData DTS | Daily total TGA withdrawals, USD mn | US fiscal cash-outflow candidate; current API 2022+ |

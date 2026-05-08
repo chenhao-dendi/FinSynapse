@@ -187,7 +187,11 @@ class TestMultpl:
 SHILLER_WORKBOOK_FIXTURE = pd.DataFrame(
     {
         "Date": [2024.12, "2025.01", "May price is May 5th close"],
+        "Price": [6100.1, 6200.2, None],
+        "Dividend": [78.1, 79.2, None],
+        "Earnings": [218.3, 221.4, None],
         "CAPE": [37.8, "38.2", None],
+        "TR CAPE": [40.1, "40.5", None],
     }
 )
 
@@ -205,9 +209,17 @@ class TestYaleShiller:
             df = parse_shiller_workbook(b"ignored", "https://shillerdata.com/ie_data.xls")
 
         assert set(df.columns) == {"date", "indicator", "value", "source_symbol"}
-        assert df["date"].tolist() == [date(2024, 12, 1), date(2025, 1, 1)]
-        assert (df["indicator"] == "us_cape_shiller").all()
-        assert df["value"].tolist() == [37.8, 38.2]
+        assert len(df) == 10
+        assert set(df["date"]) == {date(2024, 12, 1), date(2025, 1, 1)}
+        assert set(df["indicator"]) == {
+            "us_shiller_real_price",
+            "us_shiller_real_dividend",
+            "us_shiller_real_earnings",
+            "us_cape_shiller",
+            "us_tr_cape_shiller",
+        }
+        cape = df[df["indicator"] == "us_cape_shiller"].sort_values("date")
+        assert cape["value"].tolist() == [37.8, 38.2]
 
     def test_fetch_filters_to_requested_range(self, tmp_data_dir):
         with (
@@ -223,9 +235,9 @@ class TestYaleShiller:
             provider = YaleShillerProvider()
             df = provider.fetch(FetchRange(start=date(2025, 1, 1), end=date(2025, 12, 31)))
 
-        assert len(df) == 1
-        assert df.iloc[0]["date"] == date(2025, 1, 1)
-        assert df.iloc[0]["indicator"] == "us_cape_shiller"
+        assert len(df) == 5
+        assert set(df["date"]) == {date(2025, 1, 1)}
+        assert "us_cape_shiller" in set(df["indicator"])
 
 
 # ---------------------------------------------------------------------------

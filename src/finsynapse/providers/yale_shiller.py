@@ -27,10 +27,19 @@ UA = {"User-Agent": "Mozilla/5.0 (FinSynapse data fetch)"}
 
 
 @dataclass(frozen=True)
-class ShillerWorkbookRow:
-    date: date
-    cape: float
+class ShillerWorkbookMetric:
+    column: str
+    indicator: str
     source_symbol: str
+
+
+METRICS: tuple[ShillerWorkbookMetric, ...] = (
+    ShillerWorkbookMetric("Price", "us_shiller_real_price", "ie_data.xls/RealPrice"),
+    ShillerWorkbookMetric("Dividend", "us_shiller_real_dividend", "ie_data.xls/RealDividend"),
+    ShillerWorkbookMetric("Earnings", "us_shiller_real_earnings", "ie_data.xls/RealEarnings"),
+    ShillerWorkbookMetric("CAPE", "us_cape_shiller", "ie_data.xls/CAPE"),
+    ShillerWorkbookMetric("TR CAPE", "us_tr_cape_shiller", "ie_data.xls/TR_CAPE"),
+)
 
 
 def discover_shiller_workbook_url(html: str, *, base_url: str = LANDING_URL) -> str:
@@ -53,36 +62,33 @@ def fetch_shiller_workbook_url() -> str:
 
 def parse_shiller_workbook(xls_bytes: bytes, source_url: str) -> pd.DataFrame:
     workbook = pd.read_excel(io.BytesIO(xls_bytes), sheet_name="Data", header=7)
-    if "Date" not in workbook.columns or "CAPE" not in workbook.columns:
-        raise RuntimeError("Shiller workbook missing required Date/CAPE columns")
+    required_columns = {"Date", *(metric.column for metric in METRICS)}
+    missing_columns = sorted(required_columns - set(workbook.columns))
+    if missing_columns:
+        raise RuntimeError(f"Shiller workbook missing required columns: {missing_columns}")
 
-    rows: list[ShillerWorkbookRow] = []
-    for _, row in workbook[["Date", "CAPE"]].iterrows():
+    rows: list[dict[str, object]] = []
+    for _, row in workbook[["Date", *(metric.column for metric in METRICS)]].iterrows():
         month_start = _shiller_month_start(row["Date"])
         if month_start is None:
             continue
-        cape = pd.to_numeric(row["CAPE"], errors="coerce")
-        if pd.isna(cape):
-            continue
-        rows.append(
-            ShillerWorkbookRow(
-                date=month_start,
-                cape=float(cape),
-                source_symbol="ie_data.xls/CAPE",
+        for metric in METRICS:
+            value = pd.to_numeric(row[metric.column], errors="coerce")
+            if pd.isna(value):
+                continue
+            rows.append(
+                {
+                    "date": month_start,
+                    "indicator": metric.indicator,
+                    "value": float(value),
+                    "source_symbol": metric.source_symbol,
+                }
             )
-        )
 
     if not rows:
-        raise RuntimeError(f"Shiller workbook parsed 0 CAPE rows from {source_url}")
+        raise RuntimeError(f"Shiller workbook parsed 0 metric rows from {source_url}")
 
-    return pd.DataFrame(
-        {
-            "date": [row.date for row in rows],
-            "indicator": "us_cape_shiller",
-            "value": [row.cape for row in rows],
-            "source_symbol": [row.source_symbol for row in rows],
-        }
-    ).sort_values("date")
+    return pd.DataFrame(rows).sort_values(["indicator", "date"]).reset_index(drop=True)
 
 
 class YaleShillerProvider(Provider):

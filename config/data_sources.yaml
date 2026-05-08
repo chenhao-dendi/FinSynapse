@@ -56,7 +56,11 @@ sources:
     status: collected_only
     notes: Robert Shiller online data workbook; collected as an authoritative academic CAPE cross-check without overriding the current weighted multpl feed.
     indicators:
+      us_shiller_real_price: { usage: collected_only, market: us, description: Inflation-adjusted S&P Composite price from Robert Shiller's workbook }
+      us_shiller_real_dividend: { usage: collected_only, market: us, description: Inflation-adjusted S&P Composite dividend from Robert Shiller's workbook }
+      us_shiller_real_earnings: { usage: collected_only, market: us, description: Inflation-adjusted S&P Composite earnings from Robert Shiller's workbook }
       us_cape_shiller: { usage: collected_only, market: us, description: Shiller CAPE from Robert Shiller's online data workbook }
+      us_tr_cape_shiller: { usage: collected_only, market: us, description: Total-return CAPE from Robert Shiller's online data workbook }
 
   fred:
     tier: official_public

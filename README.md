@@ -241,7 +241,11 @@ gold/    叙事：人类/LLM 读得懂的结论
 | `us_reserve_balances` | FRED `WRESBAL` | Reserve balances with Federal Reserve Banks（USD mn） | 美国银行体系准备金候选；可与 WALCL/TGA/ON RRP 研究 net liquidity |
 | `us_effr` | FRED `EFFR` | Effective Federal Funds Rate（%） | 美国无担保隔夜资金利率候选；需 spread / cycle-aware transform |
 | `us_sofr` | FRED `SOFR` | Secured Overnight Financing Rate（%） | 美国担保隔夜 repo 利率候选；2018+，需 spread / cycle-aware transform |
+| `us_shiller_real_price` | Robert Shiller online data workbook | 通胀调整后的 S&P Composite price | 美国估值基础序列；用于复核长期估值分布 |
+| `us_shiller_real_dividend` | Robert Shiller online data workbook | 通胀调整后的 S&P Composite dividend | 美国收益/股息基础序列；用于后续 dividend yield / payout 研究 |
+| `us_shiller_real_earnings` | Robert Shiller online data workbook | 通胀调整后的 S&P Composite earnings | 美国盈利基础序列；用于后续盈利周期与估值拆解 |
 | `us_cape_shiller` | Robert Shiller online data workbook | Shiller CAPE 原始学术数据 | `us_cape` 的权威交叉验证序列；不覆盖当前 multpl 权重源 |
+| `us_tr_cape_shiller` | Robert Shiller online data workbook | Total-return CAPE | CAPE 的 total-return 口径候选；暂不加权 |
 | `us_tga_balance` | U.S. Treasury FiscalData DTS | Treasury General Account closing balance；旧版 Table I 用 operating-cash components 合计（USD mn） | 美国财政部现金余额 / 流动性抽水候选；live check 可取回 2007+ |
 | `us_tga_deposits` | U.S. Treasury FiscalData DTS | Daily total TGA deposits（USD mn） | 美国财政现金流入候选；当前 API 2022+ |
 | `us_tga_withdrawals` | U.S. Treasury FiscalData DTS | Daily total TGA withdrawals（USD mn） | 美国财政现金流出候选；当前 API 2022+ |

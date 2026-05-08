@@ -25,16 +25,18 @@ Collected-only official and academic-public overlays now included in `macro_dail
 - HKMA: `hk_aggregate_balance`, `hk_monetary_base`
 - U.S. Treasury / FRED: `us3m_yield`, `us_t10y3m`, `us_baa10y_spread`, `us_on_rrp`, `us_reserve_balances`, `us_effr`, `us_sofr`
 - U.S. Treasury DTS: `us_tga_balance`, `us_tga_deposits`, `us_tga_withdrawals`
-- Yale/Shiller: `us_cape_shiller`
+- Yale/Shiller: `us_shiller_real_price`, `us_shiller_real_dividend`, `us_shiller_real_earnings`, `us_cape_shiller`, `us_tr_cape_shiller`
 
 Candidate comparison against the previous fixture showed +32,845 macro rows,
 +12 indicators, unchanged weighted pivot coverage (184/218), unchanged gate
 metrics, and no pivot changes.
 
-Adding the Yale/Shiller CAPE overlay on 2026-05-08 added +180 macro rows and
-+3,913 percentile rows for one collected-only indicator (`us_cape_shiller`).
-Weighted pivot coverage stayed 184/218, gate metrics were unchanged, and no
-pivot classifications changed.
+Adding the Yale/Shiller valuation-base overlay on 2026-05-08 added +900 macro
+rows and +19,565 percentile rows for five collected-only indicators
+(`us_shiller_real_price`, `us_shiller_real_dividend`,
+`us_shiller_real_earnings`, `us_cape_shiller`, `us_tr_cape_shiller`). Weighted
+pivot coverage stayed 184/218, gate metrics were unchanged, and no pivot
+classifications changed.
 
 ## Tested But Not Promoted
 
