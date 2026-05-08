@@ -29,6 +29,7 @@ def build_summary(catalog_path: Path = CATALOG_PATH, manifest_path: Path = MANIF
             indicator_to_sources[indicator].append(source_name)
 
     official_sources = sorted(name for name, source in sources.items() if source["tier"] == "official_public")
+    academic_sources = sorted(name for name, source in sources.items() if source["tier"] == "academic_public")
     collected_only = sorted(usage_to_indicators.get("collected_only", set()))
     weighted = sorted(usage_to_indicators.get("weighted", set()))
     known_gaps = catalog.get("known_gaps", {})
@@ -49,6 +50,7 @@ def build_summary(catalog_path: Path = CATALOG_PATH, manifest_path: Path = MANIF
         "",
         f"- Source entries: {len(sources)}",
         f"- Official public sources: {len(official_sources)} ({', '.join(official_sources)})",
+        f"- Academic public sources: {len(academic_sources)} ({', '.join(academic_sources)})",
         f"- Source tiers: {_fmt_counter(tier_counts)}",
         f"- Source statuses: {_fmt_counter(status_counts)}",
         f"- Weighted indicators cataloged: {len(weighted)}",

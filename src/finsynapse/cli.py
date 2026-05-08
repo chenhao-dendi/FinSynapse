@@ -15,6 +15,7 @@ from finsynapse.providers.multpl import run as run_multpl
 from finsynapse.providers.treasury_dts import run as run_treasury_dts
 from finsynapse.providers.treasury_real_yield import run as run_treasury_real_yield
 from finsynapse.providers.treasury_yield_curve import run as run_treasury_yield_curve
+from finsynapse.providers.yale_shiller import run as run_yale_shiller
 from finsynapse.providers.yfinance_hk import run as run_yfinance_hk
 from finsynapse.providers.yfinance_macro import run as run_yfinance_macro
 
@@ -35,6 +36,7 @@ SOURCES = {
     "yfinance_macro": run_yfinance_macro,
     "yfinance_hk": run_yfinance_hk,
     "multpl": run_multpl,
+    "yale_shiller": run_yale_shiller,
     "fred": run_fred,
     "treasury_real_yield": run_treasury_real_yield,
     "treasury_yield_curve": run_treasury_yield_curve,

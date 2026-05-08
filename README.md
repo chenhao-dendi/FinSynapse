@@ -241,6 +241,7 @@ gold/    叙事：人类/LLM 读得懂的结论
 | `us_reserve_balances` | FRED `WRESBAL` | Reserve balances with Federal Reserve Banks（USD mn） | 美国银行体系准备金候选；可与 WALCL/TGA/ON RRP 研究 net liquidity |
 | `us_effr` | FRED `EFFR` | Effective Federal Funds Rate（%） | 美国无担保隔夜资金利率候选；需 spread / cycle-aware transform |
 | `us_sofr` | FRED `SOFR` | Secured Overnight Financing Rate（%） | 美国担保隔夜 repo 利率候选；2018+，需 spread / cycle-aware transform |
+| `us_cape_shiller` | Robert Shiller online data workbook | Shiller CAPE 原始学术数据 | `us_cape` 的权威交叉验证序列；不覆盖当前 multpl 权重源 |
 | `us_tga_balance` | U.S. Treasury FiscalData DTS | Treasury General Account closing balance；旧版 Table I 用 operating-cash components 合计（USD mn） | 美国财政部现金余额 / 流动性抽水候选；live check 可取回 2007+ |
 | `us_tga_deposits` | U.S. Treasury FiscalData DTS | Daily total TGA deposits（USD mn） | 美国财政现金流入候选；当前 API 2022+ |
 | `us_tga_withdrawals` | U.S. Treasury FiscalData DTS | Daily total TGA withdrawals（USD mn） | 美国财政现金流出候选；当前 API 2022+ |
@@ -477,6 +478,7 @@ chore(deps): bump pandas to 3.0.3
 - **yfinance** — 美股与跨市场行情
 - **FRED** — 美国宏观时间序列
 - **U.S. Treasury / HKMA / Hang Seng Indexes** — 官方利率曲线、Daily Treasury Statement、香港货币基础与 HSI Monthly Roundup 数据
+- **Robert Shiller online data** — Shiller CAPE 学术数据，用于交叉验证 multpl CAPE
 - **multpl.com** — Shiller CAPE 历史回溯
 - **DeepSeek / Anthropic / Ollama** — LLM 叙事生成
 - **uv / ruff / pytest** — astral-sh 系工具链

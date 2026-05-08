@@ -239,6 +239,7 @@ These series are written into bronze / silver for future backtests and factor de
 | `us_reserve_balances` | FRED `WRESBAL` | Reserve balances with Federal Reserve Banks, USD mn | US banking-system reserve candidate; useful with WALCL/TGA/ON RRP for net-liquidity research |
 | `us_effr` | FRED `EFFR` | Effective Federal Funds Rate, % | US unsecured overnight funding-rate candidate; needs spread / cycle-aware transform |
 | `us_sofr` | FRED `SOFR` | Secured Overnight Financing Rate, % | US secured overnight repo-rate candidate; 2018+ and needs spread / cycle-aware transform |
+| `us_cape_shiller` | Robert Shiller online data workbook | Original Shiller CAPE academic dataset | Authoritative cross-check for `us_cape`; does not override the current weighted multpl feed |
 | `us_tga_balance` | U.S. Treasury FiscalData DTS | Treasury General Account closing balance; legacy Table I uses summed operating-cash components, USD mn | US Treasury cash-balance / liquidity-drain candidate; live check retrieves 2007+ |
 | `us_tga_deposits` | U.S. Treasury FiscalData DTS | Daily total TGA deposits, USD mn | US fiscal cash-inflow candidate; current API 2022+ |
 | `us_tga_withdrawals` | U.S. Treasury FiscalData DTS | Daily total TGA withdrawals, USD mn | US fiscal cash-outflow candidate; current API 2022+ |
@@ -440,6 +441,7 @@ Data and ecosystem credits:
 - **yfinance** — US and cross-market quotes
 - **FRED** — US macro time series
 - **U.S. Treasury / HKMA / Hang Seng Indexes** — official yield-curve, Daily Treasury Statement, Hong Kong monetary-base, and HSI Monthly Roundup data
+- **Robert Shiller online data** — academic Shiller CAPE data used to cross-check multpl CAPE
 - **multpl.com** — Shiller CAPE history
 - **DeepSeek / Anthropic / Ollama** — LLM narrative generation
 - **uv / ruff / pytest** — astral-sh toolchain

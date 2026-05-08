@@ -77,7 +77,7 @@ def validate_catalog(
         indicators = source.get("indicators", {})
         if not indicators:
             errors.append(f"{source_name}: no indicators listed")
-        if source.get("tier") not in {"official_public", "public_vendor", "derived"}:
+        if source.get("tier") not in {"official_public", "academic_public", "public_vendor", "derived"}:
             errors.append(f"{source_name}: invalid tier {source.get('tier')!r}")
         if source.get("status") not in {"active", "fallback", "collected_only"}:
             errors.append(f"{source_name}: invalid status {source.get('status')!r}")

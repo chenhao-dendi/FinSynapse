@@ -21,6 +21,11 @@ from finsynapse.providers.multpl import MultplProvider
 from finsynapse.providers.treasury_dts import TreasuryDtsProvider
 from finsynapse.providers.treasury_real_yield import TreasuryRealYieldProvider
 from finsynapse.providers.treasury_yield_curve import TreasuryYieldCurveProvider
+from finsynapse.providers.yale_shiller import (
+    YaleShillerProvider,
+    discover_shiller_workbook_url,
+    parse_shiller_workbook,
+)
 from finsynapse.providers.yfinance_hk import YFinanceHkValuationProvider
 
 # ---------------------------------------------------------------------------
@@ -172,6 +177,55 @@ class TestMultpl:
         p2 = provider.write_bronze(df, date(2026, 4, 1))
         assert p1 == p2
         assert p1.exists()
+
+
+# ---------------------------------------------------------------------------
+# Yale/Shiller workbook
+# ---------------------------------------------------------------------------
+
+
+SHILLER_WORKBOOK_FIXTURE = pd.DataFrame(
+    {
+        "Date": [2024.12, "2025.01", "May price is May 5th close"],
+        "CAPE": [37.8, "38.2", None],
+    }
+)
+
+
+class TestYaleShiller:
+    def test_discovers_current_workbook_link_from_landing_page(self):
+        html = '<html><body><a href="/downloads/ie_data.xls?ver=1">Online Data</a></body></html>'
+
+        url = discover_shiller_workbook_url(html, base_url="https://shillerdata.com/")
+
+        assert url == "https://shillerdata.com/downloads/ie_data.xls?ver=1"
+
+    def test_parses_workbook_into_collected_only_cape_indicator(self):
+        with patch("finsynapse.providers.yale_shiller.pd.read_excel", return_value=SHILLER_WORKBOOK_FIXTURE):
+            df = parse_shiller_workbook(b"ignored", "https://shillerdata.com/ie_data.xls")
+
+        assert set(df.columns) == {"date", "indicator", "value", "source_symbol"}
+        assert df["date"].tolist() == [date(2024, 12, 1), date(2025, 1, 1)]
+        assert (df["indicator"] == "us_cape_shiller").all()
+        assert df["value"].tolist() == [37.8, 38.2]
+
+    def test_fetch_filters_to_requested_range(self, tmp_data_dir):
+        with (
+            patch(
+                "finsynapse.providers.yale_shiller.fetch_shiller_workbook_url",
+                return_value="https://example.test/ie_data.xls",
+            ),
+            patch("finsynapse.providers.yale_shiller.requests_session") as mock_session,
+            patch("finsynapse.providers.yale_shiller.pd.read_excel", return_value=SHILLER_WORKBOOK_FIXTURE),
+        ):
+            mock_session.return_value.get.return_value = _mock_response(text="", status_code=200)
+            mock_session.return_value.get.return_value.content = b"ignored"
+            provider = YaleShillerProvider()
+            df = provider.fetch(FetchRange(start=date(2025, 1, 1), end=date(2025, 12, 31)))
+
+        assert len(df) == 1
+        assert df.iloc[0]["date"] == date(2025, 1, 1)
+        assert df.iloc[0]["indicator"] == "us_cape_shiller"
 
 
 # ---------------------------------------------------------------------------

@@ -2,15 +2,15 @@
   "fixture_id": "eval_silver_2026Q1",
   "created": "2026-05-07",
   "source_commit": "4bbbb1b",
-  "source_data": "data/silver baseline plus collected-only official bronze overlay: fred/2026-05-08, treasury_yield_curve/2026-05-07, treasury_dts/2026-05-07, hkma_monetary_base/2026-05-07",
+  "source_data": "data/silver baseline plus collected-only official bronze overlay: fred/2026-05-08, treasury_yield_curve/2026-05-07, treasury_dts/2026-05-07, hkma_monetary_base/2026-05-07; academic_public overlay: yale_shiller/2026-05-08",
   "date_window": {
     "start": "2010-01-01",
     "end": "2024-12-31"
   },
   "files": {
     "macro_daily.parquet": {
-      "sha256": "08148cb0e2d00cbd6fd0c8adac39a8faf011a6f5f5fe65624e44f15cbb8f2df7",
-      "rows": 102119,
+      "sha256": "946c85491713796be3c5cd29c0db4f8421921f731fda6bf8ac8b751f8feb6fb3",
+      "rows": 102299,
       "date_min": "2010-01-01",
       "date_max": "2024-12-31",
       "n_dates": 4016,
@@ -47,6 +47,7 @@
         "us3m_yield",
         "us_baa10y_spread",
         "us_cape",
+        "us_cape_shiller",
         "us_effr",
         "us_erp",
         "us_hy_oas",
@@ -66,8 +67,8 @@
       ]
     },
     "percentile_daily.parquet": {
-      "sha256": "b24843461807f7e52b33e7854a8cdf4c4ca22d14a8ae6545988ffac5c04da73c",
-      "rows": 124399,
+      "sha256": "afe9e17429cf2c08c703c828ece9a8c1c710de49c4513a1a242a3f74124d24a5",
+      "rows": 128312,
       "date_min": "2010-01-01",
       "date_max": "2024-12-31",
       "n_dates": 3968,
@@ -106,6 +107,7 @@
         "us3m_yield",
         "us_baa10y_spread",
         "us_cape",
+        "us_cape_shiller",
         "us_effr",
         "us_erp",
         "us_hy_oas",

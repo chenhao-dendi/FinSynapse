@@ -2,6 +2,7 @@ version: 1
 
 # Source tiers:
 #   official_public: official central bank / government / exchange-style public API
+#   academic_public: public research dataset maintained by an academic source
 #   public_vendor: free public market-data vendor or library-backed endpoint
 #   derived: computed inside FinSynapse from cataloged upstream indicators
 #
@@ -47,6 +48,15 @@ sources:
     indicators:
       us_cape: { usage: weighted, market: us, description: Shiller CAPE }
       us_pe_ttm: { usage: weighted, market: us, description: S&P 500 TTM PE }
+
+  yale_shiller:
+    tier: academic_public
+    access: keyless_free
+    provider: src/finsynapse/providers/yale_shiller.py
+    status: collected_only
+    notes: Robert Shiller online data workbook; collected as an authoritative academic CAPE cross-check without overriding the current weighted multpl feed.
+    indicators:
+      us_cape_shiller: { usage: collected_only, market: us, description: Shiller CAPE from Robert Shiller's online data workbook }
 
   fred:
     tier: official_public

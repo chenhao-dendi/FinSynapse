@@ -35,6 +35,7 @@ def test_catalog_covers_weighted_and_collected_only_indicators():
         "us_reserve_balances",
         "us_effr",
         "us_sofr",
+        "us_cape_shiller",
         "us_tga_balance",
         "us_tga_deposits",
         "us_tga_withdrawals",

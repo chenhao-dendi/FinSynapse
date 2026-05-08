@@ -20,6 +20,8 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
+from finsynapse.providers.yale_shiller import LANDING_URL, discover_shiller_workbook_url
+
 UA = {"User-Agent": "Mozilla/5.0 (FinSynapse data probe; contact: hg.dendi@gmail.com)"}
 
 
@@ -52,12 +54,20 @@ def try_multpl() -> pd.DataFrame | None:
 
 def try_yale_excel() -> pd.DataFrame | None:
     """Robert Shiller publishes ie_data.xls on his Yale page."""
-    landing = "https://shillerdata.com/"
-    print(f"\n[2] Trying Yale Shiller Excel via landing {landing}")
+    print(f"\n[2] Trying Yale/Shiller Excel via landing {LANDING_URL}")
     try:
-        # The actual Excel URL changes (e.g. shillerdata.com files); try direct AWS-hosted file:
+        candidate_urls = []
+        try:
+            landing_resp = requests.get(LANDING_URL, headers=UA, timeout=15)
+            landing_resp.raise_for_status()
+            candidate_urls.append(discover_shiller_workbook_url(landing_resp.text))
+        except Exception as e:
+            print(f"    landing discovery failed: {type(e).__name__}: {e}")
+
+        # Keep the legacy Yale URL as a historical fallback. It can lag the
+        # current shillerdata.com workbook, so it should not be preferred.
         candidate_urls = [
-            "https://img1.wsimg.com/blobby/go/e5e77e0b-59d1-44d9-ab02-de5dd06c1a4d/downloads/ie_data.xls",
+            *candidate_urls,
             "http://www.econ.yale.edu/~shiller/data/ie_data.xls",
         ]
         for u in candidate_urls:

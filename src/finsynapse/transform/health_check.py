@@ -24,6 +24,7 @@ PLAUSIBLE_BOUNDS: dict[str, tuple[float, float]] = {
     "gold_futures": (300.0, 10000.0),
     "us_pe_ttm": (3.0, 200.0),
     "us_cape": (5.0, 100.0),
+    "us_cape_shiller": (5.0, 100.0),
     # --- Phase 1b additions ---
     "csi300_pe_ttm": (3.0, 100.0),
     "csi300_pb": (0.5, 10.0),

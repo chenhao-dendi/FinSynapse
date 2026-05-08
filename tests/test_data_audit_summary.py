@@ -13,6 +13,7 @@ def test_data_audit_summary_includes_pr_relevant_evidence():
 
     assert "## Data Audit Summary" in summary
     assert "Official public sources: 6" in summary
+    assert "Academic public sources: 1 (yale_shiller)" in summary
     assert "treasury_yield_curve" in summary
     assert "treasury_dts" in summary
     assert "hkma_monetary_base" in summary
@@ -23,6 +24,7 @@ def test_data_audit_summary_includes_pr_relevant_evidence():
     assert "us_reserve_balances" in summary
     assert "us_effr" in summary
     assert "us_sofr" in summary
+    assert "us_cape_shiller" in summary
     assert "us_tga_balance" in summary
     assert "hk_aggregate_balance" in summary
     assert "hk_hsi_pe" in summary
@@ -31,8 +33,8 @@ def test_data_audit_summary_includes_pr_relevant_evidence():
     assert "Indicator pivot checks: 184/218" in summary
     assert "Missing required indicator-window checks: 34" in summary
     assert "Top fixture data gaps: hk_vhsi=8, us_hy_oas=7" in summary
-    assert "Macro rows: 102,119 across 42 indicators" in summary
-    assert "Percentile rows: 124,399" in summary
+    assert "Macro rows: 102,299 across 43 indicators" in summary
+    assert "Percentile rows: 128,312" in summary
     assert "hk_native_valuation" in summary
     assert "hk_vhsi_fixture_history" in summary
     assert "us_hy_oas_full_history" in summary
