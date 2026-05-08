@@ -6,33 +6,32 @@ from plotly.subplots import make_subplots
 
 from finsynapse.dashboard.i18n import DEFAULT_LANG, t, translate_div
 
-# Shared palette aligned with the redesigned UI (Stitch reference).
-#   navy  — cold / valuation / CN accent
-#   gold  — neutral / sentiment / HK accent
-#   coral — hot / liquidity-or-risk / US accent
-# All three are visually distinct on glass-morphism cards (background
-# is near-white tinted rgba). Keep these constants the only source so
-# Plotly figures and Tailwind tokens never drift.
-COLOR_COLD = "#1E3A8A"  # navy
-COLOR_MID = "#FBBF24"  # gold
-COLOR_HOT = "#F87171"  # coral
-COLOR_VALUATION = "#6366F1"  # indigo (sub-temp distinct from market accent)
-COLOR_SENTIMENT = "#FBBF24"
-COLOR_LIQUIDITY = "#10B981"
-COLOR_BG = "rgba(0,0,0,0)"  # transparent — sits on glass cards
+# Shared palette: 水墨 (ink wash) palette.
+#   墨蓝  — cold / valuation / CN accent
+#   赭石  — neutral / sentiment / HK accent
+#   朱砂  — hot / liquidity / US accent
+# All three are warm-muted to sit on rice-paper (#F5F0E8) background.
+COLOR_COLD = "#5B7B8F"  # 墨蓝
+COLOR_MID = "#B8956A"  # 赭石
+COLOR_HOT = "#B5453A"  # 朱砂
+COLOR_VALUATION = "#7B8FA1"  # 花青 (sub-temp distinct from market accent)
+COLOR_SENTIMENT = "#B8956A"
+COLOR_LIQUIDITY = "#7B9B8A"  # 石绿
+COLOR_BG = "rgba(0,0,0,0)"  # transparent — sits on rice-paper cards
 COLOR_PLOT_BG = "rgba(255,255,255,0.0)"
 
 ZONE_BANDS = [
-    (0, 30, "rgba(30,58,138,0.10)"),
-    (30, 70, "rgba(251,191,36,0.08)"),
-    (70, 100, "rgba(248,113,113,0.10)"),
+    (0, 30, "rgba(91,123,143,0.10)"),
+    (30, 70, "rgba(184,149,106,0.08)"),
+    (70, 100, "rgba(181,69,58,0.10)"),
 ]
 
 # Manrope first to match the new design system; CJK fallback ensures
 # Chinese labels render correctly when Manrope doesn't ship those glyphs.
 FONT_FAMILY = (
-    'Manrope, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", '
-    '"Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI", Roboto, sans-serif'
+    'Manrope, "Noto Serif SC", -apple-system, BlinkMacSystemFont, '
+    '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", '
+    '"Noto Sans CJK SC", "Segoe UI", Roboto, sans-serif'
 )
 
 
