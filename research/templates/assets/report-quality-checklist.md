@@ -1,8 +1,8 @@
-# 报告质量自检 Checklist (v0.2)
+# 报告质量自检 Checklist (v0.3)
 
 > 适用：所有遵循 `templates/company-analysis.md` 的研究报告。
 > 用法：报告写完后，agent 必须逐项检查；未通过项按 Gate 类型处理，并在报告 `## Meta` 段中说明。
-> 版本：0.2（补充 Gate 类型、语言约束、免责声明检查）
+> 版本：0.3（新增 B8 跨章节数字一致 + B9 引用可点击）
 
 ---
 
@@ -42,6 +42,8 @@
 | B5 | **Bull/Bear 不是同一句话的正反面**：例如不允许"Bull：AI 需求爆发 / Bear：AI 需求不爆发"。两边必须各自基于不同维度，且各 ≥3 条 | `hard_fail` | brief / standard |
 | B6 | **无投资建议指令语言**：不得以建议或指令形式出现"买入 / 卖出 / 加仓 / 减仓 / 仓位 / 目标价 / 止盈 / 止损"等交易措辞；如为否定或引用，也应改写成研究语言 | `hard_fail` | brief / standard |
 | B7 | **固定免责声明存在**：正文底部必须包含主 spec 规定的免责声明 footer，且 frontmatter `not_investment_advice: true` | `hard_fail` | brief / standard |
+| B8 | **跨章节数字一致**：同一指标（如营收、毛利率、市值）在多处引用时数值一致。如因口径差异（LTM vs FY、含/不含一次性项目）导致数值不同，必须在每处显式标注口径 | `requires_explanation` | standard |
+| B9 | **引用可点击**：数据来源（财报/公告）在 Markdown 正文中应提供可点击的链接（`[text](url)` 格式）。无法提供链接的来源（如付费终端数据）应注明平台名称和访问日期 | `requires_explanation` | standard |
 
 ---
 
@@ -64,6 +66,7 @@
 - [ ] DCF 终端价值占 EV 的比例异常时有解释。
 - [ ] 敏感性表中心格等于 base case。
 - [ ] 同一标的 brief / standard / deep 之间关键数字一致。
+- [ ] 跨章节关键数字一致（同一指标在 §2/§5/§6 等不同章节引用时口径统一）。
 
 ---
 

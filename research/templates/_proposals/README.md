@@ -39,4 +39,7 @@
 | [20260505-ah-shared-content-policy.md](_archive/20260505-ah-shared-content-policy.md) | merged → v0.2 | AH/ADR 主从报告共享引用模式 |
 | [20260505-cross-market-metrics-pack.md](_archive/20260505-cross-market-metrics-pack.md) | merged → cross-market-policy.md | 跨市场补充指标 |
 | [20260505-add-cross-market-appendix.md](_archive/20260505-add-cross-market-appendix.md) | merged → v0.2 主模板 | 可选附录 A 跨市场对照 |
-| [20260505-clarify-incentive-data-policy.md](_archive/20260505-clarify-incentive-data-policy.md) | merged → v0.2 §5.5 | 激励数据缺失处理政策 |
+| [20260508-catalyst-classification.md](_archive/20260508-catalyst-classification.md) | merged → v0.3 | §7 事件 Type 四分类（Earnings/Corporate/Industry/Macro） |
+| [20260508-quality-checklist-enhance.md](_archive/20260508-quality-checklist-enhance.md) | merged → v0.3 | checklist 新增 B8/B9（跨章节一致 + 引用可点击） |
+| [20260508-thesis-falsifiability.md](_archive/20260508-thesis-falsifiability.md) | merged → v0.3 | §7 thesis 可证伪性要求 |
+| [20260508-thesis-scorecard.md](_archive/20260508-thesis-scorecard.md) | merged → v0.3 | §7 thesis pillar scorecard 推荐格式 |
