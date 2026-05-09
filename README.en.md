@@ -8,12 +8,12 @@
 
 > **Personal multi-market macro pipeline + market thermometer + optional LLM briefs** — a T+1 investment workbench.
 
-[![CI](https://github.com/chenhao-dendi/FinSynapse/actions/workflows/ci.yml/badge.svg)](https://github.com/chenhao-dendi/FinSynapse/actions/workflows/ci.yml)
-[![Daily](https://github.com/chenhao-dendi/FinSynapse/actions/workflows/daily.yml/badge.svg)](https://github.com/chenhao-dendi/FinSynapse/actions/workflows/daily.yml)
-[![CodeQL](https://github.com/chenhao-dendi/FinSynapse/actions/workflows/codeql.yml/badge.svg)](https://github.com/chenhao-dendi/FinSynapse/actions/workflows/codeql.yml)
+[![CI](https://github.com/chdendi/FinSynapse/actions/workflows/ci.yml/badge.svg)](https://github.com/chdendi/FinSynapse/actions/workflows/ci.yml)
+[![Daily](https://github.com/chdendi/FinSynapse/actions/workflows/daily.yml/badge.svg)](https://github.com/chdendi/FinSynapse/actions/workflows/daily.yml)
+[![CodeQL](https://github.com/chdendi/FinSynapse/actions/workflows/codeql.yml/badge.svg)](https://github.com/chdendi/FinSynapse/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-📊 **Live dashboard**: <https://chenhao-dendi.github.io/FinSynapse/> ([中文](https://chenhao-dendi.github.io/FinSynapse/) | [English](https://chenhao-dendi.github.io/FinSynapse/en.html))
+📊 **Live dashboard**: <https://chdendi.github.io/FinSynapse/> ([中文](https://chdendi.github.io/FinSynapse/) | [English](https://chdendi.github.io/FinSynapse/en.html))
 
 Refreshed daily at 06:00 Beijing (22:00 UTC the day before): composite thermometers for CN / HK / US, valuation / sentiment / liquidity sub-temperatures, weekly attribution, five hard-coded divergence pairs, and a daily macro brief.
 
@@ -40,7 +40,7 @@ Refreshed daily at 06:00 Beijing (22:00 UTC the day before): composite thermomet
 ## 2. 5-minute quickstart
 
 ```bash
-git clone https://github.com/chenhao-dendi/FinSynapse.git
+git clone https://github.com/chdendi/FinSynapse.git
 cd FinSynapse
 
 # uv is 10–100x faster than pip — see https://github.com/astral-sh/uv
@@ -140,7 +140,7 @@ Each daily build publishes machine-readable JSON endpoints alongside the dashboa
 | `/api/indicators_latest.json` | Each factor's own latest value + 5y/10y rolling percentiles + source/staleness |
 | `/api/divergence_latest.json` | Active divergence signals from the last 90 days, sorted by product strength |
 
-Live: `https://chenhao-dendi.github.io/FinSynapse/api/manifest.json`
+Live: `https://chdendi.github.io/FinSynapse/api/manifest.json`
 
 Current `schema_version = 2.0.0`. Schema version follows SemVer: adding fields is non-breaking and does not force a bump; removing fields, renaming fields, or changing existing field semantics bumps major.
 

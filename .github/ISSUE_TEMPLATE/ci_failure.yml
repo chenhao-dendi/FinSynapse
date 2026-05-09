@@ -7,7 +7,7 @@ body:
     id: run_url
     attributes:
       label: Run URL
-      placeholder: "https://github.com/chenhao-dendi/FinSynapse/actions/runs/..."
+      placeholder: "https://github.com/chdendi/FinSynapse/actions/runs/..."
     validations:
       required: true
 
