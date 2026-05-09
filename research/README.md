@@ -2,7 +2,7 @@
 
 ## 撰写规范
 
-- **个股报告**：统一使用 [`templates/company-analysis.md`](templates/company-analysis.md)（v0.2）
+- **个股报告**：统一使用 [`templates/company-analysis.md`](templates/company-analysis.md)（v0.3）
   - frontmatter：[`templates/report-frontmatter.md`](templates/report-frontmatter.md)
   - 数据规范：[`templates/references/data-source-policy.md`](templates/references/data-source-policy.md)
   - 行业指标：[`templates/references/industry-metrics.md`](templates/references/industry-metrics.md)
@@ -52,3 +52,10 @@
 ### 美股
 
 待添加。
+
+### 韩国
+
+| 文件 | 日期 | 标的 | 模板版本 |
+|------|------|------|:-------:|
+| [000660-sk-hynix-20260509.md](stocks/kr/000660-sk-hynix-20260509.md) | 2026-05-09 | 000660.KS（SK 海力士） | v0.3 |
+| [005930-samsung-electronics-20260509.md](stocks/kr/005930-samsung-electronics-20260509.md) | 2026-05-09 | 005930.KS（三星电子） | v0.3 |
