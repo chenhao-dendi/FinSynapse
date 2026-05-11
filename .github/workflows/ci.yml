@@ -92,7 +92,7 @@ jobs:
         run: uv run python scripts/build_eval_fixture_manifest.py --verify
 
       - name: Upload coverage artifact (py${{ matrix.python-version }})
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-py${{ matrix.python-version }}
           path: coverage.xml
@@ -110,7 +110,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download coverage artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: coverage-py*
           merge-multiple: true
