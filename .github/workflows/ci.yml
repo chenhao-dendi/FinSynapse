@@ -142,7 +142,7 @@ jobs:
 
       - name: Check if eval-relevant paths changed
         id: paths
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             eval-trigger:
