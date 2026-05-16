@@ -1,0 +1,86 @@
+{
+  "schema_version": "2.0.0",
+  "asof": "2026-05-15",
+  "market_asof": {
+    "cn": "2026-05-15",
+    "hk": "2026-05-15",
+    "us": "2026-05-15"
+  },
+  "latest_complete_date": {
+    "cn": "2026-05-15",
+    "hk": "2026-05-15",
+    "us": "2026-05-15"
+  },
+  "raw_temperature_asof": "2026-05-15",
+  "markets": {
+    "cn": {
+      "available": true,
+      "asof": "2026-05-15",
+      "latest_complete_date": "2026-05-15",
+      "overall": 77.07798290653031,
+      "sub_temperatures": {
+        "valuation": 68.07539682539682,
+        "sentiment": 93.70105820105819,
+        "liquidity": 72.48015873015873
+      },
+      "change_1w": {
+        "overall": -0.8629348649852631,
+        "attribution": {
+          "valuation": -1.051587301587304,
+          "sentiment": 1.346560846560834,
+          "liquidity": -0.06944444444444287
+        }
+      },
+      "data_quality": "ok",
+      "subtemp_completeness": 3,
+      "conf_ok": 0,
+      "is_complete": true
+    },
+    "hk": {
+      "available": true,
+      "asof": "2026-05-15",
+      "latest_complete_date": "2026-05-15",
+      "overall": 21.34453781512605,
+      "sub_temperatures": {
+        "valuation": 12.579365079365076,
+        "sentiment": 42.38095238095238,
+        "liquidity": 29.92857142857143
+      },
+      "change_1w": {
+        "overall": 0.25210084033612645,
+        "attribution": {
+          "valuation": -1.2301587301587347,
+          "sentiment": 3.809523809523803,
+          "liquidity": -10.416666666666671
+        }
+      },
+      "data_quality": "ok",
+      "subtemp_completeness": 3,
+      "conf_ok": 0,
+      "is_complete": true
+    },
+    "us": {
+      "available": true,
+      "asof": "2026-05-15",
+      "latest_complete_date": "2026-05-15",
+      "overall": 92.16912977389316,
+      "sub_temperatures": {
+        "valuation": 97.58531746031747,
+        "sentiment": 66.11090916434428,
+        "liquidity": 45.7063492063492
+      },
+      "change_1w": {
+        "overall": 5.704724375593798,
+        "attribution": {
+          "valuation": 0.24801587301588768,
+          "sentiment": -3.8756806406598514,
+          "liquidity": -3.364087301587304
+        }
+      },
+      "data_quality": "ok",
+      "subtemp_completeness": 3,
+      "conf_ok": 0,
+      "is_complete": true
+    }
+  }
+}
